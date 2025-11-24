@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "cgi"
 
 module SourceMonitor
   class ImportSessionsControllerTest < ActionDispatch::IntegrationTest
@@ -22,9 +23,9 @@ module SourceMonitor
       assert_equal "upload", import_session.current_step
     end
 
-    test "update saves upload metadata and advances step" do
+    test "upload parses opml, stores parsed sources, and advances to preview" do
       session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "upload")
-      file = Rack::Test::UploadedFile.new(file_fixture("feeds/atom_sample.xml"), "text/xml")
+      file = Rack::Test::UploadedFile.new(file_fixture("files/opml_with_valid_and_invalid.xml"), "text/xml")
 
       patch source_monitor.step_import_session_path(session, step: "upload"), params: {
         opml_file: file,
@@ -32,9 +33,78 @@ module SourceMonitor
       }
 
       assert_redirected_to source_monitor.step_import_session_path(session, step: "preview")
+
       session.reload
       assert_equal "preview", session.current_step
-      assert_equal "atom_sample.xml", session.opml_file_metadata["filename"]
+      assert_equal "opml_with_valid_and_invalid.xml", session.opml_file_metadata["filename"]
+      assert session.opml_file_metadata["uploaded_at"].present?
+
+      assert_equal 3, session.parsed_sources.size
+      valid, malformed = session.parsed_sources.partition { |entry| entry["status"] == "valid" }
+      assert_equal 1, valid.size
+      assert_equal "https://rubyflow.com/rss", valid.first["feed_url"]
+      assert_equal 2, malformed.size
+      assert_includes malformed.map { |entry| entry["error"] }, "Missing feed URL"
+      assert_includes malformed.map { |entry| entry["error"] }, "Feed URL must be HTTP or HTTPS"
+    end
+
+    test "upload rejects invalid content type" do
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "upload")
+      file = Rack::Test::UploadedFile.new(StringIO.new("not xml"), "text/plain", original_filename: "notes.txt")
+
+      patch source_monitor.step_import_session_path(session, step: "upload"), params: {
+        opml_file: file,
+        import_session: { next_step: "preview" }
+      }
+
+      assert_response :unprocessable_entity
+      session.reload
+      assert_equal "upload", session.current_step
+      assert_equal [], session.parsed_sources
+      assert_includes @response.body, "Upload must be an OPML or XML file"
+    end
+
+    test "upload handles malformed xml" do
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "upload")
+      file = Rack::Test::UploadedFile.new(file_fixture("files/opml_malformed.xml"), "text/xml")
+
+      patch source_monitor.step_import_session_path(session, step: "upload"), params: {
+        opml_file: file,
+        import_session: { next_step: "preview" }
+      }
+
+      assert_response :unprocessable_entity
+      session.reload
+      assert_equal "upload", session.current_step
+      assert_equal [], session.parsed_sources
+      html = CGI.unescapeHTML(@response.body)
+      assert_includes html, "We couldn't parse that OPML file"
+    end
+
+    test "upload blocks progression when no valid entries" do
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "upload")
+      file = Rack::Test::UploadedFile.new(file_fixture("files/opml_no_valid_entries.xml"), "text/xml")
+
+      patch source_monitor.step_import_session_path(session, step: "upload"), params: {
+        opml_file: file,
+        import_session: { next_step: "preview" }
+      }
+
+      assert_response :unprocessable_entity
+      session.reload
+      assert_equal "upload", session.current_step
+      assert_equal 2, session.parsed_sources.size
+      html = CGI.unescapeHTML(@response.body)
+      assert_includes html, "We couldn't find any valid feeds"
+    end
+
+    test "scopes sessions to current user" do
+      other_user = users(:viewer)
+      session = SourceMonitor::ImportSession.create!(user_id: other_user.id, current_step: "upload")
+
+      get source_monitor.step_import_session_path(session, step: "upload")
+
+      assert_response :forbidden
     end
 
     test "destroy cancels session and redirects to sources" do
