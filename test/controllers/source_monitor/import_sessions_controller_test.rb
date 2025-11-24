@@ -146,6 +146,43 @@ module SourceMonitor
       assert_includes @response.body, "New"
     end
 
+    test "preview defaults to selecting all selectable entries" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" },
+        { "id" => "two", "feed_url" => "https://dup.example.com/rss", "title" => "Dup", "status" => "valid" }
+      ]
+      create_source!(feed_url: "https://dup.example.com/rss")
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "preview", parsed_sources: parsed, selected_source_ids: [])
+
+      get source_monitor.step_import_session_path(session, step: "preview")
+
+      session.reload
+      assert_equal ["one"], session.selected_source_ids
+      assert_includes @response.body, "checked\""
+    end
+
+    test "preview select all and select none controls" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "status" => "valid" },
+        { "id" => "two", "feed_url" => "https://another.example.com/rss", "status" => "valid" }
+      ]
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "preview", parsed_sources: parsed, selected_source_ids: [])
+
+      patch source_monitor.step_import_session_path(session, step: "preview"), params: {
+        import_session: { select_all: "true", next_step: "preview" }
+      }
+
+      session.reload
+      assert_equal ["one", "two"], session.selected_source_ids.sort
+
+      patch source_monitor.step_import_session_path(session, step: "preview"), params: {
+        import_session: { select_none: "true", next_step: "preview" }
+      }
+
+      session.reload
+      assert_equal [], session.selected_source_ids
+    end
+
     test "preview filter existing shows only duplicates" do
       existing = create_source!(feed_url: "https://dup.example.com/feed.xml")
       parsed = [

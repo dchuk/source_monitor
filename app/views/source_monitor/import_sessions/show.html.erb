@@ -21,7 +21,6 @@
           <% active = step == @current_step %>
           <li>
             <%= link_to source_monitor.step_import_session_path(@import_session, step: step),
-                  data: { turbo_frame: "import_session_step" },
                   class: [
                     "flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors",
                     active ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"

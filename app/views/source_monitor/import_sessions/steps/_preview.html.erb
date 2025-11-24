@@ -61,10 +61,17 @@
             html: { class: "block" } do |form| %>
         <%= hidden_field_tag :filter, @filter %>
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+          <table class="min-w-full divide-y divide-slate-200 text-left text-sm" data-controller="select-all">
             <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th scope="col" class="px-4 py-3 w-12 text-center">Select</th>
+                <th scope="col" class="px-4 py-3 w-12 text-center">
+                  <div class="flex items-center justify-center gap-2">
+                    <span class="sr-only">Select all</span>
+                    <%= check_box_tag "select_all_master", "1", @filtered_entries.all? { |e| e[:selected] || !e[:selectable] },
+                          data: { select_all_target: "master", action: "select-all#toggleAll" },
+                          class: "h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" %>
+                  </div>
+                </th>
                 <th scope="col" class="px-4 py-3">Feed URL</th>
                 <th scope="col" class="px-4 py-3">Title</th>
                 <th scope="col" class="px-4 py-3">Status</th>
@@ -79,6 +86,7 @@
                           entry[:id],
                           entry[:selected],
                           disabled: disabled,
+                          data: { select_all_target: "item", action: "select-all#toggleItem" },
                           class: "h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100" %>
                   </td>
                   <td class="px-4 py-3 align-top">

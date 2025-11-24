@@ -105,7 +105,7 @@ module SourceMonitor
       )
 
       @current_step = target_step
-      prepare_preview_context if @current_step == "preview"
+      prepare_preview_context(skip_default: true) if @current_step == "preview"
 
       respond_to do |format|
         format.turbo_stream { render :show }
@@ -117,21 +117,32 @@ module SourceMonitor
     end
 
     def handle_preview_step
-      @selected_source_ids = extract_selected_ids
+      @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
 
-      valid_ids = selectable_entries.index_by { |entry| entry[:id] }.slice(*@selected_source_ids).keys
-      @import_session.update!(selected_source_ids: valid_ids)
+      if params.dig(:import_session, :select_all).present?
+        @selected_source_ids = selectable_entries.map { |entry| entry[:id] }
+        @import_session.update_column(:selected_source_ids, @selected_source_ids)
+        valid_ids = @selected_source_ids
+      elsif params.dig(:import_session, :select_none).present?
+        @selected_source_ids = []
+        @import_session.update_column(:selected_source_ids, @selected_source_ids)
+        valid_ids = []
+      else
+        @selected_source_ids = build_selection_from_params
+        valid_ids = selectable_entries.index_by { |entry| entry[:id] }.slice(*@selected_source_ids).keys
+        @import_session.update!(selected_source_ids: valid_ids)
+      end
 
       if advancing_from_preview? && valid_ids.empty?
         @selection_error = "Select at least one new source to continue."
-        prepare_preview_context
+        prepare_preview_context(skip_default: true)
         render :show, status: :unprocessable_entity
         return
       end
 
       @current_step = target_step
       @import_session.update_column(:current_step, @current_step) if @import_session.current_step != @current_step
-      prepare_preview_context
+      prepare_preview_context(skip_default: true)
 
       respond_to do |format|
         format.turbo_stream { render :show }
@@ -144,6 +155,8 @@ module SourceMonitor
         permitted = params.fetch(:import_session, {}).permit(
           :current_step,
           :next_step,
+          :select_all,
+          :select_none,
           parsed_sources: [],
           selected_source_ids: [],
           bulk_settings: {},
@@ -343,12 +356,20 @@ module SourceMonitor
       head :forbidden unless @import_session.user_id == current_user_id
     end
 
-    def prepare_preview_context
+    def prepare_preview_context(skip_default: false)
       @filter = permitted_filter(params[:filter]) || "all"
       @page = normalize_page_param(params[:page])
       @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
 
-      @preview_entries = annotated_entries
+      @preview_entries = annotated_entries(@selected_source_ids)
+
+      if !skip_default && @selected_source_ids.blank? && @preview_entries.present?
+        defaults = selectable_entries_from(@preview_entries).map { |entry| entry[:id] }
+        @selected_source_ids = defaults
+        @import_session.update_column(:selected_source_ids, defaults)
+        @preview_entries = annotated_entries(@selected_source_ids)
+      end
+
       @filtered_entries = filter_entries(@preview_entries, @filter)
 
       paginator = SourceMonitor::Pagination::Paginator.new(
@@ -363,7 +384,8 @@ module SourceMonitor
       @page = paginator.page
     end
 
-    def annotated_entries
+    def annotated_entries(selected_ids)
+      selected_ids ||= []
       entries = Array(@import_session.parsed_sources)
       return [] if entries.blank?
 
@@ -381,9 +403,13 @@ module SourceMonitor
         entry.merge(
           duplicate: duplicate,
           selectable: entry[:status] == "valid" && !duplicate,
-          selected: @selected_source_ids.include?(entry[:id])
+          selected: selected_ids.include?(entry[:id])
         )
       end
+    end
+
+    def selectable_entries_from(entries)
+      entries.select { |entry| entry[:selectable] }
     end
 
     def normalize_entry(entry)
@@ -410,7 +436,17 @@ module SourceMonitor
       end
     end
 
-    def extract_selected_ids
+    def build_selection_from_params
+      @selected_source_ids ||= []
+
+      if params.dig(:import_session, :select_all) == "true"
+        return selectable_entries.map { |entry| entry[:id] }
+      end
+
+      if params.dig(:import_session, :select_none) == "true"
+        return []
+      end
+
       ids = params.dig(:import_session, :selected_source_ids)
       return [] unless ids
 
@@ -418,7 +454,7 @@ module SourceMonitor
     end
 
     def selectable_entries
-      @selectable_entries ||= annotated_entries.select { |entry| entry[:selectable] }
+      @selectable_entries ||= annotated_entries(@selected_source_ids).select { |entry| entry[:selectable] }
     end
 
     def advancing_from_preview?
