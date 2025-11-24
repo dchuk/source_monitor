@@ -276,11 +276,27 @@ module SourceMonitor
     end
 
     def current_user_id
-      source_monitor_current_user&.id
+      return source_monitor_current_user&.id if source_monitor_current_user
+
+      return fallback_user_id unless SourceMonitor::Security::Authentication.authentication_configured?
+
+      nil
     end
 
     def ensure_current_user!
       head :forbidden unless current_user_id
+    end
+
+    def fallback_user_id
+      return @fallback_user_id if defined?(@fallback_user_id)
+
+      if defined?(::User) && ::User.respond_to?(:first)
+        @fallback_user_id = ::User.first&.id
+      else
+        @fallback_user_id = nil
+      end
+
+      @fallback_user_id
     end
 
     def authorize_import_session!
