@@ -1,7 +1,164 @@
-<div class="space-y-4">
-  <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-    <h2 class="text-lg font-semibold text-slate-900">Preview sources</h2>
-    <p class="mt-1 text-sm text-slate-600">A parsed preview table will appear here in the next task. For now this step is a placeholder.</p>
+<div class="space-y-6">
+  <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900">Preview sources</h2>
+        <p class="mt-1 text-sm text-slate-600">Select the feeds to import. Duplicates and malformed entries are disabled.</p>
+      </div>
+      <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <span class="rounded-full bg-slate-100 px-2 py-1">Total: <%= @preview_entries.size %></span>
+        <span class="rounded-full bg-green-50 px-2 py-1 text-green-700">New: <%= @preview_entries.count { |e| e[:selectable] } %></span>
+        <span class="rounded-full bg-amber-50 px-2 py-1 text-amber-800">Existing: <%= @preview_entries.count { |e| e[:duplicate] } %></span>
+      </div>
+    </div>
+
+    <% if @preview_entries.blank? %>
+      <div class="px-4 py-6 text-sm text-slate-600">
+        No parsed entries found. Return to the Upload step and add a different OPML file.
+      </div>
+      <div class="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-4">
+        <%= form_with model: import_session,
+              url: source_monitor.step_import_session_path(import_session, step: "preview"),
+              method: :patch,
+              data: { turbo_frame: "import_session_step" } do |form| %>
+          <%= button_tag "Back", type: :submit, name: "import_session[next_step]", value: "upload",
+                class: "inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+        <% end %>
+        <div class="flex items-center gap-3">
+          <%= link_to "Cancel", source_monitor.import_session_path(import_session),
+                data: { turbo_method: :delete, action: "confirm-navigation#disable" },
+                class: "inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+          <span class="inline-flex items-center rounded-md bg-slate-200 px-4 py-2 text-sm font-semibold text-white">Continue</span>
+        </div>
+      </div>
+    <% else %>
+      <div class="border-b border-slate-100 px-4 py-3">
+        <div class="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <% filters = { "all" => "All", "new" => "New Sources", "existing" => "Existing Sources" } %>
+          <% filters.each do |key, label| %>
+            <% active = @filter == key %>
+            <%= link_to label,
+                  source_monitor.step_import_session_path(import_session, step: "preview", filter: key),
+                  data: { turbo_frame: "import_session_step" },
+                  class: [
+                    "rounded-md px-3 py-2 text-xs font-semibold",
+                    active ? "bg-blue-50 text-blue-700 border border-blue-200" : "border border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-200"
+                  ].join(" ") %>
+          <% end %>
+        </div>
+      </div>
+
+      <% if defined?(@selection_error) && @selection_error.present? %>
+        <div class="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <%= @selection_error %>
+        </div>
+      <% end %>
+
+      <%= form_with model: import_session,
+            url: source_monitor.step_import_session_path(import_session, step: "preview"),
+            method: :patch,
+            data: { turbo_frame: "import_session_step" },
+            html: { class: "block" } do |form| %>
+        <%= hidden_field_tag :filter, @filter %>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr>
+                <th scope="col" class="px-4 py-3 w-12 text-center">Select</th>
+                <th scope="col" class="px-4 py-3">Feed URL</th>
+                <th scope="col" class="px-4 py-3">Title</th>
+                <th scope="col" class="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-800">
+              <% @paginated_entries.each do |entry| %>
+                <% disabled = !entry[:selectable] %>
+                <tr class="<%= disabled ? 'bg-slate-50' : '' %>">
+                  <td class="px-4 py-3 text-center align-middle">
+                    <%= check_box_tag "import_session[selected_source_ids][]",
+                          entry[:id],
+                          entry[:selected],
+                          disabled: disabled,
+                          class: "h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100" %>
+                  </td>
+                  <td class="px-4 py-3 align-top">
+                    <div class="max-w-xl break-words font-medium text-slate-900"><%= entry[:feed_url] %></div>
+                    <% if entry[:website_url].present? %>
+                      <div class="mt-1 text-xs text-blue-700 truncate"><%= entry[:website_url] %></div>
+                    <% end %>
+                  </td>
+                  <td class="px-4 py-3 align-top">
+                    <div class="text-sm font-medium text-slate-900"><%= entry[:title].presence || "(No title)" %></div>
+                    <% if entry[:status] == "malformed" && entry[:error].present? %>
+                      <div class="mt-1 text-xs text-amber-800">Parse error: <%= entry[:error] %></div>
+                    <% end %>
+                  </td>
+                  <td class="px-4 py-3 align-top">
+                    <% if entry[:duplicate] %>
+                      <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Already Imported</span>
+                    <% elsif entry[:status] == "malformed" %>
+                      <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">Malformed</span>
+                    <% else %>
+                      <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">New</span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+              <% if @paginated_entries.blank? %>
+                <tr>
+                  <td colspan="4" class="px-4 py-6 text-sm text-slate-600">No entries match this filter.</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex flex-col items-center gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:justify-between">
+          <div class="text-xs text-slate-500">Page <%= @page %></div>
+          <div class="flex gap-2">
+            <% prev_params = { page: @page - 1, filter: @filter } %>
+            <% next_params = { page: @page + 1, filter: @filter } %>
+
+            <% if @has_previous_page %>
+              <%= link_to "Previous",
+                    source_monitor.step_import_session_path(import_session, step: "preview", **prev_params),
+                    class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50",
+                    data: { turbo_frame: "import_session_step" } %>
+            <% else %>
+              <span class="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-300">Previous</span>
+            <% end %>
+
+            <% if @has_next_page %>
+              <%= link_to "Next",
+                    source_monitor.step_import_session_path(import_session, step: "preview", **next_params),
+                    class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50",
+                    data: { turbo_frame: "import_session_step" } %>
+            <% else %>
+              <span class="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-300">Next</span>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-4">
+          <div>
+            <%= button_tag "Back",
+                  type: :submit,
+                  name: "import_session[next_step]",
+                  value: "upload",
+                  class: "inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+          </div>
+          <div class="flex items-center gap-3">
+            <%= link_to "Cancel", source_monitor.import_session_path(import_session),
+                  data: { turbo_method: :delete, action: "confirm-navigation#disable" },
+                  class: "inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+            <%= button_tag "Continue",
+                  type: :submit,
+                  name: "import_session[next_step]",
+                  value: "health_check",
+                  class: "inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-500" %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
   </div>
-  <%= render "source_monitor/import_sessions/steps/navigation", import_session: import_session, next_step: "health_check", previous_step: "upload" %>
 </div>

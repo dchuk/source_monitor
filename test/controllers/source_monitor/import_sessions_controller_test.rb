@@ -128,6 +128,73 @@ module SourceMonitor
       assert_includes @response.body, "confirm-navigation"
     end
 
+    test "preview shows duplicates and disables selection" do
+      existing = create_source!(feed_url: "https://dup.example.com/feed.xml")
+      parsed = [
+        { "id" => "one", "feed_url" => existing.feed_url, "title" => "Existing", "status" => "valid" },
+        { "id" => "two", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" },
+        { "id" => "three", "feed_url" => nil, "status" => "malformed", "error" => "Missing feed URL" }
+      ]
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "preview", parsed_sources: parsed)
+
+      get source_monitor.step_import_session_path(session, step: "preview")
+
+      assert_response :success
+      assert_includes @response.body, "Already Imported"
+      assert_includes @response.body, existing.feed_url
+      assert_includes @response.body, "Parse error"
+      assert_includes @response.body, "New"
+    end
+
+    test "preview filter existing shows only duplicates" do
+      existing = create_source!(feed_url: "https://dup.example.com/feed.xml")
+      parsed = [
+        { "id" => "one", "feed_url" => existing.feed_url, "title" => "Existing", "status" => "valid" },
+        { "id" => "two", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }
+      ]
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "preview", parsed_sources: parsed)
+
+      get source_monitor.step_import_session_path(session, step: "preview", filter: "existing")
+
+      assert_response :success
+      assert_includes @response.body, existing.feed_url
+      refute_includes @response.body, "https://new.example.com/rss"
+    end
+
+    test "preview selection persists and advances when valid" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }
+      ]
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "preview", parsed_sources: parsed)
+
+      patch source_monitor.step_import_session_path(session, step: "preview"), params: {
+        import_session: { selected_source_ids: ["one"], next_step: "health_check" }
+      }
+
+      assert_redirected_to source_monitor.step_import_session_path(session, step: "health_check")
+      session.reload
+      assert_equal ["one"], session.selected_source_ids
+      assert_equal "health_check", session.current_step
+    end
+
+    test "preview blocks advance when selection empty" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }
+      ]
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "preview", parsed_sources: parsed)
+
+      patch source_monitor.step_import_session_path(session, step: "preview"), params: {
+        import_session: { selected_source_ids: [], next_step: "health_check" }
+      }
+
+      assert_response :unprocessable_entity
+      session.reload
+      assert_equal [], session.selected_source_ids
+      assert_equal "preview", session.current_step
+      html = CGI.unescapeHTML(@response.body)
+      assert_includes html, "Select at least one new source"
+    end
+
     private
 
     def configure_authentication(user)

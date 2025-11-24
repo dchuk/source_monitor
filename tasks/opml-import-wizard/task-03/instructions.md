@@ -1,0 +1,58 @@
+- **Context**
+  - This task implements the Preview step of the OPML import wizard (part of the "Preview and Select Sources" user story). The Upload step will have populated ImportSession.parsed_sources (JSONB) with entries parsed from the OPML and ImportSession exists for the current admin user. The engine uses Turbo Frames, Turbo Streams, Tailwind, server-side pagination helpers, and a Source model/table (sourcemon_sources) for duplicate detection. Selection state for the wizard must persist in ImportSession.selected_source_ids (JSONB) while the ImportSession exists.
+
+- **Goals**
+  - Render a paginated Preview table of parsed OPML entries with columns: feed URL, title, and “Already Imported” status.
+  - Mark duplicate entries (feed URL matched against existing sourcemon_sources) as “Already Imported” and make them non-selectable.
+  - Show malformed/parsing-error entries (from parsed_sources) with inline error indicator and make them non-selectable.
+  - Provide filters: All, New Sources, Existing Sources (server-side filtering).
+  - Allow admin to select/unselect valid entries; persist selections across filter changes and step navigation by updating ImportSession.selected_source_ids.
+  - Prevent proceeding to the next wizard step when no sources are selected and surface a clear warning.
+
+- **Technical Guidelines**
+  - Rendering & UI
+    - Implement the Preview step view as a Turbo Frame (consistent with engine conventions used for sources index tables). The table content must be server-rendered (HTML partials) and replaceable via turbo_frame_tag updates.
+    - Table columns: feed URL (clickable/visible text), title (as parsed), and “Already Imported” status (visual badge/icon). Malformed rows must show a clear inline error message/toolip and a disabled checkbox.
+    - Use Tailwind classes and accessibility patterns consistent with other engine tables and forms.
+    - Add filter controls (All / New / Existing) that trigger full-frame GET requests (targeting the preview Turbo Frame) and support pagination & stateful checkbox persistence.
+  - Data & Selection Persistence
+    - Persist and read selection state in ImportSession.selected_source_ids (JSONB). Store a stable identifier for each parsed entry that can be used across requests. If parsed_sources includes a unique temp id, use it; otherwise use feed_url as the canonical identifier for selection storage (feed_url is required for duplicate detection).
+    - When rendering rows, mark checkboxes checked if their identifier appears in ImportSession.selected_source_ids.
+    - Update ImportSession.selected_source_ids via server endpoints (e.g., POST/PATCH from the preview frame) whenever a user toggles selection or submits the preview form. The controller actions must sanitize params and scope updates to the current ImportSession and current admin user.
+    - Ensure ImportSession model uses integer user_id as configured in the tech brief. (This task reads/updates ImportSession only; ensure permission checks enforce admin-only access.)
+  - Duplicate & Malformed Handling
+    - Duplicate detection: treat a parsed entry as an "existing" duplicate if its feed URL exactly matches an existing source record (sourcemon_sources). Mark duplicates visually and make their selection control disabled.
+    - Malformed entries: rely on parser-set flags in ImportSession.parsed_sources to identify malformed entries; render error details inline and disable selection.
+  - Filters & Pagination
+    - Implement server-side filtering logic:
+      - All => show all parsed_sources (including malformed and duplicates).
+      - New Sources => parsed entries that are valid and not duplicate.
+      - Existing Sources => parsed entries flagged as duplicate (already imported).
+    - Implement server-side pagination for the preview table using existing pagination helpers/patterns used elsewhere in the engine (do not load entire list into browser for very large files).
+    - Preserve selection state across pagination and filter changes by reading/writing ImportSession.selected_source_ids (i.e., selections are global to the ImportSession, not only per page).
+  - Navigation & Progression Block
+    - Provide UI validation that blocks “Next” navigation when ImportSession.selected_source_ids is empty (or contains no enabled/valid entries). Show a clear, inline warning message in the Preview step explaining at least one valid source must be selected.
+  - Security & Conventions
+    - Enforce admin-only access for all preview endpoints using existing SourceMonitor authentication hooks.
+    - Use strong parameter sanitization for any incoming params (filter, page, selection updates).
+    - Follow the engine’s Turbo/Tailwind/Accessibility patterns and Turbo Frame naming conventions so later steps and Turbo Streams integrate cleanly.
+  - Integration points (do not reimplement)
+    - Read parsed entries from ImportSession.parsed_sources (populated by the Upload/Parsing step).
+    - For duplicate detection, query the canonical Source model/table (sourcemon_sources / SourceMonitor::Source) — match by feed URL only.
+    - Use existing pagination helpers and table rendering conventions used by the Sources index.
+
+- **Out of scope**
+  - Health check job orchestration, Turbo Stream live broadcasting for health — that is handled in the Health Check step.
+  - Upload/parsing implementation (Add OPML Upload & Synchronous Parsing) and ImportSession creation — assume ImportSession.parsed_sources exists with required fields.
+  - Per-feed settings UI or per-feed overrides.
+  - Client-only selection persistence (all persistence must be server-backed in ImportSession.selected_source_ids).
+  - Retry semantics for failed persistence or selection race-handling beyond simple idempotent updates and param sanitization.
+
+- **Suggested research**
+  - Inspect ImportSession model and its parsed_sources schema to confirm the entry shape and any temporary identifiers (or confirm to use feed_url as identifier).
+  - Review the wizard controller/routes for Preview step (ImportSession/wizard controller) to determine the Turbo Frame name and route endpoints for updating selection and paginated frame rendering.
+  - Review existing sources index/table implementation and pagination helpers to follow consistent Turbo Frame patterns and CSS classes:
+    - app/views/source_monitor/sources/index.html.erb and its table partials
+    - existing pagination helpers under lib/source_monitor/pagination or helpers used in sources index
+  - Inspect Source model / table for feed_url column and any scopes used for matching (sourcemon_sources / SourceMonitor::Source).
+  - Check authentication hooks and parameter sanitizer patterns used by controllers to ensure admin-only access and strong param handling (e.g., SourceMonitor.config.authentication, SourceMonitor::Security::ParameterSanitizer).

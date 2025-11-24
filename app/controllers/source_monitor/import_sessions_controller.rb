@@ -32,12 +32,14 @@ module SourceMonitor
     end
 
     def show
+      prepare_preview_context if @current_step == "preview"
       persist_step!
       render :show
     end
 
     def update
       return handle_upload_step if @current_step == "upload"
+      return handle_preview_step if @current_step == "preview"
 
       @import_session.update!(session_attributes)
       @current_step = target_step
@@ -111,6 +113,29 @@ module SourceMonitor
     rescue UploadError => error
       @upload_errors = [error.message]
       render :show, status: :unprocessable_entity
+    end
+
+    def handle_preview_step
+      @selected_source_ids = extract_selected_ids
+
+      valid_ids = selectable_entries.index_by { |entry| entry[:id] }.slice(*@selected_source_ids).keys
+      @import_session.update!(selected_source_ids: valid_ids)
+
+      if advancing_from_preview? && valid_ids.empty?
+        @selection_error = "Select at least one new source to continue."
+        prepare_preview_context
+        render :show, status: :unprocessable_entity
+        return
+      end
+
+      @current_step = target_step
+      @import_session.update_column(:current_step, @current_step) if @import_session.current_step != @current_step
+      prepare_preview_context
+
+      respond_to do |format|
+        format.turbo_stream { render :show }
+        format.html { redirect_to source_monitor.step_import_session_path(@import_session, step: @current_step) }
+      end
     end
 
     def state_params
@@ -260,6 +285,107 @@ module SourceMonitor
 
     def authorize_import_session!
       head :forbidden unless @import_session.user_id == current_user_id
+    end
+
+    def prepare_preview_context
+      @filter = permitted_filter(params[:filter]) || "all"
+      @page = normalize_page_param(params[:page])
+      @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
+
+      @preview_entries = annotated_entries
+      @filtered_entries = filter_entries(@preview_entries, @filter)
+
+      paginator = SourceMonitor::Pagination::Paginator.new(
+        scope: @filtered_entries,
+        page: @page,
+        per_page: preview_per_page
+      ).paginate
+
+      @paginated_entries = paginator.records
+      @has_next_page = paginator.has_next_page
+      @has_previous_page = paginator.has_previous_page
+      @page = paginator.page
+    end
+
+    def annotated_entries
+      entries = Array(@import_session.parsed_sources)
+      return [] if entries.blank?
+
+      normalized = entries.map { |entry| normalize_entry(entry) }
+
+      feed_urls = normalized.filter_map { |entry| entry[:feed_url]&.downcase }
+      duplicate_lookup = if feed_urls.present?
+        SourceMonitor::Source.where("LOWER(feed_url) IN (?)", feed_urls).pluck(:feed_url).map(&:downcase)
+      else
+        []
+      end
+
+      normalized.map do |entry|
+        duplicate = entry[:feed_url].present? && duplicate_lookup.include?(entry[:feed_url].downcase)
+        entry.merge(
+          duplicate: duplicate,
+          selectable: entry[:status] == "valid" && !duplicate,
+          selected: @selected_source_ids.include?(entry[:id])
+        )
+      end
+    end
+
+    def normalize_entry(entry)
+      entry = entry.to_h
+      {
+        id: entry[:id]&.to_s || entry["id"]&.to_s || entry[:feed_url]&.to_s || entry["feed_url"]&.to_s,
+        feed_url: entry[:feed_url].presence || entry["feed_url"].presence,
+        title: entry[:title].presence || entry["title"].presence,
+        website_url: entry[:website_url].presence || entry["website_url"].presence,
+        status: entry[:status].presence || entry["status"].presence || "valid",
+        error: entry[:error].presence || entry["error"].presence,
+        raw_outline_index: entry[:raw_outline_index] || entry["raw_outline_index"]
+      }
+    end
+
+    def filter_entries(entries, filter)
+      case filter
+      when "new"
+        entries.select { |entry| entry[:selectable] }
+      when "existing"
+        entries.select { |entry| entry[:duplicate] }
+      else
+        entries
+      end
+    end
+
+    def extract_selected_ids
+      ids = params.dig(:import_session, :selected_source_ids)
+      return [] unless ids
+
+      Array(ids).map { |id| id.to_s }.uniq
+    end
+
+    def selectable_entries
+      @selectable_entries ||= annotated_entries.select { |entry| entry[:selectable] }
+    end
+
+    def advancing_from_preview?
+      target_step != "preview"
+    end
+
+    def normalize_page_param(value)
+      number = value.to_i
+      number = 1 if number <= 0
+      number
+    rescue StandardError
+      1
+    end
+
+    def permitted_filter(raw)
+      value = raw.to_s.presence
+      return unless value
+
+      %w[all new existing].find { |candidate| candidate == value }
+    end
+
+    def preview_per_page
+      25
     end
 
     class UploadError < StandardError; end
