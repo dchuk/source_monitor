@@ -105,6 +105,7 @@ module SourceMonitor
       )
 
       @current_step = target_step
+      prepare_preview_context if @current_step == "preview"
 
       respond_to do |format|
         format.turbo_stream { render :show }
