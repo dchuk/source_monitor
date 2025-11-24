@@ -290,16 +290,55 @@ module SourceMonitor
     def fallback_user_id
       return @fallback_user_id if defined?(@fallback_user_id)
 
-      if defined?(::User) && ::User.respond_to?(:first)
-        @fallback_user_id = ::User.first&.id
-      else
+      unless defined?(::User) && ::User.respond_to?(:first)
         @fallback_user_id = nil
+        return @fallback_user_id
       end
 
-      @fallback_user_id
+      existing = ::User.first
+      if existing
+        @fallback_user_id = existing.id
+        return @fallback_user_id
+      end
+
+      @fallback_user_id = create_guest_user&.id
+    rescue StandardError
+      @fallback_user_id = nil
+    end
+
+    def create_guest_user
+      return unless defined?(::User)
+
+      attributes = {}
+      ::User.columns_hash.each do |name, column|
+        next if name == ::User.primary_key
+
+        if column.default.nil? && !column.null
+          attributes[name] = guest_value_for(column)
+        end
+      end
+
+      ::User.create(attributes)
+    end
+
+    def guest_value_for(column)
+      case column.type
+      when :string, :text
+        "source_monitor_guest"
+      when :boolean
+        false
+      when :integer
+        0
+      when :datetime, :timestamp
+        Time.current
+      else
+        column.default
+      end
     end
 
     def authorize_import_session!
+      return if !SourceMonitor::Security::Authentication.authentication_configured?
+
       head :forbidden unless @import_session.user_id == current_user_id
     end
 
