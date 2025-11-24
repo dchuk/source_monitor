@@ -8,7 +8,7 @@
       <%= form_with model: import_session,
             url: source_monitor.step_import_session_path(import_session, step: "upload"),
             method: :patch,
-            data: { turbo_frame: "import_session_step" },
+            data: { turbo_frame: "import_session_step", action: "confirm-navigation#disable" },
             html: { enctype: "multipart/form-data", class: "space-y-4" } do |form| %>
         <% if defined?(@upload_errors) && @upload_errors.present? %>
           <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">

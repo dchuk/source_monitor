@@ -57,7 +57,7 @@
       <%= form_with model: import_session,
             url: source_monitor.step_import_session_path(import_session, step: "preview"),
             method: :patch,
-            data: { turbo_frame: "import_session_step" },
+            data: { turbo_frame: "import_session_step", action: "confirm-navigation#disable" },
             html: { class: "block" } do |form| %>
         <%= hidden_field_tag :filter, @filter %>
         <div class="overflow-x-auto">
