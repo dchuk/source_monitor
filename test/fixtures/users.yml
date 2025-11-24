@@ -1,0 +1,7 @@
+admin:
+  email: admin@example.com
+  admin: true
+
+viewer:
+  email: viewer@example.com
+  admin: false

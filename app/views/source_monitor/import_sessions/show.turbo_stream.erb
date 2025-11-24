@@ -1,0 +1,3 @@
+<%= turbo_stream.replace "import_session_step" do %>
+  <%= render "source_monitor/import_sessions/steps/#{@current_step}", import_session: @import_session %>
+<% end %>

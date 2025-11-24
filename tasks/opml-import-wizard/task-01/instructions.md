@@ -1,0 +1,81 @@
+- **Context**
+  - Implement the entrypoint and shell for the multi-step OPML Import Wizard described in the PRD / Tech Brief. The wizard is launched from the Sources index page and contains steps: Upload, Preview, Health Check, Configure, Confirm. The shell must provide navigation UI, per‑step persistence, JS guard against accidental navigation/refresh, admin-only access, and server-side incremental persistence via a new ImportSession model (integer user_id, JSONB fields).
+  - This task does NOT implement file parsing, preview table, health checks, settings form, or the import/background job — those are separate tasks that depend on this shell.
+
+- **Goals**
+  - Add an "Import OPML" action on the Sources index that navigates to a dedicated wizard route.
+  - Create a multi-step wizard shell: left sidebar listing steps (Upload, Preview, Health Check, Configure, Confirm) with current step highlighted, and the main content area rendered per step.
+  - Provide per-step navigation with state persisted server-side to an ImportSession record so subsequent steps can update state.
+  - Show a browser JS warning when the user attempts to refresh or navigate away from the wizard.
+  - Provide a cancel/exit action that deletes the ImportSession and returns the user to the Sources index.
+  - Enforce admin-only access on the wizard endpoints and follow engine UI conventions (Tailwind, accessibility, Turbo Frames).
+
+- **Technical Guidelines**
+  - Routes & Controller
+    - Add engine routes for the wizard under the engine namespace (e.g., GET/POST /import_opml or /sources/import_opml) exposing step navigation. Use a Wicked-style incremental pattern (one controller that renders step views based on a step param or separate RESTful actions per step) and render step content inside Turbo Frames.
+    - Controller must enforce admin-only access using the engine’s existing authentication hooks (follow patterns used by SourcesController).
+    - Provide controller actions:
+      - new / create to start a new ImportSession and redirect to the first step,
+      - show/edit endpoints for step rendering and updates (or a step param on a single action),
+      - cancel/destroy to delete ImportSession and redirect to Sources index.
+    - All form submissions/step transitions should save partial state to ImportSession (see model below) and respond with Turbo Frame updates.
+  - ImportSession model & migration
+    - Implement ImportSession ActiveRecord model and DB migration following engine conventions.
+    - Use Rails’ default integer primary keys and integer user reference: t.references :user, foreign_key: true (not UUID).
+    - Include JSONB columns for server-side state:
+      - opml_file_metadata (JSONB)
+      - parsed_sources (JSONB) — array of parsed entries with status
+      - selected_source_ids (JSONB) — array of selected parsed entry identifiers
+      - bulk_settings (JSONB)
+      - current_step (string)
+    - Add timestamps (created_at, updated_at).
+    - Ensure migration and model naming follow repository conventions and include indices if needed for lookups by user.
+  - Views / UI Shell
+    - Add an "Import OPML" button/link to the Sources index page that navigates to the wizard entry route. Follow existing Sources index patterns (use Turbo Frame if appropriate).
+    - Create a wizard layout view that:
+      - Renders a left sidebar listing steps (Upload, Preview, Health Check, Configure, Confirm), highlights the active step, and uses accessible semantics (nav, aria-current on active step).
+      - Renders the step content region inside a named Turbo Frame so step content can be replaced without full-page reloads.
+      - Follows Tailwind styling and the engine’s accessibility patterns.
+    - Each step should be a separate partial/view (initially stubbed with placeholders) rendered into the Turbo Frame. The Upload step must include the file input form that posts to the ImportSession controller (actual parsing implemented in another task).
+  - Client behavior and navigation safety
+    - Implement a browser JS beforeunload warning when the user is in the wizard to prevent accidental refresh/navigate away. Use unobtrusive Stimulus/Turbolinks/Turbo patterns consistent with the repo (avoid breaking existing global behaviors).
+    - Provide explicit Cancel/Exit action in the UI which triggers server-side deletion of the ImportSession and redirects to Sources index. The Cancel action must not require the beforeunload confirmation to proceed.
+    - Ensure per-step navigation (next/back links) saves state to ImportSession via standard Rails form submissions or Turbo Frame form submissions so selections/text persist while the ImportSession exists.
+  - Persistence semantics & edge conditions
+    - Persist wizard state incrementally to ImportSession on each step transition or save action.
+    - Enforce admin-only access on import session resources.
+    - Do not implement parsing/preview/health logic here; parsed_sources may be initialized empty; Upload step should accept a file param and store metadata in opml_file_metadata (actual parsing implemented in next task).
+    - The UI should be designed so if the user refreshes (explicit browser reload), behavior conforms to the PRD requirement: show a fresh wizard state (documented for the implementing developer). Also show in UI a JS warning to prevent accidental refresh. (Concrete refresh reset behavior will be implemented per higher-level product decision when wiring parsing/session expiry.)
+  - Conventions & quality
+    - Use existing Turbo Frames, Turbo Streams and presenter patterns used across the engine. Use Tailwind classes and existing layout components for consistency.
+    - Sanitize and permit only required params in controller (use engine security/parameter sanitizer patterns).
+    - Add basic unit/controller/view tests to assert:
+      - Route and action presence,
+      - ImportSession creation with user_id integer,
+      - Cancel deletes the session and redirects,
+      - Sidebar renders with active step highlight,
+      - beforeunload warning is registered while wizard open.
+    - Internationalization/messages: follow repo pattern (simple English strings ok if consistent with existing views).
+    - Add migration, model, controller, views and routes in same PR; keep implementation minimal and extensible for follow-on tasks.
+
+- **Out of scope**
+  - Do not implement OPML parsing, source preview table, duplicate detection, health checks, bulk settings form fields, or background import job logic in this task.
+  - Do not implement persistence lifecycles beyond basic create/update/delete of ImportSession (e.g., expiry policies, garbage collection of sessions, or advanced session reconciliation).
+  - Do not implement per-feed settings overrides, real-time import progress bar, or import history viewing (those are separate tasks).
+  - Do not change sourcemon_sources table or alter existing source creation logic here.
+
+- **Suggested research**
+  - Inspect Sources index and its patterns to add the Import OPML entrypoint:
+    - app/views/source_monitor/sources/index.html.erb
+    - app/controllers/source_monitor/sources_controller.rb
+  - Review engine routing and controller conventions:
+    - config/routes.rb (engine)
+    - app/controllers/source_monitor/application_controller.rb (auth pattern)
+  - Review turbo frame and presenter/responder patterns:
+    - lib/source_monitor/turbo_streams/stream_responder.rb
+    - app/assets/javascripts/source_monitor/turbo_actions.js
+    - app/views/layouts/source_monitor/application.html.erb
+  - Find examples of model/migration conventions and JSONB usage:
+    - existing migrations under db/migrate/ and models using JSONB (e.g., sourcemon_* tables referenced in research)
+  - Authentication hooks / admin-only enforcement:
+    - lib/source_monitor/configuration.rb and controller auth checks used in SourcesController (follow same authorization approach).

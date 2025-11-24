@@ -1,0 +1,49 @@
+<% content_for :title, "Import OPML" %>
+
+<div class="space-y-6" data-controller="confirm-navigation" data-confirm-navigation-message-value="You have an in-progress import. Are you sure you want to leave this wizard?">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">OPML Import</p>
+      <h1 class="text-3xl font-semibold text-slate-900">Import Wizard</h1>
+      <p class="mt-1 text-sm text-slate-500">Step <%= @current_step.titleize %> · progress is saved to your session.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <%= link_to "Cancel", source_monitor.import_session_path(@import_session),
+            data: { turbo_method: :delete, action: "confirm-navigation#disable" },
+            class: "inline-flex items-center rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-4">
+    <nav aria-label="Import steps" class="rounded-lg border border-slate-200 bg-white shadow-sm">
+      <ol class="divide-y divide-slate-100" role="list">
+        <% @wizard_steps.each do |step| %>
+          <% active = step == @current_step %>
+          <li>
+            <%= link_to source_monitor.step_import_session_path(@import_session, step: step),
+                  data: { turbo_frame: "import_session_step" },
+                  class: [
+                    "flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors",
+                    active ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
+                  ].join(" "),
+                  aria: { current: (active ? "page" : nil) } do %>
+              <span class="flex items-center gap-2">
+                <span class="h-2 w-2 rounded-full <%= active ? 'bg-blue-600' : 'bg-slate-300' %>" aria-hidden="true"></span>
+                <span><%= step.titleize %></span>
+              </span>
+              <% if active %>
+                <span class="text-xs font-semibold uppercase text-blue-600">Current</span>
+              <% end %>
+            <% end %>
+          </li>
+        <% end %>
+      </ol>
+    </nav>
+
+    <div class="lg:col-span-3">
+      <%= turbo_frame_tag "import_session_step" do %>
+        <%= render "source_monitor/import_sessions/steps/#{@current_step}", import_session: @import_session %>
+      <% end %>
+    </div>
+  </div>
+</div>
