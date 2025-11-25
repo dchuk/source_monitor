@@ -34,7 +34,7 @@ module SourceMonitor
         )
 
         selected_ids = Array(import_session.selected_source_ids).map(&:to_s)
-        selected_ids -= [entry_id.to_s] if result.status == "unhealthy"
+        selected_ids -= [ entry_id.to_s ] if result.status == "unhealthy"
 
         attrs = {
           parsed_sources: entries,

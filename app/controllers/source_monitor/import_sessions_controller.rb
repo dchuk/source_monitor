@@ -116,7 +116,7 @@ module SourceMonitor
       valid_entries = parsed_entries.select { |entry| entry[:status] == "valid" }
 
       if valid_entries.empty?
-        @upload_errors = ["We couldn't find any valid feeds in that OPML file. Check the file and try again."]
+        @upload_errors = [ "We couldn't find any valid feeds in that OPML file. Check the file and try again." ]
         @import_session.update!(opml_file_metadata: build_file_metadata, parsed_sources: parsed_entries, current_step: "upload")
         render :show, status: :unprocessable_entity
         return
@@ -136,7 +136,7 @@ module SourceMonitor
         format.html { redirect_to source_monitor.step_import_session_path(@import_session, step: @current_step) }
       end
     rescue UploadError => error
-      @upload_errors = [error.message]
+      @upload_errors = [ error.message ]
       render :show, status: :unprocessable_entity
     end
 
@@ -243,7 +243,7 @@ module SourceMonitor
     end
 
     def validate_upload!
-      return ["Upload an OPML file to continue."] unless uploading_file?
+      return [ "Upload an OPML file to continue." ] unless uploading_file?
 
       file = params[:opml_file]
       errors = []
@@ -489,7 +489,7 @@ module SourceMonitor
       {
         completed: completed,
         total: total,
-        pending: [total - completed, 0].max,
+        pending: [ total - completed, 0 ].max,
         active: @import_session.health_checks_active?,
         done: total.positive? && completed >= total
       }

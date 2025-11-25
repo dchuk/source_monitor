@@ -44,7 +44,7 @@ module SourceMonitor
         {
           completed: completed,
           total: total,
-          pending: [total - completed, 0].max,
+          pending: [ total - completed, 0 ].max,
           active: import_session.health_checks_active?,
           done: total.positive? && completed >= total
         }

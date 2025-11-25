@@ -157,7 +157,7 @@ module SourceMonitor
       get source_monitor.step_import_session_path(session, step: "preview")
 
       session.reload
-      assert_equal ["one"], session.selected_source_ids
+      assert_equal [ "one" ], session.selected_source_ids
       assert_includes @response.body, "checked\""
     end
 
@@ -173,7 +173,7 @@ module SourceMonitor
       }
 
       session.reload
-      assert_equal ["one", "two"], session.selected_source_ids.sort
+      assert_equal [ "one", "two" ], session.selected_source_ids.sort
 
       patch source_monitor.step_import_session_path(session, step: "preview"), params: {
         import_session: { select_none: "true", next_step: "preview" }
@@ -205,12 +205,12 @@ module SourceMonitor
       session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "preview", parsed_sources: parsed)
 
       patch source_monitor.step_import_session_path(session, step: "preview"), params: {
-        import_session: { selected_source_ids: ["one"], next_step: "health_check" }
+        import_session: { selected_source_ids: [ "one" ], next_step: "health_check" }
       }
 
       assert_redirected_to source_monitor.step_import_session_path(session, step: "health_check")
       session.reload
-      assert_equal ["one"], session.selected_source_ids
+      assert_equal [ "one" ], session.selected_source_ids
       assert_equal "health_check", session.current_step
     end
 
@@ -223,12 +223,12 @@ module SourceMonitor
         user_id: @admin.id,
         current_step: "preview",
         parsed_sources: parsed,
-        selected_source_ids: ["one", "two"]
+        selected_source_ids: [ "one", "two" ]
       )
 
       assert_enqueued_jobs 2, only: SourceMonitor::ImportSessionHealthCheckJob do
         patch source_monitor.step_import_session_path(session, step: "preview"), params: {
-          import_session: { selected_source_ids: ["one", "two"], next_step: "health_check" }
+          import_session: { selected_source_ids: [ "one", "two" ], next_step: "health_check" }
         }
       end
 
@@ -248,7 +248,7 @@ module SourceMonitor
         parsed_sources: parsed,
         selected_source_ids: [],
         health_checks_active: true,
-        health_check_target_ids: ["one"]
+        health_check_target_ids: [ "one" ]
       )
 
       patch source_monitor.step_import_session_path(session, step: "health_check"), params: {
@@ -288,7 +288,7 @@ module SourceMonitor
         user_id: @admin.id,
         current_step: "configure",
         parsed_sources: parsed,
-        selected_source_ids: ["one"],
+        selected_source_ids: [ "one" ],
         bulk_settings: {}
       )
 
@@ -322,7 +322,7 @@ module SourceMonitor
         user_id: @admin.id,
         current_step: "configure",
         parsed_sources: parsed,
-        selected_source_ids: ["one"],
+        selected_source_ids: [ "one" ],
         bulk_settings: {}
       )
 
@@ -350,7 +350,7 @@ module SourceMonitor
         user_id: @admin.id,
         current_step: "configure",
         parsed_sources: parsed,
-        selected_source_ids: ["one"],
+        selected_source_ids: [ "one" ],
         bulk_settings: { "fetch_interval_minutes" => 45, "scraping_enabled" => true }
       )
 

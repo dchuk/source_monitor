@@ -17,9 +17,9 @@ module SourceMonitor
         parsed_sources: [
           { "id" => "one", "feed_url" => "https://example.com/feed.xml", "status" => "valid" }
         ],
-        selected_source_ids: ["one"],
+        selected_source_ids: [ "one" ],
         health_checks_active: true,
-        health_check_target_ids: ["one"]
+        health_check_target_ids: [ "one" ]
       )
 
       result = SourceMonitor::Health::ImportSourceHealthCheck::Result.new(
