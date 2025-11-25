@@ -1,9 +1,10 @@
-- job queues stats cards needs to be rethought
-- add opml import/export
-- clean upgrade strategy
-- growl notifications are spamming the user when taking bulk actions
-- add ability to manage per-source scraping rate limits to override configuration defaults
-- ensure adaptive scheduling only reacts to truly new content (fetching a feed should use hashing on the summary or scrape to determine the item has really been updated, otherwise don't update anything)
-- automatically extract transcripts from content that is mostly video or audio
-- explore using this for markdown conversion: https://github.com/Goldziher/html-to-markdown/blob/main/packages%2Fruby%2FREADME.md
-    - could be optional adapter for sources
+- [ ] job queues stats cards needs to be rethought
+- [X] ~~*add opml import/export*~~ [2025-11-25]
+- [ ] clean upgrade strategy
+- [ ] growl notifications are spamming the user when taking bulk actions
+- [ ] add ability to manage per-source scraping rate limits to override configuration defaults
+- [ ] ensure adaptive scheduling only reacts to truly new content (fetching a feed should use hashing on the summary or scrape to determine the item has really been updated, otherwise don't update anything)
+- [ ] automatically extract transcripts from content that is mostly video or audio
+- [ ] explore using this for markdown conversion (could be optional adapter for sources): https://github.com/Goldziher/html-to-markdown/blob/main/packages%2Fruby%2FREADME.md
+- [ ] sources show page needs pagination for items
+- [ ] sources show page should truncate item content to first 100 characters (with a stimulus expand link under the truncated content to show full body)
