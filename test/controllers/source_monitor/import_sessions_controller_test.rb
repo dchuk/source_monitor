@@ -279,6 +279,88 @@ module SourceMonitor
       assert_includes html, "Select at least one new source"
     end
 
+    test "configure persists bulk settings and advances to confirm" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }
+      ]
+
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "configure",
+        parsed_sources: parsed,
+        selected_source_ids: ["one"],
+        bulk_settings: {}
+      )
+
+      patch source_monitor.step_import_session_path(session, step: "configure"), params: {
+        import_session: { next_step: "confirm" },
+        source: {
+          fetch_interval_minutes: 15,
+          active: "1",
+          auto_scrape: "1",
+          scraping_enabled: "1",
+          scraper_adapter: "readability",
+          items_retention_days: 30
+        }
+      }
+
+      assert_redirected_to source_monitor.step_import_session_path(session, step: "confirm")
+
+      session.reload
+      assert_equal "confirm", session.current_step
+      assert_equal 15, session.bulk_settings["fetch_interval_minutes"]
+      assert_equal true, session.bulk_settings["scraping_enabled"]
+      assert_equal 30, session.bulk_settings["items_retention_days"]
+    end
+
+    test "configure blocks advance when settings invalid" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }
+      ]
+
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "configure",
+        parsed_sources: parsed,
+        selected_source_ids: ["one"],
+        bulk_settings: {}
+      )
+
+      patch source_monitor.step_import_session_path(session, step: "configure"), params: {
+        import_session: { next_step: "confirm" },
+        source: {
+          fetch_interval_minutes: 0,
+          scraper_adapter: "readability"
+        }
+      }
+
+      assert_response :unprocessable_entity
+      session.reload
+      assert_equal "configure", session.current_step
+      html = CGI.unescapeHTML(@response.body)
+      assert_includes html, "Fetch interval minutes must be greater than 0"
+    end
+
+    test "configure form reuses saved settings" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }
+      ]
+
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "configure",
+        parsed_sources: parsed,
+        selected_source_ids: ["one"],
+        bulk_settings: { "fetch_interval_minutes" => 45, "scraping_enabled" => true }
+      )
+
+      get source_monitor.step_import_session_path(session, step: "configure")
+
+      assert_response :success
+      assert_includes @response.body, "value=\"45\""
+      assert_includes @response.body, "scraping_enabled"
+    end
+
     private
 
     def configure_authentication(user)
