@@ -17,10 +17,10 @@
         No parsed entries found. Return to the Upload step and add a different OPML file.
       </div>
       <div class="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-4">
-        <%= form_with model: import_session,
-              url: source_monitor.step_import_session_path(import_session, step: "preview"),
-              method: :patch,
-              data: { turbo_frame: "import_session_step" } do |form| %>
+      <%= form_with model: import_session,
+            url: source_monitor.step_import_session_path(import_session, step: "preview"),
+            method: :patch,
+            data: { turbo: false } do |form| %>
           <%= button_tag "Back", type: :submit, name: "import_session[next_step]", value: "upload",
                 class: "inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
         <% end %>
@@ -57,7 +57,7 @@
       <%= form_with model: import_session,
             url: source_monitor.step_import_session_path(import_session, step: "preview"),
             method: :patch,
-            data: { turbo_frame: "import_session_step", action: "confirm-navigation#disable" },
+            data: { turbo: false, action: "confirm-navigation#disable" },
             html: { class: "block" } do |form| %>
         <%= hidden_field_tag :filter, @filter %>
         <div class="overflow-x-auto">

@@ -214,6 +214,53 @@ module SourceMonitor
       assert_equal "health_check", session.current_step
     end
 
+    test "health check enqueues jobs and marks entries pending" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" },
+        { "id" => "two", "feed_url" => "https://another.example.com/rss", "title" => "Another", "status" => "valid" }
+      ]
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "preview",
+        parsed_sources: parsed,
+        selected_source_ids: ["one", "two"]
+      )
+
+      assert_enqueued_jobs 2, only: SourceMonitor::ImportSessionHealthCheckJob do
+        patch source_monitor.step_import_session_path(session, step: "preview"), params: {
+          import_session: { selected_source_ids: ["one", "two"], next_step: "health_check" }
+        }
+      end
+
+      session.reload
+      assert session.health_checks_active?
+      assert_equal %w[one two], session.health_check_target_ids
+      assert_equal %w[pending pending], session.parsed_sources.map { |entry| entry["health_status"] }
+    end
+
+    test "health check blocks advance when no selections remain" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid", "health_status" => "unhealthy" }
+      ]
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "health_check",
+        parsed_sources: parsed,
+        selected_source_ids: [],
+        health_checks_active: true,
+        health_check_target_ids: ["one"]
+      )
+
+      patch source_monitor.step_import_session_path(session, step: "health_check"), params: {
+        import_session: { selected_source_ids: [], next_step: "configure" }
+      }
+
+      assert_response :unprocessable_entity
+      session.reload
+      assert_equal "health_check", session.current_step
+      refute session.health_checks_active?
+    end
+
     test "preview blocks advance when selection empty" do
       parsed = [
         { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }

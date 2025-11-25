@@ -1,0 +1,12 @@
+<div id="import_session_header" class="flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">OPML Import</p>
+    <h1 class="text-3xl font-semibold text-slate-900">Import Wizard</h1>
+    <p class="mt-1 text-sm text-slate-500">Step <%= current_step.titleize %> · progress is saved to your session.</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <%= link_to "Cancel", source_monitor.import_session_path(import_session),
+          data: { turbo_method: :delete, action: "confirm-navigation#disable" },
+          class: "inline-flex items-center rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+  </div>
+</div>

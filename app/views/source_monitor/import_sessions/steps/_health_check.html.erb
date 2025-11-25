@@ -1,7 +1,82 @@
-<div class="space-y-4">
-  <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-    <h2 class="text-lg font-semibold text-slate-900">Health check</h2>
-    <p class="mt-1 text-sm text-slate-600">Health results will be displayed here once implemented.</p>
+<%= turbo_stream_from import_session.health_stream_name %>
+
+<div class="space-y-6">
+  <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900">Run health checks</h2>
+        <p class="mt-1 text-sm text-slate-600">We check each selected feed and update results live. Unhealthy feeds are unselected by default.</p>
+      </div>
+      <%= render "source_monitor/import_sessions/health_check/progress", import_session: import_session, progress: @health_progress %>
+    </div>
+
+    <% if @selection_error.present? %>
+      <div class="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <%= @selection_error %>
+      </div>
+    <% end %>
+
+    <% if @health_check_entries.blank? %>
+      <div class="px-4 py-6 text-sm text-slate-600">
+        No sources are selected for health checks. Go back to Preview to pick at least one feed.
+      </div>
+    <% else %>
+      <%= form_with model: import_session,
+            url: source_monitor.step_import_session_path(import_session, step: "health_check"),
+            method: :patch,
+            data: { turbo: false, action: "confirm-navigation#disable" },
+            html: { class: "block" } do |form| %>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-left text-sm" data-controller="select-all">
+            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr>
+                <th scope="col" class="px-4 py-3 w-12 text-center">
+                  <div class="flex items-center justify-center gap-2">
+                    <span class="sr-only">Select all</span>
+                    <%= check_box_tag "select_all_master", "1", @health_check_entries.all? { |entry| entry[:selected] },
+                          data: { select_all_target: "master", action: "select-all#toggleAll" },
+                          class: "h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" %>
+                  </div>
+                </th>
+                <th scope="col" class="px-4 py-3">Feed URL</th>
+                <th scope="col" class="px-4 py-3">Title</th>
+                <th scope="col" class="px-4 py-3">Health</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-800">
+              <%= render partial: "source_monitor/import_sessions/health_check/row",
+                    collection: @health_check_entries,
+                    as: :entry,
+                    locals: { import_session: import_session } %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-4">
+          <div>
+            <%= button_tag "Back",
+                  type: :submit,
+                  name: "import_session[next_step]",
+                  value: "preview",
+                  class: "inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+          </div>
+          <div class="flex items-center gap-3">
+            <%= link_to "Cancel", source_monitor.import_session_path(import_session),
+                  data: { turbo_method: :delete, action: "confirm-navigation#disable" },
+                  class: "inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+            <% continue_disabled = @selected_source_ids.blank? %>
+            <%= button_tag "Continue",
+                  type: :submit,
+                  name: "import_session[next_step]",
+                  value: "configure",
+                  disabled: continue_disabled,
+                  class: [
+                    "inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold text-white shadow",
+                    continue_disabled ? "bg-slate-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500"
+                  ].join(" ") %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
   </div>
-  <%= render "source_monitor/import_sessions/steps/navigation", import_session: import_session, next_step: "configure", previous_step: "preview" %>
 </div>

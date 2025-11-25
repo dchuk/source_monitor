@@ -7,6 +7,14 @@ export default class extends Controller {
     this.syncMaster();
   }
 
+  itemTargetConnected() {
+    this.syncMaster();
+  }
+
+  itemTargetDisconnected() {
+    this.syncMaster();
+  }
+
   toggleAll(event) {
     const checked = event.target.checked;
     this.itemTargets.forEach((checkbox) => {

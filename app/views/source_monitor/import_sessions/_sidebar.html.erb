@@ -1,0 +1,23 @@
+<nav id="import_session_sidebar" aria-label="Import steps" class="rounded-lg border border-slate-200 bg-white shadow-sm">
+  <ol class="divide-y divide-slate-100" role="list">
+    <% wizard_steps.each do |step| %>
+      <% active = step == current_step %>
+      <li>
+        <%= link_to source_monitor.step_import_session_path(import_session, step: step),
+              class: [
+                "flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors",
+                active ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
+              ].join(" "),
+              aria: { current: (active ? "page" : nil) } do %>
+          <span class="flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full <%= active ? 'bg-blue-600' : 'bg-slate-300' %>" aria-hidden="true"></span>
+            <span><%= step.titleize %></span>
+          </span>
+          <% if active %>
+            <span class="text-xs font-semibold uppercase text-blue-600">Current</span>
+          <% end %>
+        <% end %>
+      </li>
+    <% end %>
+  </ol>
+</nav>

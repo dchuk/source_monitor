@@ -13,6 +13,14 @@ module SourceMonitor
       end
     end
 
+    def health_stream_name
+      "source_monitor_import_session_#{id}_health"
+    end
+
+    def health_check_targets
+      Array(health_check_target_ids).map(&:to_s)
+    end
+
     def next_step
       index = STEP_ORDER.index(current_step)
       STEP_ORDER[index + 1] if index && index < STEP_ORDER.length - 1

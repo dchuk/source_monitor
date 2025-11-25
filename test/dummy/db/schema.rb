@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_24_090000) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_24_153000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -193,12 +193,17 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_24_090000) do
     t.jsonb "bulk_settings", default: {}, null: false
     t.datetime "created_at", null: false
     t.string "current_step", null: false
+    t.datetime "health_check_completed_at"
+    t.datetime "health_check_started_at"
+    t.jsonb "health_check_target_ids", default: [], null: false
+    t.boolean "health_checks_active", default: false, null: false
     t.jsonb "opml_file_metadata", default: {}, null: false
     t.jsonb "parsed_sources", default: [], null: false
     t.jsonb "selected_source_ids", default: [], null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
     t.index ["current_step"], name: "index_sourcemon_import_sessions_on_current_step"
+    t.index ["health_checks_active"], name: "index_sourcemon_import_sessions_on_health_checks_active"
     t.index ["user_id"], name: "index_sourcemon_import_sessions_on_user_id"
   end
 

@@ -2,6 +2,7 @@
 
 require "nokogiri"
 require "uri"
+require "source_monitor/import_sessions/entry_normalizer"
 
 module SourceMonitor
   class ImportSessionsController < ApplicationController
@@ -33,6 +34,7 @@ module SourceMonitor
 
     def show
       prepare_preview_context if @current_step == "preview"
+      prepare_health_check_context if @current_step == "health_check"
       persist_step!
       render :show
     end
@@ -40,15 +42,13 @@ module SourceMonitor
     def update
       return handle_upload_step if @current_step == "upload"
       return handle_preview_step if @current_step == "preview"
+      return handle_health_check_step if @current_step == "health_check"
 
       @import_session.update!(session_attributes)
       @current_step = target_step
       @import_session.update_column(:current_step, @current_step) if @import_session.current_step != @current_step
 
-      respond_to do |format|
-        format.turbo_stream { render :show }
-        format.html { redirect_to source_monitor.step_import_session_path(@import_session, step: @current_step) }
-      end
+      redirect_to source_monitor.step_import_session_path(@import_session, step: @current_step), allow_other_host: false
     end
 
     def destroy
@@ -70,7 +70,28 @@ module SourceMonitor
     def persist_step!
       return if @import_session.current_step == @current_step
 
+      deactivate_health_checks! if @current_step != "health_check"
       @import_session.update_column(:current_step, @current_step)
+    end
+
+    def handle_health_check_step
+      @selected_source_ids = health_check_selection_from_params
+      @import_session.update!(selected_source_ids: @selected_source_ids)
+
+      if advancing_from_health_check? && @selected_source_ids.blank?
+        @selection_error = "Select at least one source to continue."
+        prepare_health_check_context
+        render :show, status: :unprocessable_entity
+        return
+      end
+
+      @current_step = target_step
+      deactivate_health_checks! if @current_step != "health_check"
+      @import_session.update_column(:current_step, @current_step) if @import_session.current_step != @current_step
+
+      prepare_health_check_context if @current_step == "health_check"
+
+      redirect_to source_monitor.step_import_session_path(@import_session, step: @current_step), allow_other_host: false
     end
 
     def session_attributes
@@ -142,7 +163,12 @@ module SourceMonitor
 
       @current_step = target_step
       @import_session.update_column(:current_step, @current_step) if @import_session.current_step != @current_step
-      prepare_preview_context(skip_default: true)
+
+      if @current_step == "health_check"
+        prepare_health_check_context
+      else
+        prepare_preview_context(skip_default: true)
+      end
 
       respond_to do |format|
         format.turbo_stream { render :show }
@@ -261,7 +287,9 @@ module SourceMonitor
         title: title,
         website_url: website_url,
         status: "valid",
-        error: nil
+        error: nil,
+        health_status: nil,
+        health_error: nil
       }
     end
 
@@ -273,7 +301,9 @@ module SourceMonitor
         title: title,
         website_url: website_url,
         status: "malformed",
-        error: error
+        error: error,
+        health_status: nil,
+        health_error: nil
       }
     end
 
@@ -384,6 +414,15 @@ module SourceMonitor
       @page = paginator.page
     end
 
+    def prepare_health_check_context
+      start_health_checks_if_needed
+
+      @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
+      @health_check_entries = health_check_entries(@selected_source_ids)
+      @health_check_target_ids = health_check_targets
+      @health_progress = health_check_progress(@health_check_entries)
+    end
+
     def annotated_entries(selected_ids)
       selected_ids ||= []
       entries = Array(@import_session.parsed_sources)
@@ -408,21 +447,45 @@ module SourceMonitor
       end
     end
 
+    def health_check_entries(selected_ids)
+      targets = health_check_targets
+      entries = Array(@import_session.parsed_sources).map { |entry| normalize_entry(entry) }
+
+      entries.select { |entry| targets.include?(entry[:id]) }.map do |entry|
+        entry.merge(selected: selected_ids.include?(entry[:id]))
+      end
+    end
+
+    def health_check_progress(entries)
+      total = health_check_targets.size
+      completed = entries.count { |entry| health_check_complete?(entry) }
+
+      {
+        completed: completed,
+        total: total,
+        pending: [total - completed, 0].max,
+        active: @import_session.health_checks_active?,
+        done: total.positive? && completed >= total
+      }
+    end
+
+    def health_check_complete?(entry)
+      %w[healthy unhealthy].include?(entry[:health_status].to_s)
+    end
+
+    def health_check_targets
+      targets = @import_session.health_check_targets
+      targets = Array(@import_session.selected_source_ids).map(&:to_s) if targets.blank?
+      targets
+    end
+
     def selectable_entries_from(entries)
       entries.select { |entry| entry[:selectable] }
     end
 
     def normalize_entry(entry)
       entry = entry.to_h
-      {
-        id: entry[:id]&.to_s || entry["id"]&.to_s || entry[:feed_url]&.to_s || entry["feed_url"]&.to_s,
-        feed_url: entry[:feed_url].presence || entry["feed_url"].presence,
-        title: entry[:title].presence || entry["title"].presence,
-        website_url: entry[:website_url].presence || entry["website_url"].presence,
-        status: entry[:status].presence || entry["status"].presence || "valid",
-        error: entry[:error].presence || entry["error"].presence,
-        raw_outline_index: entry[:raw_outline_index] || entry["raw_outline_index"]
-      }
+      SourceMonitor::ImportSessions::EntryNormalizer.normalize(entry)
     end
 
     def filter_entries(entries, filter)
@@ -453,8 +516,25 @@ module SourceMonitor
       Array(ids).map { |id| id.to_s }.uniq
     end
 
+    def health_check_selection_from_params
+      if params.dig(:import_session, :select_all) == "true"
+        return health_check_targets.dup
+      end
+
+      return [] if params.dig(:import_session, :select_none) == "true"
+
+      ids = params.dig(:import_session, :selected_source_ids)
+      return Array(@import_session.selected_source_ids).map(&:to_s) unless ids
+
+      Array(ids).map { |id| id.to_s }.uniq & health_check_targets
+    end
+
     def selectable_entries
       @selectable_entries ||= annotated_entries(@selected_source_ids).select { |entry| entry[:selectable] }
+    end
+
+    def advancing_from_health_check?
+      target_step != "health_check"
     end
 
     def advancing_from_preview?
@@ -467,6 +547,66 @@ module SourceMonitor
       number
     rescue StandardError
       1
+    end
+
+    def start_health_checks_if_needed
+      return unless @current_step == "health_check"
+
+      jobs_to_enqueue = []
+
+      @import_session.with_lock do
+        @import_session.reload
+        selected = Array(@import_session.selected_source_ids).map(&:to_s)
+
+        if selected.blank?
+          @import_session.update_columns(health_checks_active: false, health_check_target_ids: [])
+          next
+        end
+
+        if @import_session.health_checks_active? && @import_session.health_check_targets.sort == selected.sort
+          @health_check_target_ids = @import_session.health_check_targets
+          next
+        end
+
+        updated_entries = reset_health_results(@import_session.parsed_sources, selected)
+        @import_session.update!(
+          parsed_sources: updated_entries,
+          health_checks_active: true,
+          health_check_target_ids: selected,
+          health_check_started_at: Time.current,
+          health_check_completed_at: nil
+        )
+
+        @health_check_target_ids = selected
+        jobs_to_enqueue = selected
+      end
+
+      enqueue_health_check_jobs(@import_session, jobs_to_enqueue) if jobs_to_enqueue.any?
+    end
+
+    def reset_health_results(entries, target_ids)
+      Array(entries).map do |entry|
+        entry_hash = entry.to_h
+        entry_id = entry_hash["id"] || entry_hash[:id]
+        next entry_hash unless target_ids.include?(entry_id.to_s)
+
+        entry_hash.merge("health_status" => "pending", "health_error" => nil)
+      end
+    end
+
+    def enqueue_health_check_jobs(import_session, target_ids)
+      target_ids.each do |target_id|
+        SourceMonitor::ImportSessionHealthCheckJob.set(wait: 1.second).perform_later(import_session.id, target_id)
+      end
+    end
+
+    def deactivate_health_checks!
+      return unless @import_session.health_checks_active?
+
+      @import_session.update_columns(
+        health_checks_active: false,
+        health_check_completed_at: Time.current
+      )
     end
 
     def permitted_filter(raw)

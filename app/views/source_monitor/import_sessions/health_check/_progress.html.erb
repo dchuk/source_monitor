@@ -1,0 +1,20 @@
+<% progress ||= { completed: 0, total: 0, pending: 0, active: false, done: false } %>
+<% progress_id = "import_session_#{import_session.id}_health_progress" %>
+
+<div id="<%= progress_id %>" class="inline-flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
+  <div class="flex items-center gap-2">
+    <% if progress[:done] %>
+      <span class="inline-block h-2 w-2 rounded-full bg-green-500" aria-hidden="true"></span>
+      <span>Health checks complete</span>
+    <% elsif progress[:active] %>
+      <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-blue-500" aria-hidden="true"></span>
+      <span>Running health checks…</span>
+    <% else %>
+      <span class="inline-block h-2 w-2 rounded-full bg-slate-400" aria-hidden="true"></span>
+      <span>Health checks paused</span>
+    <% end %>
+  </div>
+  <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <%= progress[:completed] %> / <%= progress[:total] %> completed
+  </span>
+</div>

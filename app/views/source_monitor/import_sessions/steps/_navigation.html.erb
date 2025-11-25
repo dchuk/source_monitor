@@ -6,7 +6,7 @@
       <%= form_with model: import_session,
             url: source_monitor.step_import_session_path(import_session, step: previous_step),
             method: :patch,
-            data: { turbo_frame: "import_session_step" } do |form| %>
+            data: { turbo: false } do |form| %>
         <%= hidden_field_tag :next_step, previous_step, name: "import_session[next_step]" %>
         <%= form.submit "Back", class: "inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
       <% end %>
@@ -20,7 +20,7 @@
       <%= form_with model: import_session,
             url: source_monitor.step_import_session_path(import_session, step: next_step),
             method: :patch,
-            data: { turbo_frame: "import_session_step" } do |form| %>
+            data: { turbo: false } do |form| %>
         <%= hidden_field_tag :next_step, next_step, name: "import_session[next_step]" %>
         <%= form.submit "Continue", class: "inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-500" %>
       <% end %>
