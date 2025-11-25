@@ -72,6 +72,14 @@ module SourceMonitor
       assert_includes response.body, "Imported 1"
     end
 
+    test "new preloads default attributes" do
+      get "/source_monitor/sources/new"
+
+      assert_response :success
+      assert_includes response.body, "fetch_interval_minutes"
+      assert_match(/360/, response.body)
+    end
+
     test "destroy removes source and dependents via turbo stream" do
       keep_source = create_source!(name: "Keep", feed_url: "https://keep.example.com/feed.xml")
       source = create_source!(name: "Remove", feed_url: "https://remove.example.com/feed.xml")

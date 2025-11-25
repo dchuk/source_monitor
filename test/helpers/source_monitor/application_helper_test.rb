@@ -200,6 +200,19 @@ module SourceMonitor
       assert_match(/amber|blue/, badge[:classes])
     end
 
+    test "formatted_setting_value renders friendly values" do
+      assert_equal "Enabled", formatted_setting_value(true)
+      assert_equal "Disabled", formatted_setting_value(false)
+      assert_equal "—", formatted_setting_value(nil)
+      assert_equal "a, b", formatted_setting_value(%w[a b])
+
+      hash_value = formatted_setting_value({ timeout: 5 })
+      assert_includes hash_value, "timeout"
+      assert_includes hash_value, "5"
+
+      assert_equal "plain", formatted_setting_value("plain")
+    end
+
     test "item_scrape_status_badge reports disabled when source scraping disabled" do
       source = SourceMonitor::Source.new(scraping_enabled: false)
       item = SourceMonitor::Item.new(source:, guid: "status-disabled", url: "https://example.com/disabled")
