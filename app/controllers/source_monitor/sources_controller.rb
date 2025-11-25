@@ -2,6 +2,7 @@
 
 require "source_monitor/sources/turbo_stream_presenter"
 require "source_monitor/scraping/bulk_result_presenter"
+require "source_monitor/sources/params"
 
 module SourceMonitor
   class SourcesController < ApplicationController
@@ -30,6 +31,8 @@ module SourceMonitor
         result_scope: @sources,
         search_params: @search_params
       )
+
+      @recent_import_histories = SourceMonitor::ImportHistory.recent_for(source_monitor_current_user&.id).limit(5)
 
       @fetch_interval_distribution = metrics.fetch_interval_distribution
       @fetch_interval_filter = metrics.fetch_interval_filter
@@ -128,45 +131,11 @@ module SourceMonitor
     end
 
     def default_attributes
-      {
-        active: true,
-        scraping_enabled: false,
-        auto_scrape: false,
-        requires_javascript: false,
-        feed_content_readability_enabled: false,
-        fetch_interval_minutes: 360,
-        adaptive_fetching_enabled: true,
-        scraper_adapter: "readability"
-      }
+      SourceMonitor::Sources::Params.default_attributes
     end
 
     def source_params
-      permitted = params.require(:source).permit(
-        :name,
-        :feed_url,
-        :website_url,
-        :fetch_interval_minutes,
-        :active,
-        :auto_scrape,
-        :scraping_enabled,
-        :requires_javascript,
-        :feed_content_readability_enabled,
-        :scraper_adapter,
-        :items_retention_days,
-        :max_items,
-        :adaptive_fetching_enabled,
-        :health_auto_pause_threshold,
-        scrape_settings: [
-          :include_plain_text,
-          :timeout,
-          :javascript_enabled,
-          { selectors: %i[content title],
-            http: [],
-            readability: [] }
-        ]
-      )
-
-      SourceMonitor::Security::ParameterSanitizer.sanitize(permitted.to_h)
+      SourceMonitor::Sources::Params.sanitize(params)
     end
 
     def safe_redirect_path(raw_value)

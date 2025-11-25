@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Sample OPML</title>
+  </head>
+  <body>
+    <outline text="Tech" title="Tech">
+      <outline text="RubyFlow" title="RubyFlow" type="rss" xmlUrl="https://rubyflow.com/rss" htmlUrl="https://rubyflow.com" />
+      <outline text="Missing URL" title="Missing URL" type="rss" xmlUrl="" />
+      <outline text="Invalid scheme" title="Invalid scheme" type="rss" xmlUrl="ftp://example.com/feed.xml" />
+    </outline>
+  </body>
+</opml>

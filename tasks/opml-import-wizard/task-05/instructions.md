@@ -1,0 +1,50 @@
+- **Context**
+  - Implement the "Configure" step in the OPML Import Wizard (Configure step of the multi-step wizard). This step must render the exact same input fields and validation behavior as the single-source creation form, and persist the validated bulk settings to ImportSession.bulk_settings (JSONB) so settings carry forward to Confirm and are applied uniformly to all selected sources.
+  - This task depends on the surrounding wizard shell and ImportSession persistence being present (ImportSession record storing parsed sources / selections). The Configure step is one Turbo Frame view inside the wizard route.
+
+- **Goals**
+  - Render the same input fields, field order, help text and inline validation as the single-source creation form.
+  - Persist validated bulk settings into ImportSession.bulk_settings (JSONB) tied to the ImportSession record for the current user.
+  - Prevent advancing to the Confirm step until required fields are valid; show inline validation errors in the Configure view.
+  - Ensure settings apply uniformly to all selected sources (no per-feed overrides).
+  - Follow SourceMonitor UI conventions (Tailwind, Turbo Frames, accessibility) and enforce admin-only access.
+
+- **Technical Guidelines**
+  - Reuse UI:
+    - Render the existing single-source form partial used by new/edit source flows (use the same partial(s) so HTML structure, labels, help text and classes are identical).
+    - Render the form inside the Configure step Turbo Frame used by the wizard layout and include the same error rendering (inline field errors).
+  - Params & Validation:
+    - Map the submitted form params to the same permitted attributes used for single-source creation (use the same strong-parameter logic as the SourcesController). Reuse SourceMonitor’s existing parameter sanitizer or the SourcesController's source_params as canonical source attributes.
+    - Validate required fields server-side using the same validation rules or service used for single-source creation before persisting to ImportSession.bulk_settings. If the engine has an existing form object/service for validating source attributes, reuse it; otherwise, perform the same attribute-level validations prior to saving the ImportSession.
+    - If validation fails, render the Configure step with the same inline error presentation and prevent progression.
+  - Persistence:
+    - Persist the resulting validated settings JSON into ImportSession.bulk_settings. The ImportSession record must be scoped to the current user (ImportSession.user_id must use integer-based ActiveRecord FK).
+    - Keep settings persisted when the user navigates between wizard steps (updates to ImportSession.bulk_settings replace previous values).
+    - Do not apply settings to sources yet — just store them until the final import job runs.
+  - Access control and security:
+    - Restrict the Configure step to authenticated admin users consistent with engine conventions.
+    - Use existing strong-parameter sanitization utilities. Do not accept arbitrary params; persist only the permitted source attributes structure to bulk_settings.
+  - UI/UX:
+    - Apply the same Tailwind classes and accessibility attributes as the single-source form.
+    - Ensure the Configure step form disables the Next/Confirm action until the server confirms the form is valid (server-side validation); show inline validation messages without toasts.
+    - Do not implement per-feed overrides — the UI must not expose per-source editing here.
+  - Integration shape:
+    - The Configure controller action should update ImportSession.bulk_settings and return a Turbo Frame response so the wizard UI updates in-place.
+    - Ensure any client-side flows follow existing Turbo Frame/Turbo Stream patterns used throughout the engine (no new client-side state store).
+  - Data shape:
+    - Persist settings as JSON that matches the attribute names used by sourcemon_sources creation (so the import job can apply them to each created source).
+  - Logging & errors:
+    - Surface validation errors inline. For unexpected save errors (DB or permission), render an actionable error message on the Configure step and do not advance.
+
+- **Out of scope**
+  - Implementing the final import background job, import history persistence, or broadcasting results.
+  - Per-feed (per-row) settings or overrides.
+  - Health check orchestration or changes to health-check results UI.
+  - Wizard shell routing, ImportSession model/migration creation (assume ImportSession exists and is integer-user-scoped), and Upload/Preview step parsing logic.
+  - Client-side persistence beyond Turbo Frames / ImportSession-backed persistence.
+
+- **Suggested research**
+  - Inspect the single-source form partial(s) used by new/edit source pages (app/views/source_monitor/sources/* — locate _form partial and new/edit templates) to reuse markup and error helpers.
+  - Review SourcesController#source_params and SourceMonitor::Security::ParameterSanitizer (or equivalent) to determine the exact permitted attributes shape to persist.
+  - Inspect the ImportSession model/schema and controller endpoints for updating session state (ImportSession.bulk_settings JSONB field) and confirm user scoping and allowed update patterns.
+  - Find examples in the engine of reusing partials and Turbo Frame responses for form steps (sources index/new flows and other wizard-like views) to match response patterns and accessibility/styling conventions.

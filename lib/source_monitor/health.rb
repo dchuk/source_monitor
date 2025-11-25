@@ -3,6 +3,7 @@
 require "source_monitor/health/source_health_monitor"
 require "source_monitor/health/source_health_reset"
 require "source_monitor/health/source_health_check"
+require "source_monitor/health/import_source_health_check"
 
 module SourceMonitor
   module Health

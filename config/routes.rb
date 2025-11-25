@@ -5,6 +5,12 @@ SourceMonitor::Engine.routes.draw do
   resources :logs, only: :index
   resources :fetch_logs, only: :show
   resources :scrape_logs, only: :show
+  resources :import_sessions, path: "import_opml", only: %i[new create show update destroy] do
+    member do
+      get "steps/:step", action: :show, as: :step
+      patch "steps/:step", action: :update
+    end
+  end
   resources :items, only: %i[index show] do
     post :scrape, on: :member
   end

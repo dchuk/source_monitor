@@ -1,0 +1,44 @@
+<% row_id = "import_session_#{import_session.id}_health_row_#{entry[:id]}" %>
+<tr id="<%= row_id %>" class="<%= entry[:health_status] == 'unhealthy' ? 'bg-rose-50/40' : '' %>">
+  <td class="px-4 py-3 text-center align-middle">
+    <%= check_box_tag "import_session[selected_source_ids][]",
+          entry[:id],
+          entry[:selected],
+          data: { select_all_target: "item", action: "select-all#toggleItem" },
+          class: "h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" %>
+  </td>
+  <td class="px-4 py-3 align-top">
+    <div class="max-w-xl break-words font-medium text-slate-900"><%= entry[:feed_url] %></div>
+    <% if entry[:website_url].present? %>
+      <div class="mt-1 text-xs text-blue-700 truncate"><%= entry[:website_url] %></div>
+    <% end %>
+  </td>
+  <td class="px-4 py-3 align-top">
+    <div class="text-sm font-medium text-slate-900"><%= entry[:title].presence || "(No title)" %></div>
+  </td>
+  <td class="px-4 py-3 align-top">
+    <% status = entry[:health_status].presence || "pending" %>
+    <% case status %>
+    <% when "healthy" %>
+      <span class="inline-flex items-center gap-2 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
+        <span class="inline-block h-2 w-2 rounded-full bg-green-500" aria-hidden="true"></span>
+        Healthy
+      </span>
+    <% when "unhealthy" %>
+      <div class="space-y-1">
+        <span class="inline-flex items-center gap-2 rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-800">
+          <span class="inline-block h-2 w-2 rounded-full bg-rose-500" aria-hidden="true"></span>
+          Unhealthy
+        </span>
+        <% if entry[:health_error].present? %>
+          <div class="text-xs text-rose-700">Reason: <%= entry[:health_error] %></div>
+        <% end %>
+      </div>
+    <% else %>
+      <span class="inline-flex items-center gap-2 rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
+        <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-blue-500" aria-hidden="true"></span>
+        Checking…
+      </span>
+    <% end %>
+  </td>
+</tr>

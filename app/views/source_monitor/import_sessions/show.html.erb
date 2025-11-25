@@ -1,0 +1,15 @@
+<% content_for :title, "Import OPML" %>
+
+<div class="space-y-6" data-controller="confirm-navigation" data-confirm-navigation-message-value="You have an in-progress import. Are you sure you want to leave this wizard?">
+  <%= render "source_monitor/import_sessions/header", import_session: @import_session, current_step: @current_step %>
+
+  <div class="grid gap-6 lg:grid-cols-4">
+    <%= render "source_monitor/import_sessions/sidebar", import_session: @import_session, current_step: @current_step, wizard_steps: @wizard_steps %>
+
+    <div class="lg:col-span-3">
+      <%= turbo_frame_tag "import_session_step" do %>
+        <%= render "source_monitor/import_sessions/steps/#{@current_step}", import_session: @import_session %>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_08_120116) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_25_094500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -189,6 +189,38 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_08_120116) do
     t.index ["success"], name: "index_sourcemon_health_check_logs_on_success"
   end
 
+  create_table "sourcemon_import_histories", force: :cascade do |t|
+    t.jsonb "bulk_settings", default: {}, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.jsonb "failed_sources", default: [], null: false
+    t.jsonb "imported_sources", default: [], null: false
+    t.jsonb "skipped_duplicates", default: [], null: false
+    t.datetime "started_at"
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["created_at"], name: "index_sourcemon_import_histories_on_created_at"
+    t.index ["user_id"], name: "index_sourcemon_import_histories_on_user_id"
+  end
+
+  create_table "sourcemon_import_sessions", force: :cascade do |t|
+    t.jsonb "bulk_settings", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.string "current_step", null: false
+    t.datetime "health_check_completed_at"
+    t.datetime "health_check_started_at"
+    t.jsonb "health_check_target_ids", default: [], null: false
+    t.boolean "health_checks_active", default: false, null: false
+    t.jsonb "opml_file_metadata", default: {}, null: false
+    t.jsonb "parsed_sources", default: [], null: false
+    t.jsonb "selected_source_ids", default: [], null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["current_step"], name: "index_sourcemon_import_sessions_on_current_step"
+    t.index ["health_checks_active"], name: "index_sourcemon_import_sessions_on_health_checks_active"
+    t.index ["user_id"], name: "index_sourcemon_import_sessions_on_user_id"
+  end
+
   create_table "sourcemon_item_contents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "item_id", null: false
@@ -347,6 +379,13 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_08_120116) do
     t.check_constraint "fetch_status::text = ANY (ARRAY['idle'::character varying::text, 'queued'::character varying::text, 'fetching'::character varying::text, 'failed'::character varying::text, 'invalid'::character varying::text])", name: "check_fetch_status_values"
   end
 
+  create_table "users", force: :cascade do |t|
+    t.boolean "admin", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.datetime "updated_at", null: false
+  end
+
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
@@ -355,6 +394,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_08_120116) do
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "sourcemon_fetch_logs", "sourcemon_sources", column: "source_id"
   add_foreign_key "sourcemon_health_check_logs", "sourcemon_sources", column: "source_id"
+  add_foreign_key "sourcemon_import_histories", "users"
+  add_foreign_key "sourcemon_import_sessions", "users"
   add_foreign_key "sourcemon_item_contents", "sourcemon_items", column: "item_id"
   add_foreign_key "sourcemon_items", "sourcemon_sources", column: "source_id"
   add_foreign_key "sourcemon_log_entries", "sourcemon_items", column: "item_id"

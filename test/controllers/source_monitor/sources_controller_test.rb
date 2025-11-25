@@ -5,6 +5,7 @@ require "test_helper"
 module SourceMonitor
   class SourcesControllerTest < ActionDispatch::IntegrationTest
     include ActionView::RecordIdentifier
+    fixtures :users
 
     test "sanitizes attributes when creating a source" do
       assert_difference -> { Source.count }, 1 do
@@ -51,6 +52,32 @@ module SourceMonitor
       refute_includes response_body, "%3Cscript"
       refute_includes response_body, "&lt;script"
       assert_includes response_body, "value=\"alert(2)\""
+    end
+
+    test "index shows recent import history summary" do
+      SourceMonitor::ImportHistory.create!(
+        user_id: users(:admin).id,
+        imported_sources: [ { "id" => 1, "feed_url" => "https://example.com/feed.xml", "name" => "Example" } ],
+        failed_sources: [],
+        skipped_duplicates: [],
+        bulk_settings: {},
+        started_at: Time.current,
+        completed_at: Time.current
+      )
+
+      get "/source_monitor/sources"
+
+      assert_response :success
+      assert_includes response.body, "Recent OPML import"
+      assert_includes response.body, "Imported 1"
+    end
+
+    test "new preloads default attributes" do
+      get "/source_monitor/sources/new"
+
+      assert_response :success
+      assert_includes response.body, "fetch_interval_minutes"
+      assert_match(/360/, response.body)
     end
 
     test "destroy removes source and dependents via turbo stream" do

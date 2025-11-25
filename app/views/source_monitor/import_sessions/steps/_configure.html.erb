@@ -1,0 +1,53 @@
+<% bulk_source = local_assigns[:bulk_source] || @bulk_source %>
+<% selected_count = Array(import_session.selected_source_ids).size %>
+
+<div class="space-y-6">
+  <div class="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-900">Configure settings</h2>
+    <p class="mt-1 text-sm text-slate-600">
+      Apply the following settings to the <%= selected_count %> feeds you're importing.
+    </p>
+  </div>
+
+  <% if bulk_source&.errors&.any? %>
+    <div class="rounded border border-red-300 bg-red-50 p-4">
+      <h3 class="font-medium text-red-700">Please fix the following:</h3>
+      <ul class="mt-2 list-disc space-y-1 pl-5 text-red-700">
+        <% bulk_source.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <%= form_with model: bulk_source,
+          url: source_monitor.step_import_session_path(import_session, step: "configure"),
+          method: :patch,
+          data: { turbo: false, action: "confirm-navigation#disable" },
+          html: { class: "space-y-6" } do |form| %>
+      <%# Hide identity fields for bulk apply; we already capture per-feed details from OPML %>
+      <%= render "source_monitor/sources/form_fields", form: form, include_identity_fields: false %>
+
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <%= button_tag "Back",
+                type: :submit,
+                name: "import_session[next_step]",
+                value: "health_check",
+                class: "inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+        </div>
+        <div class="flex items-center gap-3">
+          <%= link_to "Cancel", source_monitor.import_session_path(import_session),
+                data: { turbo_method: :delete, action: "confirm-navigation#disable" },
+                class: "inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+          <%= button_tag "Continue",
+                type: :submit,
+                name: "import_session[next_step]",
+                value: "confirm",
+                class: "inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-500" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
