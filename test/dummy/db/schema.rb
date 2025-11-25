@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_24_153000) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_25_094500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -187,6 +187,20 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_24_153000) do
     t.index ["source_id"], name: "index_sourcemon_health_check_logs_on_source_id"
     t.index ["started_at"], name: "index_sourcemon_health_check_logs_on_started_at"
     t.index ["success"], name: "index_sourcemon_health_check_logs_on_success"
+  end
+
+  create_table "sourcemon_import_histories", force: :cascade do |t|
+    t.jsonb "bulk_settings", default: {}, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.jsonb "failed_sources", default: [], null: false
+    t.jsonb "imported_sources", default: [], null: false
+    t.jsonb "skipped_duplicates", default: [], null: false
+    t.datetime "started_at"
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["created_at"], name: "index_sourcemon_import_histories_on_created_at"
+    t.index ["user_id"], name: "index_sourcemon_import_histories_on_user_id"
   end
 
   create_table "sourcemon_import_sessions", force: :cascade do |t|
@@ -380,6 +394,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_24_153000) do
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "sourcemon_fetch_logs", "sourcemon_sources", column: "source_id"
   add_foreign_key "sourcemon_health_check_logs", "sourcemon_sources", column: "source_id"
+  add_foreign_key "sourcemon_import_histories", "users"
   add_foreign_key "sourcemon_import_sessions", "users"
   add_foreign_key "sourcemon_item_contents", "sourcemon_items", column: "item_id"
   add_foreign_key "sourcemon_items", "sourcemon_sources", column: "source_id"

@@ -341,6 +341,196 @@ module SourceMonitor
       assert_includes html, "Fetch interval minutes must be greater than 0"
     end
 
+    test "confirm enqueues import job and records import history" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }
+      ]
+
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "confirm",
+        parsed_sources: parsed,
+        selected_source_ids: [ "one" ],
+        bulk_settings: { "fetch_interval_minutes" => 30 }
+      )
+
+      assert_enqueued_with(job: SourceMonitor::ImportOpmlJob) do
+        patch source_monitor.step_import_session_path(session, step: "confirm"), params: {
+          import_session: { next_step: "confirm" }
+        }
+      end
+
+      assert_redirected_to source_monitor.sources_path
+
+      history = SourceMonitor::ImportHistory.order(:created_at).last
+      assert_equal @admin.id, history.user_id
+      assert_equal session.bulk_settings, history.bulk_settings
+    end
+
+    test "confirm blocks progression when no selections remain" do
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "confirm",
+        parsed_sources: [],
+        selected_source_ids: []
+      )
+
+      patch source_monitor.step_import_session_path(session, step: "confirm"), params: {
+        import_session: { next_step: "confirm" }
+      }
+
+      assert_response :unprocessable_entity
+      assert_includes @response.body, "Select at least one source"
+    end
+
+    test "confirm turbo stream renders redirect" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }
+      ]
+
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "confirm",
+        parsed_sources: parsed,
+        selected_source_ids: [ "one" ],
+        bulk_settings: {}
+      )
+
+      patch source_monitor.step_import_session_path(session, step: "confirm"), params: {
+        import_session: { next_step: "confirm" }
+      }, as: :turbo_stream
+
+      assert_response :success
+      assert_includes @response.body, "turbo-stream"
+      assert_includes @response.body, "redirect"
+    end
+
+    test "show updates persisted step when visiting a different step" do
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "upload", parsed_sources: [])
+
+      get source_monitor.step_import_session_path(session, step: "health_check", page: { bad: :value })
+
+      session.reload
+      assert_equal "health_check", session.current_step
+    end
+
+    test "health check advance deactivates checks and redirects" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid", "health_status" => "healthy" }
+      ]
+
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "health_check",
+        parsed_sources: parsed,
+        selected_source_ids: [ "one" ],
+        health_checks_active: true,
+        health_check_target_ids: [ "one" ]
+      )
+
+      patch source_monitor.step_import_session_path(session, step: "health_check"), params: {
+        import_session: { selected_source_ids: [ "one" ], next_step: "configure" }
+      }
+
+      session.reload
+      refute session.health_checks_active?
+      assert_redirected_to source_monitor.step_import_session_path(session, step: "configure")
+    end
+
+    test "health check selection honors select all" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid", "health_status" => "pending" },
+        { "id" => "two", "feed_url" => "https://another.example.com/rss", "title" => "Another", "status" => "valid", "health_status" => "pending" }
+      ]
+
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "health_check",
+        parsed_sources: parsed,
+        selected_source_ids: [ "one" ],
+        health_checks_active: true,
+        health_check_target_ids: [ "one", "two" ]
+      )
+
+      patch source_monitor.step_import_session_path(session, step: "health_check"), params: {
+        import_session: { select_all: "true", next_step: "health_check" }
+      }
+
+      session.reload
+      assert_equal %w[one two], session.selected_source_ids.sort
+    end
+
+    test "preview filter new path returns selectable entries" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" },
+        { "id" => "two", "feed_url" => "https://dup.example.com/rss", "title" => "Dup", "status" => "valid" }
+      ]
+      create_source!(feed_url: "https://dup.example.com/rss")
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "preview", parsed_sources: parsed)
+
+      get source_monitor.step_import_session_path(session, step: "preview", filter: "new")
+
+      assert_response :success
+      refute_includes @response.body, "https://dup.example.com/rss"
+      assert_includes @response.body, "https://new.example.com/rss"
+    end
+
+    test "confirm show renders summary" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }
+      ]
+
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "confirm",
+        parsed_sources: parsed,
+        selected_source_ids: [ "one" ],
+        bulk_settings: { "fetch_interval_minutes" => 30 }
+      )
+
+      get source_monitor.step_import_session_path(session, step: "confirm")
+
+      assert_response :success
+      assert_includes @response.body, "Review &amp; confirm"
+      assert_includes @response.body, "Fetch interval minutes"
+    end
+
+    test "update uses fallback branch when step unknown" do
+      session = SourceMonitor::ImportSession.create!(user_id: @admin.id, current_step: "upload")
+      session.update_column(:current_step, "done")
+
+      patch source_monitor.step_import_session_path(session, step: "done"), params: {
+        import_session: { next_step: "confirm" }
+      }
+
+      session.reload
+      assert_equal "confirm", session.current_step
+      assert_redirected_to source_monitor.step_import_session_path(session, step: "confirm")
+    end
+
+    test "start health checks returns existing targets when unchanged" do
+      parsed = [
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid", "health_status" => "pending" }
+      ]
+
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "health_check",
+        parsed_sources: parsed,
+        selected_source_ids: [ "one" ],
+        health_checks_active: true,
+        health_check_target_ids: [ "one" ]
+      )
+
+      assert_no_enqueued_jobs only: SourceMonitor::ImportSessionHealthCheckJob do
+        get source_monitor.step_import_session_path(session, step: "health_check")
+      end
+
+      assert_response :success
+      session.reload
+      assert_equal [ "one" ], session.health_check_target_ids
+    end
+
     test "configure form reuses saved settings" do
       parsed = [
         { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" }

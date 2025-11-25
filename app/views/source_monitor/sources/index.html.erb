@@ -21,6 +21,8 @@
     </div>
   </div>
 
+  <%= render "source_monitor/sources/import_history_panel", import_histories: @recent_import_histories %>
+
   <%= render "source_monitor/sources/fetch_interval_heatmap",
         fetch_interval_distribution: @fetch_interval_distribution,
         selected_bucket: @selected_fetch_interval_bucket,

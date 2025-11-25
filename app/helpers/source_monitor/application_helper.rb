@@ -303,6 +303,23 @@ module SourceMonitor
       end
     end
 
+    def formatted_setting_value(value)
+      case value
+      when TrueClass
+        "Enabled"
+      when FalseClass
+        "Disabled"
+      when Hash
+        value.to_json
+      when Array
+        value.join(", ")
+      when NilClass
+        "—"
+      else
+        value
+      end
+    end
+
     private
 
     def derive_item_scrape_status(item:, source: nil)
