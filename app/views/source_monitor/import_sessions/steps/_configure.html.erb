@@ -1,9 +1,12 @@
 <% bulk_source = local_assigns[:bulk_source] || @bulk_source %>
+<% selected_count = Array(import_session.selected_source_ids).size %>
 
 <div class="space-y-6">
   <div class="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
     <h2 class="text-lg font-semibold text-slate-900">Configure settings</h2>
-    <p class="mt-1 text-sm text-slate-600">Apply these settings to every source you selected in the previous steps.</p>
+    <p class="mt-1 text-sm text-slate-600">
+      Apply the following settings to the <%= selected_count %> feeds you're importing.
+    </p>
   </div>
 
   <% if bulk_source&.errors&.any? %>
@@ -23,7 +26,8 @@
           method: :patch,
           data: { turbo: false, action: "confirm-navigation#disable" },
           html: { class: "space-y-6" } do |form| %>
-      <%= render "source_monitor/sources/form_fields", form: form %>
+      <%# Hide identity fields for bulk apply; we already capture per-feed details from OPML %>
+      <%= render "source_monitor/sources/form_fields", form: form, include_identity_fields: false %>
 
       <div class="flex items-center justify-between gap-3">
         <div>
