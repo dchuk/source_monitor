@@ -198,7 +198,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_094500) do
     t.jsonb "skipped_duplicates", default: [], null: false
     t.datetime "started_at"
     t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.index ["created_at"], name: "index_sourcemon_import_histories_on_created_at"
     t.index ["user_id"], name: "index_sourcemon_import_histories_on_user_id"
   end
@@ -215,7 +215,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_094500) do
     t.jsonb "parsed_sources", default: [], null: false
     t.jsonb "selected_source_ids", default: [], null: false
     t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.index ["current_step"], name: "index_sourcemon_import_sessions_on_current_step"
     t.index ["health_checks_active"], name: "index_sourcemon_import_sessions_on_health_checks_active"
     t.index ["user_id"], name: "index_sourcemon_import_sessions_on_user_id"

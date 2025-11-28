@@ -15,6 +15,28 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.2.0] - 2025-11-25
+
+### Added
+
+- OPML import wizard with multi-step flow (upload, preview with selection, health checks, bulk configure, confirm) and Turbo-powered navigation.
+- Health check enqueuing for selected feeds plus realtime Turbo Stream row/progress updates during the wizard.
+- Bulk configuration reuse of source form fields with identity fields hidden for batch apply.
+- Background OPML import job with ImportHistory persistence, per-source success/failure/duplicate tracking, and Turbo broadcast of results to the Sources index.
+- Sources index “Recent OPML import” panel surfacing latest ImportHistory (counts, failures).
+
+### Changed
+
+- Shared source params helper for defaults/permitted attributes to drive bulk settings and single-source forms consistently.
+- Wizard fallback auth handling for unauthenticated host apps to enable usage in simple dummy setups.
+
+### Testing
+
+- `rbenv exec bundle exec rubocop`
+- `rbenv exec ruby bin/rails test`
+- `./bin/test-coverage`
+- `rbenv exec ruby bin/check-diff-coverage`
+
 ## [0.1.3] - 2025-11-13
 
 ### Added
