@@ -9,11 +9,23 @@ module SourceMonitor
         FileUtils.mkdir_p(BUILD_ROOT)
         @css_path = BUILD_ROOT.join("application.css")
         @js_path = BUILD_ROOT.join("application.js")
+        # Preserve original files if they exist (for gem build)
+        @original_css = File.read(@css_path) if File.exist?(@css_path)
+        @original_js = File.read(@js_path) if File.exist?(@js_path)
       end
 
       teardown do
-        FileUtils.rm_f(@css_path)
-        FileUtils.rm_f(@js_path)
+        # Restore original files if they existed, otherwise remove test files
+        if @original_css
+          File.write(@css_path, @original_css)
+        else
+          FileUtils.rm_f(@css_path)
+        end
+        if @original_js
+          File.write(@js_path, @original_js)
+        else
+          FileUtils.rm_f(@js_path)
+        end
       end
 
       test "build! runs npm build in the engine root" do

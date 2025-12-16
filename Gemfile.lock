@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    source_monitor (0.2.0)
+    source_monitor (0.2.1)
       cssbundling-rails (~> 1.4)
       faraday (~> 2.9)
       faraday-follow_redirects (~> 0.4)
