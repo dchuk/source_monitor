@@ -34,6 +34,15 @@ jobs:
       - name: Lint frontend assets
         run: npm run lint
 
+      - name: Verify committed assets are current
+        run: |
+          npm run build
+          if ! git diff --quiet app/assets/builds/source_monitor/; then
+            echo "::error::Committed assets are stale. Run 'npm run build' and commit the changes."
+            git diff --stat app/assets/builds/source_monitor/
+            exit 1
+          fi
+
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 

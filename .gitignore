@@ -14,3 +14,4 @@
 /test/lib/tmp/install_generator/config/routes.rb
 /app/assets/builds/*
 !/app/assets/builds/.keep
+!/app/assets/builds/source_monitor/
