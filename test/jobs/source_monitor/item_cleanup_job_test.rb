@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "test_helper"
 require "securerandom"
 require "source_monitor/items/retention_pruner"

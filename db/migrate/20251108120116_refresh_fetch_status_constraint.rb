@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RefreshFetchStatusConstraint < ActiveRecord::Migration[8.0]
   ALLOWED_STATUSES = %w[idle queued fetching failed invalid].freeze
   PREVIOUS_STATUSES = %w[idle queued fetching failed].freeze

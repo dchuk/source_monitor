@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "lib/source_monitor/version"
 
 Gem::Specification.new do |spec|

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "source_monitor/assets/bundler"
 
 namespace :source_monitor do

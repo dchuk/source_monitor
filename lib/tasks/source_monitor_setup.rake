@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 namespace :source_monitor do
   namespace :setup do
     desc "Verify host dependencies before running the guided SourceMonitor installer"

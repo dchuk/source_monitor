@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SourceMonitor
   module ApplicationHelper
     def source_monitor_stylesheet_bundle_tag

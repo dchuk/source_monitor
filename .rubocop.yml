@@ -4,6 +4,7 @@ inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 AllCops:
   Exclude:
     - "test/dummy/db/schema.rb"
+    - "test/tmp/**/*"
 
 # Overwrite or add rules to create your own house style
 #

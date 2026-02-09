@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Enable coverage reporting in CI or when explicitly requested unless disabled.
 skip_coverage_flag = ENV.fetch("SOURCE_MONITOR_SKIP_COVERAGE", "")
 skip_coverage =

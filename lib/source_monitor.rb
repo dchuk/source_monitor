@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 begin
   require "solid_queue"
 rescue LoadError
