@@ -18,12 +18,7 @@ module SourceMonitor
     before_action :set_wizard_step, only: %i[show update]
 
     def new
-      import_session = ImportSession.create!(
-        user_id: current_user_id,
-        current_step: ImportSession.default_step
-      )
-
-      redirect_to source_monitor.step_import_session_path(import_session, step: import_session.current_step)
+      create
     end
 
     def create
