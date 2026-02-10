@@ -4,17 +4,15 @@
 
 ## Active Context
 
-**Milestone:** default
-**Phase:** All 4 phases complete
-**Next action:** /vbw:archive or start new milestone
+**Milestone:** none (archived)
+**Last shipped:** default (2026-02-10) -- 4 phases, 14 plans, 841 tests
+**Next action:** /vbw:plan to start new milestone
 
 ## Key Decisions
 
-- Focus on coverage + refactoring before new features
 - Keep PostgreSQL-only for now
 - Keep host-app auth model
 - Ruby autoload for lib/ modules (not Zeitwerk)
-- ItemCreator extracted to EntryParser + ContentExtractor sub-modules
 - PG parallel fork segfault when running single test files; use PARALLEL_WORKERS=1 or full suite
 
 ## Installed Skills
