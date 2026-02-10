@@ -5,7 +5,7 @@
 ## Active Context
 
 **Milestone:** default
-**Phase:** 3 - Large File Refactoring (pending)
+**Phase:** 4 - Code Quality & Conventions Cleanup (pending)
 **Next action:** /vbw:plan
 
 ## Key Decisions
