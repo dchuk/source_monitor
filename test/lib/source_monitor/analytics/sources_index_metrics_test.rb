@@ -6,10 +6,7 @@ module SourceMonitor
   module Analytics
     class SourcesIndexMetricsTest < ActiveSupport::TestCase
       setup do
-        SourceMonitor::ScrapeLog.delete_all
-        SourceMonitor::FetchLog.delete_all
-        SourceMonitor::Item.delete_all
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
 
         travel_to Time.current.change(usec: 0)
 

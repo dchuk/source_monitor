@@ -693,7 +693,7 @@ module SourceMonitor
       concerns = definition.each_concern.to_a
       assert_equal 1, concerns.size
       signature, resolved = concerns.first
-      assert_equal [:module, test_concern.object_id], signature
+      assert_equal [ :module, test_concern.object_id ], signature
       assert_equal test_concern, resolved
     end
 
@@ -723,7 +723,7 @@ module SourceMonitor
       concerns = definition.each_concern.to_a
       assert_equal 1, concerns.size
       signature, resolved = concerns.first
-      assert_equal [:constant, "ActiveSupport::Concern"], signature
+      assert_equal [ :constant, "ActiveSupport::Concern" ], signature
       assert_equal ActiveSupport::Concern, resolved
     end
 
@@ -839,14 +839,14 @@ module SourceMonitor
       validation = SourceMonitor::Configuration::ValidationDefinition.new(:check, { if: :ready? })
       signature = validation.signature
 
-      assert_equal [[:symbol, :check], { if: :ready? }], signature
+      assert_equal [ [ :symbol, :check ], { if: :ready? } ], signature
     end
 
     test "validation definition signature for string handler" do
       validation = SourceMonitor::Configuration::ValidationDefinition.new("check", {})
       signature = validation.signature
 
-      assert_equal [[:symbol, :check], {}], signature
+      assert_equal [ [ :symbol, :check ], {} ], signature
     end
 
     test "validation definition signature for callable handler" do
@@ -854,7 +854,7 @@ module SourceMonitor
       validation = SourceMonitor::Configuration::ValidationDefinition.new(handler, {})
       signature = validation.signature
 
-      assert_equal [[:callable, handler.object_id], {}], signature
+      assert_equal [ [ :callable, handler.object_id ], {} ], signature
     end
   end
 end

@@ -6,6 +6,7 @@ default: &default
   port: <%= ENV.fetch("POSTGRES_PORT", 5432) %>
   username: <%= ENV.fetch("POSTGRES_USER", "postgres") %>
   password: <%= ENV.fetch("POSTGRES_PASSWORD", nil) %>
+  gssencmode: disable
 
 development:
   <<: *default

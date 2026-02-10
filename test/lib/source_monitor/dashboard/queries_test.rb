@@ -9,10 +9,7 @@ module SourceMonitor
 
       setup do
         SourceMonitor::Metrics.reset!
-        SourceMonitor::Item.delete_all
-        SourceMonitor::Source.delete_all
-        SourceMonitor::FetchLog.delete_all
-        SourceMonitor::ScrapeLog.delete_all
+        clean_source_monitor_tables!
       end
 
       test "stats caches results and minimizes SQL calls" do
@@ -496,11 +493,11 @@ module SourceMonitor
       test "cache supports array keys for recent_activity limit" do
         cache = SourceMonitor::Dashboard::Queries::Cache.new
 
-        cache.fetch([:recent_activity, 5]) { "five" }
-        cache.fetch([:recent_activity, 10]) { "ten" }
+        cache.fetch([ :recent_activity, 5 ]) { "five" }
+        cache.fetch([ :recent_activity, 10 ]) { "ten" }
 
-        assert_equal "five", cache.fetch([:recent_activity, 5]) { "wrong" }
-        assert_equal "ten", cache.fetch([:recent_activity, 10]) { "wrong" }
+        assert_equal "five", cache.fetch([ :recent_activity, 5 ]) { "wrong" }
+        assert_equal "ten", cache.fetch([ :recent_activity, 10 ]) { "wrong" }
       end
 
       private

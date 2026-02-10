@@ -6,8 +6,7 @@ module SourceMonitor
   module Health
     class SourceHealthCheckTest < ActiveSupport::TestCase
       setup do
-        SourceMonitor::HealthCheckLog.delete_all
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
         @source = create_source!(feed_url: "https://example.com/check.xml")
       end
 

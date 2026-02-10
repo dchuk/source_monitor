@@ -70,6 +70,11 @@ module SourceMonitor
 
   module Fetching
     autoload :FetchError, "source_monitor/fetching/fetch_error"
+    autoload :TimeoutError, "source_monitor/fetching/fetch_error"
+    autoload :ConnectionError, "source_monitor/fetching/fetch_error"
+    autoload :HTTPError, "source_monitor/fetching/fetch_error"
+    autoload :ParsingError, "source_monitor/fetching/fetch_error"
+    autoload :UnexpectedResponseError, "source_monitor/fetching/fetch_error"
     autoload :FeedFetcher, "source_monitor/fetching/feed_fetcher"
     autoload :FetchRunner, "source_monitor/fetching/fetch_runner"
     autoload :RetryPolicy, "source_monitor/fetching/retry_policy"
@@ -120,6 +125,10 @@ module SourceMonitor
   module Scrapers
     autoload :Base, "source_monitor/scrapers/base"
     autoload :Readability, "source_monitor/scrapers/readability"
+
+    module Parsers
+      autoload :ReadabilityParser, "source_monitor/scrapers/parsers/readability_parser"
+    end
   end
 
   module Scraping

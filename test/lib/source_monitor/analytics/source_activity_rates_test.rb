@@ -6,8 +6,7 @@ module SourceMonitor
   module Analytics
     class SourceActivityRatesTest < ActiveSupport::TestCase
       setup do
-        SourceMonitor::Item.delete_all
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
       end
 
       test "returns average items per day within the lookback window" do

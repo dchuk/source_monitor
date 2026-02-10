@@ -6,7 +6,7 @@ module SourceMonitor
   module Health
     class SourceHealthResetTest < ActiveSupport::TestCase
       setup do
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
       end
 
       test "clears auto pause and failure state while scheduling next fetch" do

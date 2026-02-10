@@ -7,8 +7,7 @@ module SourceMonitor
   module Scraping
     class StateTest < ActiveSupport::TestCase
       setup do
-        SourceMonitor::Item.delete_all
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
       end
 
       test "mark_pending sets the item to pending without broadcast" do

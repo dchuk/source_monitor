@@ -236,7 +236,7 @@ module SourceMonitor
         toast_message = nil
         toast_level = nil
 
-        SourceMonitor::Realtime::Broadcaster.stub(:broadcast_source, ->(_s) {}) do
+        SourceMonitor::Realtime::Broadcaster.stub(:broadcast_source, ->(_s) { }) do
           mock_toast = lambda { |message:, level: nil, **_rest|
             toast_message = message
             toast_level = level
@@ -265,7 +265,7 @@ module SourceMonitor
         toast_message = nil
         toast_level = nil
 
-        SourceMonitor::Realtime::Broadcaster.stub(:broadcast_source, ->(_s) {}) do
+        SourceMonitor::Realtime::Broadcaster.stub(:broadcast_source, ->(_s) { }) do
           mock_toast = lambda { |message:, level: nil, **_rest|
             toast_message = message
             toast_level = level
@@ -335,8 +335,8 @@ module SourceMonitor
         toast_message = nil
         toast_level = nil
 
-        SourceMonitor::Realtime::Broadcaster.stub(:broadcast_item, ->(_i) {}) do
-          SourceMonitor::Realtime::Broadcaster.stub(:broadcast_source, ->(_s) {}) do
+        SourceMonitor::Realtime::Broadcaster.stub(:broadcast_item, ->(_i) { }) do
+          SourceMonitor::Realtime::Broadcaster.stub(:broadcast_source, ->(_s) { }) do
             mock_toast = lambda { |message:, level: nil, **_rest|
               toast_message = message
               toast_level = level
@@ -371,9 +371,9 @@ module SourceMonitor
         )
 
         source_broadcast_called = false
-        SourceMonitor::Realtime::Broadcaster.stub(:broadcast_item, ->(_i) {}) do
+        SourceMonitor::Realtime::Broadcaster.stub(:broadcast_item, ->(_i) { }) do
           SourceMonitor::Realtime::Broadcaster.stub(:broadcast_source, ->(_s) { source_broadcast_called = true }) do
-            SourceMonitor::Realtime::Broadcaster.stub(:broadcast_toast, ->(**_k) {}) do
+            SourceMonitor::Realtime::Broadcaster.stub(:broadcast_toast, ->(**_k) { }) do
               SourceMonitor::Realtime::Broadcaster.send(:handle_item_scraped, event)
             end
           end
@@ -436,7 +436,7 @@ module SourceMonitor
       end
 
       test "register_callback does not add duplicate callbacks" do
-        callback = -> {}
+        callback = -> { }
         SourceMonitor::Realtime::Broadcaster.send(:register_callback, :after_fetch_completed, callback)
         SourceMonitor::Realtime::Broadcaster.send(:register_callback, :after_fetch_completed, callback)
 

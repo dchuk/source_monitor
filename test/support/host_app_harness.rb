@@ -106,9 +106,12 @@ module HostAppHarness
     ensure_rails_available!
     root = template_root(template)
     if File.exist?(File.join(root, "Gemfile.lock"))
-      ensure_queue_config!(root)
-      ensure_sqlite_json_patch!(root)
-      return
+      if template_ruby_version_current?(root)
+        ensure_queue_config!(root)
+        ensure_sqlite_json_patch!(root)
+        return
+      end
+      FileUtils.rm_rf(root)
     end
 
     FileUtils.rm_rf(root)
@@ -279,6 +282,13 @@ module HostAppHarness
       SourceMonitor's host app harness expects Rails >= 8.0.3 to be installed.
       Run `bundle install` in the engine directory to install Rails before executing the test suite.
     MESSAGE
+  end
+
+  def template_ruby_version_current?(root)
+    cached = File.read(File.join(root, ".ruby-version")).strip
+    cached == TARGET_RUBY_VERSION
+  rescue Errno::ENOENT
+    false
   end
 
   def desired_host_ruby_version

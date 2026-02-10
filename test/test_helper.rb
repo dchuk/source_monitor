@@ -77,6 +77,18 @@ class ActiveSupport::TestCase
     SourceMonitor.reset_configuration!
   end
 
+  # Clean all engine tables in FK-safe order (children before parents).
+  # Call this in setup blocks that need a blank-slate database.
+  def clean_source_monitor_tables!
+    SourceMonitor::LogEntry.delete_all
+    SourceMonitor::ScrapeLog.delete_all
+    SourceMonitor::FetchLog.delete_all
+    SourceMonitor::HealthCheckLog.delete_all
+    SourceMonitor::ItemContent.delete_all
+    SourceMonitor::Item.delete_all
+    SourceMonitor::Source.delete_all
+  end
+
   private
 
   def create_source!(attributes = {})

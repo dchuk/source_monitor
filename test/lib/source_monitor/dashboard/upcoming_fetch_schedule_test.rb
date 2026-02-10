@@ -6,7 +6,7 @@ module SourceMonitor
   module Dashboard
     class UpcomingFetchScheduleTest < ActiveSupport::TestCase
       setup do
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
       end
 
       test "groups sources into defined windows" do
