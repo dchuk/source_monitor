@@ -36,6 +36,8 @@ module SourceMonitor
     def show
     end
 
+    # TODO: Extract to ItemScrapesController (CRUD-only convention).
+    # Deferred to avoid view/route churn in a cleanup phase.
     def scrape
       log_manual_scrape("controller:start", item: @item, extra: { format: request.format })
 
