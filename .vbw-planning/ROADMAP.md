@@ -12,7 +12,7 @@ This roadmap focuses on stabilizing and improving the existing SourceMonitor cod
 - [x] Phase 1: Coverage Analysis & Quick Wins
 - [x] Phase 2: Critical Path Test Coverage
 - [x] Phase 3: Large File Refactoring
-- [ ] Phase 4: Code Quality & Conventions Cleanup
+- [x] Phase 4: Code Quality & Conventions Cleanup
 
 ## Phase Details
 
@@ -98,8 +98,9 @@ This roadmap focuses on stabilizing and improving the existing SourceMonitor cod
 4. CI pipeline fully green
 
 **Plans:**
-- [ ] Plan 01: conventions-audit
-- [ ] Plan 02: final-cleanup
+- [x] Plan 01: conventions-audit (44fe6b6, c30a503, f070ea6, 78600b5, ec67c65)
+- [x] Plan 02: item-creator-extraction (3d33a71)
+- [x] Plan 03: final-verification (cc2e538)
 
 ## Progress
 
@@ -108,7 +109,7 @@ This roadmap focuses on stabilizing and improving the existing SourceMonitor cod
 | 1 - Coverage Analysis & Quick Wins | 2/2 | complete | 2026-02-09 |
 | 2 - Critical Path Test Coverage | 5/5 | complete | 2026-02-09 |
 | 3 - Large File Refactoring | 4/4 | complete | 2026-02-10 |
-| 4 - Code Quality & Conventions Cleanup | 0/2 | pending | -- |
+| 4 - Code Quality & Conventions Cleanup | 3/3 | complete | 2026-02-10 |
 
 ---
-*Last updated: 2026-02-10 after Phase 3 completion*
+*Last updated: 2026-02-10 after Phase 4 completion*

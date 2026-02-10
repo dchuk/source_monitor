@@ -5,16 +5,16 @@
 ## Active Context
 
 **Milestone:** default
-**Phase:** 4 - Code Quality & Conventions Cleanup (pending)
-**Next action:** /vbw:plan
+**Phase:** All 4 phases complete
+**Next action:** /vbw:archive or start new milestone
 
 ## Key Decisions
 
 - Focus on coverage + refactoring before new features
 - Keep PostgreSQL-only for now
 - Keep host-app auth model
-- Frozen string literal consistency first, then RuboCop audit
-- Extract large files (FeedFetcher, Configuration, ImportSessionsController) after coverage is solid
+- Ruby autoload for lib/ modules (not Zeitwerk)
+- ItemCreator extracted to EntryParser + ContentExtractor sub-modules
 - PG parallel fork segfault when running single test files; use PARALLEL_WORKERS=1 or full suite
 
 ## Installed Skills
@@ -28,7 +28,10 @@
 
 ## Learned Patterns
 
-None yet -- patterns are captured after phase completion.
+- Sub-module extraction: create `module/submodule.rb` with `require_relative`, lazy accessors, forwarding methods for backward compat
+- Coverage runs need `COVERAGE=1 PARALLEL_WORKERS=1` with threads (not forks) to avoid PG segfault and SimpleCov data loss
+- Test isolation: scope queries to specific source/item to prevent cross-test contamination in parallel runs
+- RuboCop omakase: only 45/775 cops enabled, all Metrics cops disabled -- no file size enforcement
 
 ## VBW Commands
 
