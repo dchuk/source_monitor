@@ -2,8 +2,6 @@
 
 module SourceMonitor
   class LogEntry < ApplicationRecord
-    self.table_name = "sourcemon_log_entries"
-
     delegated_type :loggable, types: %w[SourceMonitor::FetchLog SourceMonitor::ScrapeLog SourceMonitor::HealthCheckLog]
 
     belongs_to :source, class_name: "SourceMonitor::Source", inverse_of: :log_entries
