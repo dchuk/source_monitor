@@ -5,8 +5,8 @@
 ## Active Context
 
 **Milestone:** default
-**Phase:** 1 - Coverage Analysis & Quick Wins (pending)
-**Next action:** /vbw:implement
+**Phase:** 3 - Large File Refactoring (pending)
+**Next action:** /vbw:plan
 
 ## Key Decisions
 
@@ -15,6 +15,7 @@
 - Keep host-app auth model
 - Frozen string literal consistency first, then RuboCop audit
 - Extract large files (FeedFetcher, Configuration, ImportSessionsController) after coverage is solid
+- PG parallel fork segfault when running single test files; use PARALLEL_WORKERS=1 or full suite
 
 ## Installed Skills
 
