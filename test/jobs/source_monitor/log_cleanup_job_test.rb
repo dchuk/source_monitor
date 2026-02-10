@@ -24,8 +24,8 @@ module SourceMonitor
           scrape_logs_older_than_days: 60
         )
 
-        assert_equal [ "recent" ], SourceMonitor::FetchLog.order(:created_at).pluck(Arel.sql("metadata->>'label'"))
-        assert_equal [ "recent" ], SourceMonitor::ScrapeLog.order(:created_at).pluck(Arel.sql("metadata->>'label'"))
+        assert_equal [ "recent" ], SourceMonitor::FetchLog.where(source:).order(:created_at).pluck(Arel.sql("metadata->>'label'"))
+        assert_equal [ "recent" ], SourceMonitor::ScrapeLog.where(source:).order(:created_at).pluck(Arel.sql("metadata->>'label'"))
       end
     end
 
@@ -45,8 +45,8 @@ module SourceMonitor
           scrape_logs_older_than_days: 0
         )
 
-        assert_equal 1, SourceMonitor::FetchLog.count
-        assert_equal 1, SourceMonitor::ScrapeLog.count
+        assert_equal 1, SourceMonitor::FetchLog.where(source:).count
+        assert_equal 1, SourceMonitor::ScrapeLog.where(source:).count
       end
     end
 

@@ -126,6 +126,10 @@ module SourceMonitor
     autoload :Base, "source_monitor/scrapers/base"
     autoload :Readability, "source_monitor/scrapers/readability"
 
+    module Fetchers
+      autoload :HttpFetcher, "source_monitor/scrapers/fetchers/http_fetcher"
+    end
+
     module Parsers
       autoload :ReadabilityParser, "source_monitor/scrapers/parsers/readability_parser"
     end

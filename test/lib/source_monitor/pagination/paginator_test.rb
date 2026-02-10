@@ -19,7 +19,7 @@ module SourceMonitor
       end
 
       test "paginates relation and reports presence of more records" do
-        scope = SourceMonitor::Item.order(published_at: :desc)
+        scope = SourceMonitor::Item.where(source: @source).order(published_at: :desc)
         result = SourceMonitor::Pagination::Paginator.new(scope:, page: 1, per_page: 5).paginate
 
         assert_equal 5, result.records.size
@@ -29,7 +29,7 @@ module SourceMonitor
       end
 
       test "handles out of range and coerces invalid page values" do
-        scope = SourceMonitor::Item.order(published_at: :desc)
+        scope = SourceMonitor::Item.where(source: @source).order(published_at: :desc)
 
         result_page_zero = SourceMonitor::Pagination::Paginator.new(scope:, page: 0, per_page: 3).paginate
         assert_equal 1, result_page_zero.page

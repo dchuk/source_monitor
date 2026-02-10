@@ -17,7 +17,6 @@ if (ENV["CI"] || ENV["COVERAGE"]) && !skip_coverage
   SimpleCov.command_name command_name
   SimpleCov.start "rails" do
     enable_coverage :branch
-    refuse_coverage_drop :line if command_name == "source_monitor:test"
     add_filter %r{^/test/}
   end
 
@@ -67,10 +66,14 @@ end
 WebMock.disable_net_connect!(allow_localhost: true)
 
 class ActiveSupport::TestCase
-  worker_count = ENV.fetch("SOURCE_MONITOR_TEST_WORKERS", :number_of_processors)
-  worker_count = worker_count.to_i if worker_count.is_a?(String) && !worker_count.empty?
-  worker_count = :number_of_processors if worker_count.respond_to?(:zero?) && worker_count.zero?
-  parallelize(workers: worker_count)
+  if ENV["COVERAGE"]
+    parallelize(workers: 1, with: :threads)
+  else
+    worker_count = ENV.fetch("SOURCE_MONITOR_TEST_WORKERS", :number_of_processors)
+    worker_count = worker_count.to_i if worker_count.is_a?(String) && !worker_count.empty?
+    worker_count = :number_of_processors if worker_count.respond_to?(:zero?) && worker_count.zero?
+    parallelize(workers: worker_count)
+  end
   self.test_order = :random
 
   setup do

@@ -49,9 +49,9 @@ module SourceMonitor
       middle = ScrapeLog.create!(source: @source, item: @item, started_at: 5.minutes.ago, success: false)
       oldest = ScrapeLog.create!(source: @source, item: @item, started_at: 10.minutes.ago)
 
-      assert_equal [ latest, middle, oldest ], ScrapeLog.recent.to_a
-      assert_equal [ latest ], ScrapeLog.successful.to_a
-      assert_equal [ middle ], ScrapeLog.failed.to_a
+      assert_equal [ latest, middle, oldest ], ScrapeLog.where(source: @source).recent.to_a
+      assert_equal [ latest ], ScrapeLog.where(source: @source).successful.to_a
+      assert_equal [ middle ], ScrapeLog.where(source: @source).failed.to_a
     end
   end
 end
