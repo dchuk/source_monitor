@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "pathname"
+require_relative "skills_installer"
 
 module SourceMonitor
   module Setup
@@ -35,7 +36,8 @@ module SourceMonitor
         migration_installer: MigrationInstaller.new,
         initializer_patcher: InitializerPatcher.new,
         devise_detector: method(:default_devise_detector),
-        verifier: Verification::Runner.new
+        verifier: Verification::Runner.new,
+        skills_installer: SkillsInstaller.new
       )
         @dependency_checker = dependency_checker
         @prompter = prompter
@@ -47,6 +49,7 @@ module SourceMonitor
         @initializer_patcher = initializer_patcher
         @devise_detector = devise_detector
         @verifier = verifier
+        @skills_installer = skills_installer
       end
 
       def run
@@ -67,6 +70,13 @@ module SourceMonitor
         end
 
         verifier.call
+
+        if prompter.yes?("Install Claude Code skills for using SourceMonitor?", default: true)
+          skills_installer.install(target_dir: skills_target_dir, group: :consumer)
+          if prompter.yes?("Also install contributor skills for engine development?", default: false)
+            skills_installer.install(target_dir: skills_target_dir, group: :contributor)
+          end
+        end
       end
 
       private
@@ -80,7 +90,12 @@ module SourceMonitor
         :migration_installer,
         :initializer_patcher,
         :devise_detector,
-        :verifier
+        :verifier,
+        :skills_installer
+
+      def skills_target_dir
+        File.join(Dir.pwd, ".claude", "skills")
+      end
 
       def devise_available?
         !!devise_detector.call

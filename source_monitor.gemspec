@@ -27,6 +27,7 @@ Gem::Specification.new do |spec|
     end
   end
   spec.files += [ "CHANGELOG.md" ].select { |path| File.exist?(File.join(__dir__, path)) }
+  spec.files += Dir[".claude/skills/sm-*/**/*"]
   spec.files.uniq!
 
   spec.require_paths = [ "lib" ]

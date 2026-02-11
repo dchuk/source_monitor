@@ -15,6 +15,15 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.3.1] - 2026-02-10
+
+### Added
+
+- 14 engine-specific Claude Code skills (`sm-*` prefix) for contributors and consumers.
+- Skills installer with consumer/contributor groups via rake tasks.
+- Skills installation integrated into guided `bin/source_monitor install` workflow.
+- Skills packaged in gem for distribution to host apps.
+
 ## [0.3.0] - 2026-02-10
 
 ### Changed

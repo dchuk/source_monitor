@@ -57,10 +57,12 @@ module SourceMonitor
         install_generator = Spy.new
         migration_installer = Spy.new
         initializer_patcher = Spy.new
+        skills_installer = Spy.new({ installed: [], skipped: [] })
 
         prompter = Minitest::Mock.new
         prompter.expect(:ask, "/admin/monitor", [ String ], default: Workflow::DEFAULT_MOUNT_PATH)
-        prompter.expect(:yes?, true, [ String ], default: true)
+        prompter.expect(:yes?, true, [ String ], default: true)   # devise
+        prompter.expect(:yes?, false, [ String ], default: true)  # skills
 
         verifier = Spy.new(SourceMonitor::Setup::Verification::Summary.new([]))
 
@@ -74,7 +76,8 @@ module SourceMonitor
           migration_installer: migration_installer,
           initializer_patcher: initializer_patcher,
           devise_detector: -> { true },
-          verifier: verifier
+          verifier: verifier,
+          skills_installer: skills_installer
         )
 
         workflow.run
@@ -113,6 +116,7 @@ module SourceMonitor
 
         prompter = Minitest::Mock.new
         prompter.expect(:ask, "/app", [ String ], default: Workflow::DEFAULT_MOUNT_PATH)
+        prompter.expect(:yes?, false, [ String ], default: true) # skills
 
         initializer_patcher = Spy.new
 
@@ -126,12 +130,112 @@ module SourceMonitor
           node_installer: Spy.new,
           install_generator: Spy.new,
           migration_installer: Spy.new,
-          verifier: Spy.new(StubSummary.new)
+          verifier: Spy.new(StubSummary.new),
+          skills_installer: Spy.new({ installed: [], skipped: [] })
         )
 
         workflow.run
 
         refute initializer_patcher.calls.any? { |call| call.first == :ensure_devise_hooks }
+        prompter.verify
+      end
+
+      test "run prompts for skills and installs consumer skills when accepted" do
+        dependency_checker = Minitest::Mock.new
+        dependency_checker.expect(:call, StubSummary.new(status: :ok))
+
+        skills_installer = Spy.new({ installed: [ "sm-host-setup" ], skipped: [] })
+
+        prompter = Minitest::Mock.new
+        prompter.expect(:ask, "/app", [ String ], default: Workflow::DEFAULT_MOUNT_PATH)
+        prompter.expect(:yes?, true, [ String ], default: true)   # skills
+        prompter.expect(:yes?, false, [ String ], default: false) # contributor
+
+        workflow = Workflow.new(
+          dependency_checker: dependency_checker,
+          prompter: prompter,
+          devise_detector: -> { false },
+          gemfile_editor: Spy.new(true),
+          bundle_installer: Spy.new,
+          node_installer: Spy.new,
+          install_generator: Spy.new,
+          migration_installer: Spy.new,
+          initializer_patcher: Spy.new,
+          verifier: Spy.new(StubSummary.new),
+          skills_installer: skills_installer
+        )
+
+        workflow.run
+
+        consumer_call = skills_installer.calls.find { |c| c[0] == :install && c[2][:group] == :consumer }
+        assert consumer_call, "Expected consumer skills install call"
+        assert_equal 1, skills_installer.calls.count { |c| c[0] == :install }
+
+        prompter.verify
+      end
+
+      test "run installs contributor skills when user opts in to both" do
+        dependency_checker = Minitest::Mock.new
+        dependency_checker.expect(:call, StubSummary.new(status: :ok))
+
+        skills_installer = Spy.new({ installed: [ "sm-host-setup" ], skipped: [] })
+
+        prompter = Minitest::Mock.new
+        prompter.expect(:ask, "/app", [ String ], default: Workflow::DEFAULT_MOUNT_PATH)
+        prompter.expect(:yes?, true, [ String ], default: true)  # skills
+        prompter.expect(:yes?, true, [ String ], default: false) # contributor
+
+        workflow = Workflow.new(
+          dependency_checker: dependency_checker,
+          prompter: prompter,
+          devise_detector: -> { false },
+          gemfile_editor: Spy.new(true),
+          bundle_installer: Spy.new,
+          node_installer: Spy.new,
+          install_generator: Spy.new,
+          migration_installer: Spy.new,
+          initializer_patcher: Spy.new,
+          verifier: Spy.new(StubSummary.new),
+          skills_installer: skills_installer
+        )
+
+        workflow.run
+
+        install_calls = skills_installer.calls.select { |c| c[0] == :install }
+        assert_equal 2, install_calls.size
+        assert_equal :consumer, install_calls[0][2][:group]
+        assert_equal :contributor, install_calls[1][2][:group]
+
+        prompter.verify
+      end
+
+      test "run skips skills entirely when user declines" do
+        dependency_checker = Minitest::Mock.new
+        dependency_checker.expect(:call, StubSummary.new(status: :ok))
+
+        skills_installer = Spy.new({ installed: [], skipped: [] })
+
+        prompter = Minitest::Mock.new
+        prompter.expect(:ask, "/app", [ String ], default: Workflow::DEFAULT_MOUNT_PATH)
+        prompter.expect(:yes?, false, [ String ], default: true) # skills - declined
+
+        workflow = Workflow.new(
+          dependency_checker: dependency_checker,
+          prompter: prompter,
+          devise_detector: -> { false },
+          gemfile_editor: Spy.new(true),
+          bundle_installer: Spy.new,
+          node_installer: Spy.new,
+          install_generator: Spy.new,
+          migration_installer: Spy.new,
+          initializer_patcher: Spy.new,
+          verifier: Spy.new(StubSummary.new),
+          skills_installer: skills_installer
+        )
+
+        workflow.run
+
+        refute skills_installer.calls.any? { |c| c[0] == :install }
         prompter.verify
       end
 
