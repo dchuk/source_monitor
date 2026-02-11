@@ -86,6 +86,7 @@ production:
   dispatchers:
     - polling_interval: 1
       batch_size: 500
+      recurring_schedule: config/recurring.yml
   workers:
     - queues: "source_monitor_fetch"
       threads: 2
@@ -99,7 +100,34 @@ production:
 bin/rails solid_queue:start
 ```
 
+### Phase 6a: Wire Procfile.dev for Development
+
+Most Rails 8 apps use `bin/dev` (via foreman or overmind) to start all processes. The host app's `Procfile.dev` must include a `jobs:` entry so Solid Queue workers start alongside the web server:
+
+```
+# Procfile.dev
+web: bin/rails server -p 3000
+jobs: bundle exec rake solid_queue:start
+```
+
+Without this line, `bin/dev` will start the web server but jobs will never process.
+
+### Phase 6b: Wire Recurring Schedule into Dispatcher
+
+The install generator creates `config/recurring.yml` with SourceMonitor's recurring jobs, but the dispatcher must explicitly reference this file. In `config/queue.yml` (or `config/solid_queue.yml`), add `recurring_schedule` to the dispatchers section:
+
+```yaml
+dispatchers:
+  - polling_interval: 1
+    batch_size: 500
+    recurring_schedule: config/recurring.yml
+```
+
+Without this key, Solid Queue's dispatcher will not load recurring jobs even though the file exists. Sources will never auto-fetch and cleanup jobs will never fire.
+
 - [ ] Queue configuration includes `source_monitor_fetch` and `source_monitor_scrape`
+- [ ] `Procfile.dev` includes a `jobs:` entry for Solid Queue (or `bin/dev` starts workers)
+- [ ] Dispatcher config includes `recurring_schedule: config/recurring.yml`
 - [ ] Workers started and processing
 
 ## Phase 7: Verify Installation

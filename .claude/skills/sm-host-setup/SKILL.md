@@ -73,6 +73,12 @@ bin/rails db:migrate
 # 5. Start background workers (recurring jobs configured automatically in config/recurring.yml)
 bin/rails solid_queue:start
 
+# 5a. If your host uses bin/dev (foreman/overmind), add a jobs: entry to Procfile.dev:
+#     jobs: bundle exec rake solid_queue:start
+
+# 5b. Ensure your dispatcher config in config/queue.yml includes
+#     recurring_schedule: config/recurring.yml so recurring jobs are loaded.
+
 # 6. Verify
 bin/source_monitor verify
 ```
@@ -221,6 +227,8 @@ end
 - [ ] Install generator ran (`bin/rails generate source_monitor:install`)
 - [ ] Engine migrations copied and applied
 - [ ] Recurring jobs configured in `config/recurring.yml`
+- [ ] `Procfile.dev` includes `jobs:` entry for Solid Queue (for `bin/dev` usage)
+- [ ] Dispatcher config includes `recurring_schedule: config/recurring.yml`
 - [ ] Solid Queue workers started
 - [ ] Authentication hooks configured in initializer
 - [ ] `bin/source_monitor verify` passes
