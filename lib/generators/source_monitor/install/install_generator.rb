@@ -49,7 +49,28 @@ module SourceMonitor
         end
       end
 
+      def patch_procfile_dev
+        procfile_path = File.join(destination_root, "Procfile.dev")
+
+        if File.exist?(procfile_path)
+          content = File.read(procfile_path)
+          if content.match?(/^jobs:/)
+            say_status :skip, "Procfile.dev (jobs entry already present)", :yellow
+            return
+          end
+
+          File.open(procfile_path, "a") { |f| f.puts("", PROCFILE_JOBS_ENTRY) }
+          say_status :append, "Procfile.dev", :green
+        else
+          File.write(procfile_path, "web: bin/rails server -p 3000\n#{PROCFILE_JOBS_ENTRY}\n")
+          say_status :create, "Procfile.dev", :green
+        end
+      end
+
       def print_next_steps
+        say_status :info,
+          "Procfile.dev configured — run bin/dev to start both web server and Solid Queue workers.",
+          :green
         say_status :info,
           "Recurring jobs configured in config/recurring.yml — they'll run automatically with bin/dev or bin/jobs.",
           :green
@@ -59,6 +80,8 @@ module SourceMonitor
       end
 
       private
+
+      PROCFILE_JOBS_ENTRY = "jobs: bundle exec rake solid_queue:start"
 
       RECURRING_ENTRIES = {
         "source_monitor_schedule_fetches" => {
