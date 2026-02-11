@@ -39,6 +39,7 @@ bin/rails generate source_monitor:install --mount-path=/source_monitor
 Verify after running:
 - [ ] `config/routes.rb` contains `mount SourceMonitor::Engine, at: "/source_monitor"`
 - [ ] `config/initializers/source_monitor.rb` exists
+- [ ] `config/recurring.yml` contains SourceMonitor recurring job entries
 
 ## Phase 4: Database Setup
 
@@ -74,6 +75,8 @@ end
 - [ ] Authorization hook configured (if needed)
 
 ## Phase 6: Configure Workers
+
+The install generator automatically configures recurring jobs in `config/recurring.yml` (fetch scheduling, scrape scheduling, item cleanup, log cleanup). These run automatically with `bin/dev` or `bin/jobs`.
 
 Ensure `config/solid_queue.yml` (or equivalent) includes the SourceMonitor queues:
 

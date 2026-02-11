@@ -48,8 +48,8 @@ This ensures Bundler can load SourceMonitor so the commands below are available.
 3. **Start background workers:**
    ```bash
    bin/rails solid_queue:start
-   bin/jobs --recurring_schedule_file=config/recurring.yml # optional recurring scheduler
    ```
+   Recurring jobs (fetch scheduling, scraping, cleanup) are automatically configured in `config/recurring.yml` by the install generator. They'll run automatically with `bin/dev` or `bin/jobs`.
 
 4. **Visit the dashboard** at the chosen mount path, create a source, and trigger “Fetch Now” to validate realtime updates and Solid Queue processing.
 
@@ -83,7 +83,7 @@ Prefer to script each step or plug SourceMonitor into an existing deployment che
 | --- | --- | --- |
 | 1 | `gem "source_monitor", github: "dchuk/source_monitor"` | Add the engine to your Gemfile (skip if already present) |
 | 2 | `bundle install` | Install Ruby dependencies |
-| 3 | `bin/rails generate source_monitor:install --mount-path=/source_monitor` | Mount the engine and create the initializer |
+| 3 | `bin/rails generate source_monitor:install --mount-path=/source_monitor` | Mount the engine, create the initializer, and configure recurring jobs |
 | 4 | `bin/rails railties:install:migrations FROM=source_monitor` | Copy engine migrations (idempotent) |
 | 5 | `bin/rails db:migrate` | Apply schema updates, including Solid Queue tables |
 | 6 | `bin/rails solid_queue:start` | Ensure jobs process via Solid Queue |
@@ -95,11 +95,11 @@ Prefer to script each step or plug SourceMonitor into an existing deployment che
 ### Step-by-step Details
 
 1. **Add the gem** to the host `Gemfile` (GitHub edge or released version) and run `bundle install`. If your host manages node tooling, run `npm install` also.
-2. **Install the engine** via `bin/rails generate source_monitor:install --mount-path=/source_monitor`. The generator mounts the engine, creates `config/initializers/source_monitor.rb`, and prints follow-up instructions. Re-running the generator is safe; it detects existing mounts/initializers.
+2. **Install the engine** via `bin/rails generate source_monitor:install --mount-path=/source_monitor`. The generator mounts the engine, creates `config/initializers/source_monitor.rb`, and configures recurring Solid Queue jobs in `config/recurring.yml`. Re-running the generator is safe; it detects existing mounts/initializers and skips entries that are already present.
 3. **Copy migrations** with `bin/rails railties:install:migrations FROM=source_monitor`. This brings in the SourceMonitor tables plus Solid Cable/Queue schema when needed. The command is idempotent—run it again after upgrading the gem.
 4. **Apply database changes** using `bin/rails db:migrate`. If your host already installed Solid Queue migrations manually, delete duplicate files before migrating.
 5. **Wire Action Cable** if necessary. SourceMonitor defaults to Solid Cable; confirm `ApplicationCable::Connection`/`Channel` exist and that `config/initializers/source_monitor.rb` uses the adapter you expect. To switch to Redis, set `config.realtime.adapter = :redis` and `config.realtime.redis_url`.
-6. **Start workers** with `bin/rails solid_queue:start` (or your process manager). Add a recurring process via `bin/jobs --recurring_schedule_file=config/recurring.yml` when you need fetch/scrape schedules.
+6. **Start workers** with `bin/rails solid_queue:start` (or your process manager). The install generator automatically configures recurring jobs in `config/recurring.yml` for fetch scheduling, scraping, and cleanup. They'll run with `bin/dev` or `bin/jobs`.
 7. **Review the initializer** and tune queue names, HTTP timeouts, scraping adapters, retention limits, authentication hooks, and Mission Control integration. The [configuration reference](configuration.md) details every option.
 8. **Verify the install**: run `bin/source_monitor verify` to ensure Solid Queue workers and Action Cable are healthy, then visit the mount path to trigger a fetch manually. Enable telemetry if you want JSON logs recorded for support.
 
