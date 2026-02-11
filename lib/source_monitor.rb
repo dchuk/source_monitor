@@ -171,6 +171,7 @@ module SourceMonitor
       autoload :Summary, "source_monitor/setup/verification/result"
       autoload :SolidQueueVerifier, "source_monitor/setup/verification/solid_queue_verifier"
       autoload :ActionCableVerifier, "source_monitor/setup/verification/action_cable_verifier"
+      autoload :RecurringScheduleVerifier, "source_monitor/setup/verification/recurring_schedule_verifier"
       autoload :Runner, "source_monitor/setup/verification/runner"
       autoload :Printer, "source_monitor/setup/verification/printer"
       autoload :TelemetryLogger, "source_monitor/setup/verification/telemetry_logger"

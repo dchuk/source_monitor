@@ -18,7 +18,7 @@ module SourceMonitor
         attr_reader :verifiers
 
         def default_verifiers
-          [ SolidQueueVerifier.new, ActionCableVerifier.new ]
+          [ SolidQueueVerifier.new, RecurringScheduleVerifier.new, ActionCableVerifier.new ]
         end
       end
     end
