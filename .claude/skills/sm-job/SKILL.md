@@ -159,15 +159,16 @@ SourceMonitor.queue_name(:fetch)  # => "source_monitor_fetch"
 
 ### Recurring Jobs
 
-ScheduleFetchesJob is typically configured as a recurring job in `config/recurring.yml`:
+The install generator (`bin/rails generate source_monitor:install`) automatically configures these recurring jobs in `config/recurring.yml`:
 
-```yaml
-production:
-  schedule_fetches:
-    class: SourceMonitor::ScheduleFetchesJob
-    schedule: every 1 minute
-    queue: source_monitor_fetch
-```
+| Job | Schedule |
+|-----|----------|
+| `SourceMonitor::ScheduleFetchesJob` | every minute |
+| `SourceMonitor::Scraping::Scheduler.run` | every 2 minutes |
+| `SourceMonitor::ItemCleanupJob` | at 2am every day |
+| `SourceMonitor::LogCleanupJob` | at 3am every day |
+
+These run automatically with `bin/dev` or `bin/jobs`. If you need to customize, edit `config/recurring.yml` directly.
 
 ## Retry Policies
 

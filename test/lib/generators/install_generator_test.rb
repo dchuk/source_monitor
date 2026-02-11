@@ -85,6 +85,75 @@ module SourceMonitor
       assert_includes output, "docs/troubleshooting.md"
     end
 
+    def test_creates_recurring_yml_when_none_exists
+      run_generator
+
+      assert_file "config/recurring.yml" do |content|
+        assert_match(/default: &default/, content)
+        assert_match(/source_monitor_schedule_fetches/, content)
+        assert_match(/source_monitor_schedule_scrapes/, content)
+        assert_match(/source_monitor_item_cleanup/, content)
+        assert_match(/source_monitor_log_cleanup/, content)
+        assert_match(/development:/, content)
+        assert_match(/test:/, content)
+        assert_match(/production:/, content)
+      end
+    end
+
+    def test_merges_into_existing_recurring_yml_with_default_key
+      recurring_path = File.join(destination_root, "config")
+      FileUtils.mkdir_p(recurring_path)
+      File.write(File.join(recurring_path, "recurring.yml"), <<~YAML)
+        default: &default
+          my_existing_job:
+            class: MyJob
+            schedule: every hour
+
+        development:
+          <<: *default
+      YAML
+
+      run_generator
+
+      assert_file "config/recurring.yml" do |content|
+        assert_match(/source_monitor_schedule_fetches/, content)
+        assert_match(/source_monitor_item_cleanup/, content)
+        assert_match(/default: &default/, content)
+      end
+    end
+
+    def test_merges_into_existing_recurring_yml_without_default_key
+      recurring_path = File.join(destination_root, "config")
+      FileUtils.mkdir_p(recurring_path)
+      File.write(File.join(recurring_path, "recurring.yml"), <<~YAML)
+        my_existing_job:
+          class: MyJob
+          schedule: every hour
+      YAML
+
+      run_generator
+
+      assert_file "config/recurring.yml" do |content|
+        assert_match(/source_monitor_schedule_fetches/, content)
+        assert_match(/my_existing_job/, content)
+      end
+    end
+
+    def test_skips_recurring_yml_when_entries_already_present
+      recurring_path = File.join(destination_root, "config")
+      FileUtils.mkdir_p(recurring_path)
+      File.write(File.join(recurring_path, "recurring.yml"), <<~YAML)
+        default: &default
+          source_monitor_schedule_fetches:
+            class: SourceMonitor::ScheduleFetchesJob
+            schedule: every minute
+      YAML
+
+      output = run_generator
+
+      assert_match(/skip/, output)
+    end
+
     private
 
     def write_routes_file

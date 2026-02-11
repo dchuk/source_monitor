@@ -61,7 +61,7 @@ bin/source_monitor install --yes
 gem "source_monitor", "~> 0.3.0"  # in Gemfile
 bundle install
 
-# 2. Run the install generator
+# 2. Run the install generator (mounts engine, creates initializer, configures recurring jobs)
 bin/rails generate source_monitor:install --mount-path=/source_monitor
 
 # 3. Copy engine migrations
@@ -70,7 +70,7 @@ bin/rails railties:install:migrations FROM=source_monitor
 # 4. Apply migrations
 bin/rails db:migrate
 
-# 5. Start background workers
+# 5. Start background workers (recurring jobs configured automatically in config/recurring.yml)
 bin/rails solid_queue:start
 
 # 6. Verify
@@ -86,7 +86,7 @@ gem "source_monitor", github: "dchuk/source_monitor"
 
 ## What the Install Generator Does
 
-The generator (`SourceMonitor::Generators::InstallGenerator`) performs two actions:
+The generator (`SourceMonitor::Generators::InstallGenerator`) performs three actions:
 
 1. **Mounts the engine** in `config/routes.rb`:
    ```ruby
@@ -96,6 +96,9 @@ The generator (`SourceMonitor::Generators::InstallGenerator`) performs two actio
 
 2. **Creates the initializer** at `config/initializers/source_monitor.rb`:
    Uses the template at `lib/generators/source_monitor/install/templates/source_monitor.rb.tt`. Skips if the file already exists.
+
+3. **Configures recurring jobs** in `config/recurring.yml`:
+   Adds entries for `ScheduleFetchesJob` (every minute), scrape scheduling (every 2 minutes), `ItemCleanupJob` (2am daily), and `LogCleanupJob` (3am daily). If the file doesn't exist, creates it with `default: &default` and environment sections. If it exists, merges entries without overwriting. Skips if SourceMonitor entries are already present.
 
 Re-running the generator is safe and idempotent.
 
@@ -217,6 +220,7 @@ end
 - [ ] `bundle install` completed
 - [ ] Install generator ran (`bin/rails generate source_monitor:install`)
 - [ ] Engine migrations copied and applied
+- [ ] Recurring jobs configured in `config/recurring.yml`
 - [ ] Solid Queue workers started
 - [ ] Authentication hooks configured in initializer
 - [ ] `bin/source_monitor verify` passes

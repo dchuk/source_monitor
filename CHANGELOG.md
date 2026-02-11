@@ -15,6 +15,18 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.3.3] - 2026-02-11
+
+### Fixed
+
+- Added missing `recurring.yml` configuration to the install generator so host apps get Solid Queue recurring job config on install.
+- Fixed YAML alias parsing in install generator so merging into existing `recurring.yml` files with `<<: *default` anchors works correctly.
+
+### Changed
+
+- Updated `sm-host-setup` and `sm-job` skills to reflect latest conventions.
+- Updated setup documentation with current installation steps.
+
 ## [0.3.2] - 2026-02-10
 
 ### Fixed
