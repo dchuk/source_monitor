@@ -177,3 +177,46 @@ These skills are available in `.claude/skills/`:
 | `performance-optimization` | Performance tuning patterns |
 | `i18n-patterns` | Internationalization patterns |
 | `active-storage-setup` | Active Storage configuration |
+
+## Source Monitor Skills
+
+Engine-specific skills (`sm-*` prefix). Consumer skills install by default; contributor skills are opt-in.
+
+### Consumer Skills (default install)
+
+| Skill | Purpose |
+|-------|---------|
+| `sm-host-setup` | Full host app setup walkthrough |
+| `sm-configure` | DSL configuration across all sub-sections |
+| `sm-scraper-adapter` | Custom scraper inheriting `Scrapers::Base` |
+| `sm-event-handler` | Lifecycle callbacks (after_item_created, etc.) |
+| `sm-model-extension` | Extend engine models from host app |
+| `sm-dashboard-widget` | Dashboard queries, presenters, Turbo broadcasts |
+
+### Contributor Skills (opt-in)
+
+| Skill | Purpose |
+|-------|---------|
+| `sm-domain-model` | Model graph, relationships, state values, scopes |
+| `sm-architecture` | Module map, autoload tree, extraction patterns |
+| `sm-engine-test` | Engine test helpers, VCR/WebMock, parallel caveats |
+| `sm-configuration-setting` | Add settings to config sub-sections |
+| `sm-pipeline-stage` | Add/modify fetch or scrape pipeline stages |
+| `sm-engine-migration` | Migrations with `sourcemon_` prefix conventions |
+| `sm-job` | Solid Queue jobs with shallow delegation |
+| `sm-health-rule` | Health status rules, circuit breaker, auto-pause |
+
+### Skills Distribution
+
+Host apps can install `sm-*` skills via rake:
+
+```bash
+bin/rails source_monitor:skills:install        # Consumer skills (default)
+bin/rails source_monitor:skills:contributor     # Contributor skills
+bin/rails source_monitor:skills:all            # All skills
+bin/rails source_monitor:skills:remove         # Remove all sm-* skills
+```
+
+## Maintenance Rules
+
+- **Skills & docs alignment**: Whenever engine code changes (models, configuration, pipeline, jobs, migrations, scrapers, events, health rules, or dashboard), the corresponding `sm-*` skill and its `reference/` files MUST be updated in the same PR to ensure skills always reflect current engine behavior.

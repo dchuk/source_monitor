@@ -38,4 +38,62 @@ namespace :source_monitor do
       end
     end
   end
+
+  namespace :skills do
+    desc "Install consumer Claude Code skills for using SourceMonitor"
+    task :install do
+      require "source_monitor/setup/skills_installer"
+
+      install_skills(group: :consumer)
+    end
+
+    desc "Install contributor Claude Code skills for engine development"
+    task :contributor do
+      require "source_monitor/setup/skills_installer"
+
+      install_skills(group: :contributor)
+    end
+
+    desc "Install all Claude Code skills (consumer + contributor)"
+    task :all do
+      require "source_monitor/setup/skills_installer"
+
+      install_skills(group: :all)
+    end
+
+    desc "Remove Source Monitor Claude Code skills from host project"
+    task :remove do
+      require "source_monitor/setup/skills_installer"
+
+      target_dir = File.join(Dir.pwd, ".claude", "skills")
+      installer = SourceMonitor::Setup::SkillsInstaller.new
+
+      result = installer.remove(target_dir:)
+
+      if result[:removed].any?
+        puts "Removed skills: #{result[:removed].join(', ')}" # rubocop:disable Rails/Output
+      else
+        puts "No sm-* skills found to remove." # rubocop:disable Rails/Output
+      end
+    end
+  end
+end
+
+def install_skills(group:)
+  target_dir = File.join(Dir.pwd, ".claude", "skills")
+  installer = SourceMonitor::Setup::SkillsInstaller.new
+
+  result = installer.install(target_dir:, group:)
+
+  if result[:installed].any?
+    puts "Installed skills: #{result[:installed].join(', ')}" # rubocop:disable Rails/Output
+  end
+
+  if result[:skipped].any?
+    puts "Skipped (already installed): #{result[:skipped].join(', ')}" # rubocop:disable Rails/Output
+  end
+
+  if result[:installed].empty? && result[:skipped].empty?
+    puts "No sm-* skills found in the source_monitor gem." # rubocop:disable Rails/Output
+  end
 end
