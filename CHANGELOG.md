@@ -15,6 +15,16 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.3.2] - 2026-02-10
+
+### Fixed
+
+- Updated README, AGENTS.md, CONTRIBUTING.md, and docs/ to reflect v0.3.1 changes (Ruby 4.0+, gem version refs, skills system documentation).
+- Replaced stale `.ai/` references with `CLAUDE.md` and `AGENTS.md` across all docs.
+- Corrected `SOURCE_MONITOR_TEST_WORKERS` env var to `PARALLEL_WORKERS` in CONTRIBUTING.md.
+- Removed historical agent development notes from AGENTS.md.
+- Condensed verbose clean coding guidelines into concise bullet summary.
+
 ## [0.3.1] - 2026-02-10
 
 ### Added

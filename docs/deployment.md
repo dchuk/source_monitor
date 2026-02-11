@@ -60,7 +60,7 @@ Keep this guide alongside your platform runbooks so teams can confidently deploy
 
 ## Container Reference Stack
 
-The repository ships a reusable Docker stack under `examples/docker` that mirrors the recommended process model. It builds a Ruby 3.3 image with Node, mounts your generated example via `APP_PATH`, and launches three services (`web`, `worker`, `scheduler`) alongside Postgres and Redis. Use it to trial production settings locally or as a baseline for ECS/Kubernetes manifests.
+The repository ships a reusable Docker stack under `examples/docker` that mirrors the recommended process model. It builds a Ruby 4.0 image with Node, mounts your generated example via `APP_PATH`, and launches three services (`web`, `worker`, `scheduler`) alongside Postgres and Redis. Use it to trial production settings locally or as a baseline for ECS/Kubernetes manifests.
 
 ## Setup Workflow Rollout Checklist
 

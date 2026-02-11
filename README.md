@@ -9,8 +9,8 @@ SourceMonitor is a production-ready Rails 8 mountable engine for ingesting, norm
 In your host Rails app:
 
 ```bash
-bundle add source_monitor --version "~> 0.1.2"
-# or add `gem "source_monitor", "~> 0.1.2"` manually, then run:
+bundle add source_monitor --version "~> 0.3.1"
+# or add `gem "source_monitor", "~> 0.3.1"` manually, then run:
 bundle install
 ```
 
@@ -25,7 +25,7 @@ This exposes `bin/source_monitor` (via Bundler binstubs) so you can run the guid
 - First-class observability through ActiveSupport notifications and `SourceMonitor::Metrics` counters/gauges
 
 ## Requirements
-- Ruby 3.4.4 (we recommend [rbenv](https://github.com/rbenv/rbenv) for local development: `rbenv install 3.4.4 && rbenv local 3.4.4`, but use whatever Ruby version manager suits your environment—asdf, chruby, rvm, or container-based workflows all work fine)
+- Ruby 4.0+ (we recommend [rbenv](https://github.com/rbenv/rbenv) for local development, but use whatever Ruby version manager suits your environment—asdf, chruby, rvm, or container-based workflows all work fine)
 - Rails ≥ 8.0.2.1 in the host application
 - PostgreSQL 13+ (engine migrations use JSONB, SKIP LOCKED, advisory locks, and Solid Cable tables)
 - Node.js 18+ (npm or Yarn) for asset linting and the Tailwind/esbuild bundling pipeline
@@ -41,7 +41,7 @@ This exposes `bin/source_monitor` (via Bundler binstubs) so you can run the guid
 Before running any SourceMonitor commands inside your host app, add the gem and install dependencies:
 
 ```bash
-bundle add source_monitor --version "~> 0.1.2"
+bundle add source_monitor --version "~> 0.3.1"
 # or edit your Gemfile, then run
 bundle install
 ```
@@ -111,6 +111,19 @@ The generated initializer documents every setting. Key areas:
 
 See [docs/configuration.md](docs/configuration.md) for exhaustive coverage and examples.
 
+## Claude Code Skills
+
+SourceMonitor ships 14 engine-specific Claude Code skills (`sm-*` prefix) that give AI agents deep context about the engine's domain model, configuration DSL, pipeline stages, and testing conventions. Skills are bundled with the gem and installed into your host app's `.claude/skills/` directory.
+
+```bash
+bin/rails source_monitor:skills:install        # Consumer skills (host app integration)
+bin/rails source_monitor:skills:contributor     # Contributor skills (engine development)
+bin/rails source_monitor:skills:all            # All skills
+bin/rails source_monitor:skills:remove         # Remove all sm-* skills
+```
+
+The guided installer (`bin/source_monitor install`) also offers to install consumer skills as part of the setup workflow.
+
 ## Deployment Considerations
 - Copy engine migrations before every deploy and run `bin/rails db:migrate`.
 - Precompile assets so SourceMonitor's bundled CSS/JS outputs are available at runtime.
@@ -130,7 +143,7 @@ Common installation and runtime issues (missing migrations, realtime not streami
 - Quality checks: `bin/rubocop`, `bin/brakeman --no-pager`, `bin/lint-assets`.
 - Record HTTP fixtures with VCR under `test/vcr_cassettes/` and keep coverage ≥ 90% for new code.
 
-Contributions follow the clean architecture and TDD guidelines in `.ai/project_overview.md`. Review `.ai/tasks.md` to align with the active roadmap slice before opening a pull request.
+Contributions follow the clean architecture and TDD guidelines in `CLAUDE.md` and `AGENTS.md`.
 
 ## License
 SourceMonitor is released under the [MIT License](MIT-LICENSE).
