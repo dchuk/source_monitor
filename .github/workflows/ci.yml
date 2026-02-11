@@ -133,7 +133,7 @@ jobs:
           fi
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: coverage
           path: coverage
@@ -141,7 +141,7 @@ jobs:
           if-no-files-found: error
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: screenshots
@@ -193,7 +193,7 @@ jobs:
         run: rm -rf coverage
 
       - name: Download coverage artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: coverage
           path: coverage
@@ -329,7 +329,7 @@ jobs:
         run: bundle exec ruby bin/check-test-prof-metrics
 
       - name: Upload profiling artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: test-prof-metrics
           path: tmp/test_prof
