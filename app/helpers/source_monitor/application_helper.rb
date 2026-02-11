@@ -1,5 +1,9 @@
+# frozen_string_literal: true
+
 module SourceMonitor
   module ApplicationHelper
+    include TableSortHelper
+    include HealthBadgeHelper
     def source_monitor_stylesheet_bundle_tag
       stylesheet_link_tag("source_monitor/application", "data-turbo-track": "reload")
     rescue StandardError => error
@@ -188,118 +192,6 @@ module SourceMonitor
       ) do
         concat tag.circle(class: "opacity-25", cx: "12", cy: "12", r: "10", stroke: "currentColor", stroke_width: "4")
         concat tag.path(class: "opacity-75", fill: "currentColor", d: "M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z")
-      end
-    end
-
-    def source_health_badge(source, override: nil)
-      return override if override.present?
-
-      status = source&.health_status.presence || "healthy"
-
-      mapping = {
-        "healthy" => { label: "Healthy", classes: "bg-green-100 text-green-700", show_spinner: false },
-        "warning" => { label: "Needs Attention", classes: "bg-amber-100 text-amber-700", show_spinner: false },
-        "critical" => { label: "Failing", classes: "bg-rose-100 text-rose-700", show_spinner: false },
-        "declining" => { label: "Declining", classes: "bg-orange-100 text-orange-700", show_spinner: false },
-        "improving" => { label: "Improving", classes: "bg-sky-100 text-sky-700", show_spinner: false },
-        "auto_paused" => { label: "Auto-Paused", classes: "bg-amber-100 text-amber-700", show_spinner: false },
-        "unknown" => { label: "Unknown", classes: "bg-slate-100 text-slate-600", show_spinner: false }
-      }
-
-      mapping.fetch(status) { mapping.fetch("unknown") }.merge(status: status)
-    end
-
-    def source_health_actions(source)
-      status = source&.health_status.presence || "healthy"
-      helpers = SourceMonitor::Engine.routes.url_helpers
-
-      case status
-      when "critical", "declining"
-        [
-          {
-            key: :full_fetch,
-            label: "Queue Full Fetch",
-            description: "Runs the full fetch pipeline immediately and updates items if the feed responds.",
-            path: helpers.source_fetch_path(source),
-            method: :post,
-            data: { testid: "source-health-action-full_fetch" }
-          },
-          {
-            key: :health_check,
-            label: "Run Health Check",
-            description: "Sends a single request to confirm the feed is reachable without modifying stored items.",
-            path: helpers.source_health_check_path(source),
-            method: :post,
-            data: { testid: "source-health-action-health_check" }
-          }
-        ]
-      when "auto_paused"
-        [
-          {
-            key: :reset,
-            label: "Reset to Active Status",
-            description: "Clears the pause window, failure counters, and schedules the next fetch using the configured interval.",
-            path: helpers.source_health_reset_path(source),
-            method: :post,
-            data: { testid: "source-health-action-reset" }
-          }
-        ]
-      else
-        []
-      end
-    end
-
-    def interactive_health_status?(source, override: nil)
-      return false if override.present?
-
-      %w[critical declining auto_paused].include?(source&.health_status.presence)
-    end
-
-    def table_sort_direction(search_object, attribute)
-      return unless search_object.respond_to?(:sorts)
-
-      sort = search_object.sorts.detect { |s| s && s.name == attribute.to_s }
-      sort&.dir
-    end
-
-    def table_sort_arrow(search_object, attribute, default: nil)
-      direction = table_sort_direction(search_object, attribute) || default&.to_s
-
-      case direction
-      when "asc"
-        "▲"
-      when "desc"
-        "▼"
-      else
-        "↕"
-      end
-    end
-
-    def table_sort_aria(search_object, attribute)
-      direction = table_sort_direction(search_object, attribute)
-
-      case direction
-      when "asc"
-        "ascending"
-      when "desc"
-        "descending"
-      else
-        "none"
-      end
-    end
-
-    def table_sort_link(search_object, attribute, label, frame:, default_order:, secondary: [], html_options: {})
-      sort_targets = [ attribute, *Array(secondary) ]
-      options = {
-        default_order: default_order,
-        hide_indicator: true
-      }.merge(html_options)
-
-      options[:data] = (options[:data] || {}).merge(turbo_frame: frame)
-      options[:data][:turbo_action] ||= "advance"
-
-      sort_link(search_object, attribute, sort_targets, options) do
-        tag.span(label, class: "inline-flex items-center gap-1")
       end
     end
 

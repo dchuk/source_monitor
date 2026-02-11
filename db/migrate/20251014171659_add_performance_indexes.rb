@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddPerformanceIndexes < ActiveRecord::Migration[8.0]
   def change
     # Index for activity rate calculations

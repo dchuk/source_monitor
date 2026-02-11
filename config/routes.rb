@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 SourceMonitor::Engine.routes.draw do
   get "/health", to: "health#show"
   get "/dashboard", to: "dashboard#index", as: :dashboard

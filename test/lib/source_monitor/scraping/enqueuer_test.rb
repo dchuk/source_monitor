@@ -10,9 +10,7 @@ module SourceMonitor
 
       setup do
         clear_enqueued_jobs
-        SourceMonitor::ScrapeLog.delete_all
-        SourceMonitor::Item.delete_all
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
       end
 
       test "enqueues scrape job and marks item pending" do

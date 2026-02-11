@@ -15,6 +15,34 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.3.0] - 2026-02-10
+
+### Changed
+
+- Upgraded to Ruby 4.0.1 and Rails 8.1.2.
+- Refactored FeedFetcher from 627 to 285 lines by extracting SourceUpdater, AdaptiveInterval, and EntryProcessor sub-modules.
+- Refactored Configuration from 655 to 87 lines by extracting 12 dedicated settings files.
+- Refactored ImportSessionsController from 792 to 295 lines by extracting 4 concerns.
+- Refactored ItemCreator from 601 to 174 lines by extracting EntryParser and ContentExtractor.
+- Replaced 66 eager requires with 11 explicit + 71 Ruby autoload declarations in lib/source_monitor.rb.
+- Removed hard-coded LogEntry table name in favor of ModelExtensions.register.
+
+### Removed
+
+- Dead code: SourcesController fetch/retry methods, duplicate new/create actions, duplicate test file.
+
+### Fixed
+
+- Test isolation: scoped queries to prevent cross-test contamination in parallel runs.
+- RuboCop: added frozen_string_literal pragma to all Ruby files; zero offenses.
+- Coverage baseline reduced from 2117 to 510 uncovered lines (75.9% reduction).
+
+### Testing
+
+- 841 tests, 2776 assertions, 0 failures.
+- RuboCop: 369 files, 0 offenses.
+- Brakeman: 0 warnings.
+
 ## [0.2.0] - 2025-11-25
 
 ### Added

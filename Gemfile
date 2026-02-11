@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 source "https://rubygems.org"
 
 # Specify your gem's dependencies in source_monitor.gemspec.
@@ -6,6 +8,11 @@ gemspec
 gem "puma"
 
 gem "pg"
+gem "ostruct"
+gem "cgi"
+gem "uri"
+gem "json"
+gem "digest"
 
 gem "propshaft"
 
@@ -23,6 +30,7 @@ group :test do
   gem "simplecov", require: false
   gem "test-prof", require: false
   gem "stackprof", require: false
+  gem "minitest-mock"
   gem "capybara"
   gem "webmock"
   gem "vcr"

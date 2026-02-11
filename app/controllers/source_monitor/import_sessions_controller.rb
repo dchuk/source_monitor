@@ -7,21 +7,18 @@ require "source_monitor/sources/params"
 
 module SourceMonitor
   class ImportSessionsController < ApplicationController
+    include SourceMonitor::ImportSessions::OpmlParser
+    include SourceMonitor::ImportSessions::EntryAnnotation
+    include SourceMonitor::ImportSessions::HealthCheckManagement
+    include SourceMonitor::ImportSessions::BulkConfiguration
+
     before_action :ensure_current_user!
     before_action :set_import_session, only: %i[show update destroy]
     before_action :authorize_import_session!, only: %i[show update destroy]
     before_action :set_wizard_step, only: %i[show update]
 
-    ALLOWED_CONTENT_TYPES = %w[text/xml application/xml text/x-opml application/opml].freeze
-    GENERIC_CONTENT_TYPES = %w[application/octet-stream binary/octet-stream].freeze
-
     def new
-      import_session = ImportSession.create!(
-        user_id: current_user_id,
-        current_step: ImportSession.default_step
-      )
-
-      redirect_to source_monitor.step_import_session_path(import_session, step: import_session.current_step)
+      create
     end
 
     def create
@@ -82,7 +79,6 @@ module SourceMonitor
     def handle_health_check_step
       @selected_source_ids = health_check_selection_from_params
       @import_session.update!(selected_source_ids: @selected_source_ids)
-
       if advancing_from_health_check? && @selected_source_ids.blank?
         @selection_error = "Select at least one source to continue."
         prepare_health_check_context
@@ -93,22 +89,12 @@ module SourceMonitor
       @current_step = target_step
       deactivate_health_checks! if @current_step != "health_check"
       @import_session.update_column(:current_step, @current_step) if @import_session.current_step != @current_step
-
       prepare_health_check_context if @current_step == "health_check"
-
       redirect_to source_monitor.step_import_session_path(@import_session, step: @current_step), allow_other_host: false
-    end
-
-    def session_attributes
-      attrs = state_params.except(:next_step, :current_step, "next_step", "current_step")
-      attrs[:opml_file_metadata] = build_file_metadata if uploading_file?
-      attrs[:current_step] = target_step
-      attrs
     end
 
     def handle_upload_step
       @upload_errors = validate_upload!
-
       if @upload_errors.any?
         render :show, status: :unprocessable_entity
         return
@@ -116,7 +102,6 @@ module SourceMonitor
 
       parsed_entries = parse_opml_file(params[:opml_file])
       valid_entries = parsed_entries.select { |entry| entry[:status] == "valid" }
-
       if valid_entries.empty?
         @upload_errors = [ "We couldn't find any valid feeds in that OPML file. Check the file and try again." ]
         @import_session.update!(opml_file_metadata: build_file_metadata, parsed_sources: parsed_entries, current_step: "upload")
@@ -203,24 +188,19 @@ module SourceMonitor
     def handle_confirm_step
       @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
       @selected_entries = annotated_entries(@selected_source_ids).select { |entry| @selected_source_ids.include?(entry[:id]) }
-
       if @selected_entries.empty?
         @selection_error = "Select at least one source to import."
         prepare_confirm_context
         render :show, status: :unprocessable_entity
         return
       end
-
       history = SourceMonitor::ImportHistory.create!(
         user_id: @import_session.user_id,
         bulk_settings: @import_session.bulk_settings
       )
-
       SourceMonitor::ImportOpmlJob.perform_later(@import_session.id, history.id)
       @import_session.update_column(:current_step, "confirm") if @import_session.current_step != "confirm"
-
       message = "Import started for #{@selected_entries.size} sources."
-
       respond_to do |format|
         format.turbo_stream do
           responder = SourceMonitor::TurboStreams::StreamResponder.new
@@ -233,149 +213,6 @@ module SourceMonitor
           redirect_to source_monitor.sources_path, notice: message
         end
       end
-    end
-
-    def state_params
-      @state_params ||= begin
-        permitted = params.fetch(:import_session, {}).permit(
-          :current_step,
-          :next_step,
-          :select_all,
-          :select_none,
-          parsed_sources: [],
-          selected_source_ids: [],
-          bulk_settings: {},
-          opml_file_metadata: {}
-        )
-
-        SourceMonitor::Security::ParameterSanitizer.sanitize(permitted.to_h)
-      end
-    end
-
-    def build_file_metadata
-      return {} unless params[:opml_file].respond_to?(:original_filename)
-
-      file = params[:opml_file]
-      {
-        "filename" => file.original_filename,
-        "byte_size" => file.size,
-        "content_type" => file.content_type
-      }
-    end
-
-    def uploading_file?
-      params[:opml_file].present?
-    end
-
-    def permitted_step(value)
-      step = value.to_s.presence
-      return unless step
-
-      ImportSession::STEP_ORDER.find { |candidate| candidate == step }
-    end
-
-    def target_step
-      next_step = state_params[:next_step] || state_params["next_step"]
-      permitted_step(next_step) || @current_step || ImportSession.default_step
-    end
-
-    def validate_upload!
-      return [ "Upload an OPML file to continue." ] unless uploading_file?
-
-      file = params[:opml_file]
-      errors = []
-
-      errors << "The uploaded file is empty. Choose another OPML file." if file.size.to_i <= 0
-
-      if file.content_type.present? && !content_type_allowed?(file.content_type) && !generic_content_type?(file.content_type)
-        errors << "Upload must be an OPML or XML file."
-      end
-
-      errors
-    end
-
-    def content_type_allowed?(content_type)
-      ALLOWED_CONTENT_TYPES.include?(content_type)
-    end
-
-    def generic_content_type?(content_type)
-      GENERIC_CONTENT_TYPES.include?(content_type)
-    end
-
-    def parse_opml_file(file)
-      content = file.read
-      file.rewind if file.respond_to?(:rewind)
-
-      raise UploadError, "The uploaded file appears to be empty." if content.blank?
-
-      document = Nokogiri::XML(content) { |config| config.strict.nonet }
-      raise UploadError, "The uploaded file is not valid XML or OPML." if document.root.nil?
-
-      outlines = document.xpath("//outline")
-
-      entries = []
-
-      outlines.each_with_index do |outline, index|
-        next unless outline.attribute_nodes.any? { |attr| attr.name.casecmp("xmlurl").zero? }
-
-        entries << build_entry(outline, index)
-      end
-
-      entries
-    rescue Nokogiri::XML::SyntaxError => error
-      raise UploadError, "We couldn't parse that OPML file: #{error.message}"
-    end
-
-    def build_entry(outline, index)
-      feed_url = outline_attribute(outline, "xmlUrl")
-      website_url = outline_attribute(outline, "htmlUrl")
-      title = outline_attribute(outline, "title") || outline_attribute(outline, "text")
-
-      if feed_url.blank?
-        return malformed_entry(index, feed_url, title, website_url, "Missing feed URL")
-      end
-
-      unless valid_feed_url?(feed_url)
-        return malformed_entry(index, feed_url, title, website_url, "Feed URL must be HTTP or HTTPS")
-      end
-
-      {
-        id: "outline-#{index}",
-        raw_outline_index: index,
-        feed_url: feed_url,
-        title: title,
-        website_url: website_url,
-        status: "valid",
-        error: nil,
-        health_status: nil,
-        health_error: nil
-      }
-    end
-
-    def malformed_entry(index, feed_url, title, website_url, error)
-      {
-        id: "outline-#{index}",
-        raw_outline_index: index,
-        feed_url: feed_url.presence,
-        title: title,
-        website_url: website_url,
-        status: "malformed",
-        error: error,
-        health_status: nil,
-        health_error: nil
-      }
-    end
-
-    def outline_attribute(outline, name)
-      attribute = outline.attribute_nodes.find { |attr| attr.name.casecmp(name).zero? }
-      attribute&.value.to_s.presence
-    end
-
-    def valid_feed_url?(url)
-      parsed = URI.parse(url)
-      parsed.is_a?(URI::HTTP) && parsed.host.present?
-    rescue URI::InvalidURIError
-      false
     end
 
     # :nocov: These methods provide unauthenticated fallback behavior for
@@ -449,343 +286,5 @@ module SourceMonitor
 
       head :forbidden unless @import_session.user_id == current_user_id
     end
-
-    def prepare_preview_context(skip_default: false)
-      @filter = permitted_filter(params[:filter]) || "all"
-      @page = normalize_page_param(params[:page])
-      @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
-
-      @preview_entries = annotated_entries(@selected_source_ids)
-
-      if !skip_default && @selected_source_ids.blank? && @preview_entries.present?
-        defaults = selectable_entries_from(@preview_entries).map { |entry| entry[:id] }
-        @selected_source_ids = defaults
-        @import_session.update_column(:selected_source_ids, defaults)
-        @preview_entries = annotated_entries(@selected_source_ids)
-      end
-
-      @filtered_entries = filter_entries(@preview_entries, @filter)
-
-      paginator = SourceMonitor::Pagination::Paginator.new(
-        scope: @filtered_entries,
-        page: @page,
-        per_page: preview_per_page
-      ).paginate
-
-      @paginated_entries = paginator.records
-      @has_next_page = paginator.has_next_page
-      @has_previous_page = paginator.has_previous_page
-      @page = paginator.page
-    end
-
-    def prepare_health_check_context
-      start_health_checks_if_needed
-
-      @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
-      @health_check_entries = health_check_entries(@selected_source_ids)
-      @health_check_target_ids = health_check_targets
-      @health_progress = health_check_progress(@health_check_entries)
-    end
-
-    def prepare_configure_context
-      @bulk_source = build_bulk_source_from_session
-    end
-
-    def prepare_confirm_context
-      @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
-      @selected_entries = annotated_entries(@selected_source_ids)
-        .select { |entry| @selected_source_ids.include?(entry[:id]) }
-      @bulk_settings = @import_session.bulk_settings || {}
-    end
-
-    def annotated_entries(selected_ids)
-      selected_ids ||= []
-      entries = Array(@import_session.parsed_sources)
-      return [] if entries.blank?
-
-      normalized = entries.map { |entry| normalize_entry(entry) }
-
-      feed_urls = normalized.filter_map { |entry| entry[:feed_url]&.downcase }
-      duplicate_lookup = if feed_urls.present?
-        SourceMonitor::Source.where("LOWER(feed_url) IN (?)", feed_urls).pluck(:feed_url).map(&:downcase)
-      else
-        []
-      end
-
-      normalized.map do |entry|
-        duplicate = entry[:feed_url].present? && duplicate_lookup.include?(entry[:feed_url].downcase)
-        entry.merge(
-          duplicate: duplicate,
-          selectable: entry[:status] == "valid" && !duplicate,
-          selected: selected_ids.include?(entry[:id])
-        )
-      end
-    end
-
-    def health_check_entries(selected_ids)
-      targets = health_check_targets
-      entries = Array(@import_session.parsed_sources).map { |entry| normalize_entry(entry) }
-
-      entries.select { |entry| targets.include?(entry[:id]) }.map do |entry|
-        entry.merge(selected: selected_ids.include?(entry[:id]))
-      end
-    end
-
-    def health_check_progress(entries)
-      total = health_check_targets.size
-      completed = entries.count { |entry| health_check_complete?(entry) }
-
-      {
-        completed: completed,
-        total: total,
-        pending: [ total - completed, 0 ].max,
-        active: @import_session.health_checks_active?,
-        done: total.positive? && completed >= total
-      }
-    end
-
-    def health_check_complete?(entry)
-      %w[healthy unhealthy].include?(entry[:health_status].to_s)
-    end
-
-    def health_check_targets
-      targets = @import_session.health_check_targets
-      targets = Array(@import_session.selected_source_ids).map(&:to_s) if targets.blank?
-      targets
-    end
-
-    def selectable_entries_from(entries)
-      entries.select { |entry| entry[:selectable] }
-    end
-
-    def normalize_entry(entry)
-      entry = entry.to_h
-      SourceMonitor::ImportSessions::EntryNormalizer.normalize(entry)
-    end
-
-    def filter_entries(entries, filter)
-      case filter
-      when "new"
-        entries.select { |entry| entry[:selectable] }
-      when "existing"
-        entries.select { |entry| entry[:duplicate] }
-      else
-        entries
-      end
-    end
-
-    def build_selection_from_params
-      @selected_source_ids ||= []
-
-      if params.dig(:import_session, :select_all) == "true"
-        return selectable_entries.map { |entry| entry[:id] }
-      end
-
-      if params.dig(:import_session, :select_none) == "true"
-        return []
-      end
-
-      ids = params.dig(:import_session, :selected_source_ids)
-      return [] unless ids
-
-      Array(ids).map { |id| id.to_s }.uniq
-    end
-
-    def health_check_selection_from_params
-      if params.dig(:import_session, :select_all) == "true"
-        return health_check_targets.dup
-      end
-
-      return [] if params.dig(:import_session, :select_none) == "true"
-
-      ids = params.dig(:import_session, :selected_source_ids)
-      return Array(@import_session.selected_source_ids).map(&:to_s) unless ids
-
-      Array(ids).map { |id| id.to_s }.uniq & health_check_targets
-    end
-
-    def selectable_entries
-      @selectable_entries ||= annotated_entries(@selected_source_ids).select { |entry| entry[:selectable] }
-    end
-
-    def advancing_from_health_check?
-      target_step != "health_check"
-    end
-
-    def advancing_from_preview?
-      target_step != "preview"
-    end
-
-    def normalize_page_param(value)
-      number = value.to_i
-      number = 1 if number <= 0
-      number
-    rescue StandardError
-      1
-    end
-
-    def start_health_checks_if_needed
-      return unless @current_step == "health_check"
-
-      jobs_to_enqueue = []
-
-      @import_session.with_lock do
-        @import_session.reload
-        selected = Array(@import_session.selected_source_ids).map(&:to_s)
-
-        if selected.blank?
-          @import_session.update_columns(health_checks_active: false, health_check_target_ids: [])
-          next
-        end
-
-        if @import_session.health_checks_active? && @import_session.health_check_targets.sort == selected.sort
-          @health_check_target_ids = @import_session.health_check_targets
-          next
-        end
-
-        updated_entries = reset_health_results(@import_session.parsed_sources, selected)
-        @import_session.update!(
-          parsed_sources: updated_entries,
-          health_checks_active: true,
-          health_check_target_ids: selected,
-          health_check_started_at: Time.current,
-          health_check_completed_at: nil
-        )
-
-        @health_check_target_ids = selected
-        jobs_to_enqueue = selected
-      end
-
-      enqueue_health_check_jobs(@import_session, jobs_to_enqueue) if jobs_to_enqueue.any?
-    end
-
-    def build_bulk_source_from_session
-      settings = @import_session.bulk_settings.presence || {}
-      build_bulk_source(settings)
-    end
-
-    def build_bulk_source_from_params
-      settings = configure_source_params
-      settings = strip_identity_attributes(settings) if settings
-      settings ||= @import_session.bulk_settings.presence || {}
-
-      build_bulk_source(settings)
-    end
-
-    def build_bulk_source(settings)
-      sample_identity = sample_identity_attributes
-      defaults = SourceMonitor::Sources::Params.default_attributes
-
-      source = SourceMonitor::Source.new(defaults.merge(sample_identity))
-      source.assign_attributes(settings.deep_symbolize_keys) if settings.present?
-      source
-    end
-
-    def sample_identity_attributes
-      entry = selected_entries_for_identity.first
-      return fallback_identity unless entry
-
-      normalized = normalize_entry(entry)
-      {
-        name: normalized[:title].presence || normalized[:feed_url] || fallback_identity[:name],
-        feed_url: normalized[:feed_url].presence || fallback_identity[:feed_url],
-        website_url: normalized[:website_url]
-      }
-    end
-
-    def selected_entries_for_identity
-      targets = Array(@import_session.selected_source_ids).map(&:to_s)
-      entries = Array(@import_session.parsed_sources)
-      return entries if targets.blank?
-
-      entries.select { |entry| targets.include?(entry.to_h.fetch("id", entry[:id]).to_s) }
-    end
-
-    def fallback_identity
-      {
-        name: "Imported source",
-        feed_url: "https://example.com/feed.xml"
-      }
-    end
-
-    def configure_source_params
-      return unless params[:source].present?
-
-      SourceMonitor::Sources::Params.sanitize(params)
-    end
-
-    def strip_identity_attributes(settings)
-      settings.with_indifferent_access.except(:name, :feed_url, :website_url)
-    end
-
-    def persist_bulk_settings_if_valid!
-      settings = configure_source_params
-      return unless settings
-      return unless @bulk_source.valid?
-
-      @import_session.update!(bulk_settings: bulk_settings_payload(@bulk_source))
-    end
-
-    def bulk_settings_payload(source)
-      payload = source.attributes.slice(*bulk_setting_keys)
-      payload["scrape_settings"] = source.scrape_settings
-
-      SourceMonitor::Security::ParameterSanitizer.sanitize(payload)
-    end
-
-    def bulk_setting_keys
-      %w[
-        fetch_interval_minutes
-        active
-        auto_scrape
-        scraping_enabled
-        requires_javascript
-        feed_content_readability_enabled
-        scraper_adapter
-        items_retention_days
-        max_items
-        adaptive_fetching_enabled
-        health_auto_pause_threshold
-        scrape_settings
-      ]
-    end
-
-    def reset_health_results(entries, target_ids)
-      Array(entries).map do |entry|
-        entry_hash = entry.to_h
-        entry_id = entry_hash["id"] || entry_hash[:id]
-        next entry_hash unless target_ids.include?(entry_id.to_s)
-
-        entry_hash.merge("health_status" => "pending", "health_error" => nil)
-      end
-    end
-
-    def enqueue_health_check_jobs(import_session, target_ids)
-      target_ids.each do |target_id|
-        SourceMonitor::ImportSessionHealthCheckJob.set(wait: 1.second).perform_later(import_session.id, target_id)
-      end
-    end
-
-    def deactivate_health_checks!
-      return unless @import_session.health_checks_active?
-
-      @import_session.update_columns(
-        health_checks_active: false,
-        health_check_completed_at: Time.current
-      )
-    end
-
-    def permitted_filter(raw)
-      value = raw.to_s.presence
-      return unless value
-
-      %w[all new existing].find { |candidate| candidate == value }
-    end
-
-    def preview_per_page
-      25
-    end
-
-    class UploadError < StandardError; end
   end
 end

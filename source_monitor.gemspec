@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "lib/source_monitor/version"
 
 Gem::Specification.new do |spec|
@@ -29,7 +31,7 @@ Gem::Specification.new do |spec|
 
   spec.require_paths = [ "lib" ]
 
-  spec.add_dependency "rails", ">= 8.0.3", "< 9.0"
+  spec.add_dependency "rails", ">= 8.0.3", "< 10.0"
   spec.add_dependency "cssbundling-rails", "~> 1.4"
   spec.add_dependency "jsbundling-rails", "~> 1.3"
   spec.add_dependency "turbo-rails", "~> 2.0"

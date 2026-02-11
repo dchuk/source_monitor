@@ -11,9 +11,7 @@ module SourceMonitor
       setup do
         ActiveJob::Base.queue_adapter = :test
         clear_enqueued_jobs
-        SourceMonitor::ScrapeLog.delete_all
-        SourceMonitor::Item.delete_all
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
       end
 
       teardown do

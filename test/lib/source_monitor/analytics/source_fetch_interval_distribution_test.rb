@@ -6,7 +6,7 @@ module SourceMonitor
   module Analytics
     class SourceFetchIntervalDistributionTest < ActiveSupport::TestCase
       setup do
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
       end
 
       test "groups sources into defined buckets" do

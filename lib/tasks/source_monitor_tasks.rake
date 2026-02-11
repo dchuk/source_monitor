@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 namespace :source_monitor do
   namespace :cleanup do
     desc "Run retention pruning across sources. Accepts SOURCE_IDS and SOFT_DELETE env vars."

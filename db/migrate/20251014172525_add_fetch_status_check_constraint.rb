@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddFetchStatusCheckConstraint < ActiveRecord::Migration[8.0]
   def up
     # Add PostgreSQL CHECK constraint to enforce fetch_status enum values at database level

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "test_helper"
 require "source_monitor/release/changelog"
 

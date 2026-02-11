@@ -40,9 +40,10 @@ module SourceMonitor
       failed = FetchLog.create!(source: @source, success: false, started_at: 2.minutes.ago)
       older = FetchLog.create!(source: @source, success: true, started_at: 10.minutes.ago)
 
-      assert_equal [ failed, successful, older ], FetchLog.recent.to_a
-      assert_equal [ successful, older ], FetchLog.successful.to_a
-      assert_equal [ failed ], FetchLog.failed.to_a
+      source_logs = FetchLog.where(source: @source)
+      assert_equal [ failed, successful, older ], source_logs.recent.to_a
+      assert_equal [ successful, older ], source_logs.successful.to_a
+      assert_equal [ failed ], source_logs.failed.to_a
     end
 
     test "scopes by job id" do

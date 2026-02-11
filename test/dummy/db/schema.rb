@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_25_094500) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_10_204022) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -198,7 +198,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_094500) do
     t.jsonb "skipped_duplicates", default: [], null: false
     t.datetime "started_at"
     t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
+    t.integer "user_id", null: false
     t.index ["created_at"], name: "index_sourcemon_import_histories_on_created_at"
     t.index ["user_id"], name: "index_sourcemon_import_histories_on_user_id"
   end
@@ -215,7 +215,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_094500) do
     t.jsonb "parsed_sources", default: [], null: false
     t.jsonb "selected_source_ids", default: [], null: false
     t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
+    t.integer "user_id", null: false
     t.index ["current_step"], name: "index_sourcemon_import_sessions_on_current_step"
     t.index ["health_checks_active"], name: "index_sourcemon_import_sessions_on_health_checks_active"
     t.index ["user_id"], name: "index_sourcemon_import_sessions_on_user_id"
@@ -293,8 +293,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_25_094500) do
     t.datetime "updated_at", null: false
     t.index ["item_id"], name: "index_sourcemon_log_entries_on_item_id"
     t.index ["loggable_type", "loggable_id"], name: "index_sourcemon_log_entries_on_loggable"
+    t.index ["loggable_type", "started_at", "id"], name: "index_log_entries_on_loggable_type_started_at_id", order: { started_at: :desc, id: :desc }
     t.index ["scraper_adapter"], name: "index_sourcemon_log_entries_on_scraper_adapter"
     t.index ["source_id"], name: "index_sourcemon_log_entries_on_source_id"
+    t.index ["started_at", "id"], name: "index_log_entries_on_started_at_desc_id_desc", order: :desc
     t.index ["started_at"], name: "index_sourcemon_log_entries_on_started_at"
     t.index ["success"], name: "index_sourcemon_log_entries_on_success"
   end

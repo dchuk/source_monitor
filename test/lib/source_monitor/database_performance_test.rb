@@ -7,10 +7,7 @@ module SourceMonitor
     include ActiveSupport::Testing::TimeHelpers
 
     setup do
-      SourceMonitor::Item.delete_all
-      SourceMonitor::Source.delete_all
-      SourceMonitor::FetchLog.delete_all
-      SourceMonitor::ScrapeLog.delete_all
+      clean_source_monitor_tables!
     end
 
     test "critical tables expose required indexes" do

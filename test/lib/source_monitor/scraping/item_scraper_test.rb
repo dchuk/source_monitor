@@ -7,8 +7,7 @@ module SourceMonitor
     class ItemScraperTest < ActiveSupport::TestCase
       setup do
         SourceMonitor.reset_configuration!
-        SourceMonitor::Item.delete_all
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
       end
 
       teardown do

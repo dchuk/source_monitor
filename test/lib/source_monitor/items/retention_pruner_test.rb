@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "test_helper"
 require "securerandom"
 require "source_monitor/items/retention_pruner"
@@ -7,8 +9,7 @@ module SourceMonitor
     class RetentionPrunerTest < ActiveSupport::TestCase
       setup do
         SourceMonitor.reset_configuration!
-        SourceMonitor::Item.delete_all
-        SourceMonitor::Source.delete_all
+        clean_source_monitor_tables!
       end
 
       teardown do

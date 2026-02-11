@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SourceMonitor
   class HealthController < ApplicationController
     def show

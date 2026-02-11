@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "test_helper"
 require "securerandom"
 
@@ -6,8 +8,7 @@ module SourceMonitor
     include ActiveJob::TestHelper
 
     setup do
-      SourceMonitor::Item.delete_all
-      SourceMonitor::Source.delete_all
+      clean_source_monitor_tables!
       clear_enqueued_jobs
     end
 

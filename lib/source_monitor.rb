@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 begin
   require "solid_queue"
 rescue LoadError
@@ -41,67 +43,147 @@ require "source_monitor/model_extensions"
 require "source_monitor/events"
 require "source_monitor/instrumentation"
 require "source_monitor/metrics"
-require "source_monitor/http"
-require "source_monitor/feedjira_extensions"
-require "source_monitor/dashboard/quick_action"
-require "source_monitor/dashboard/recent_activity"
-require "source_monitor/dashboard/recent_activity_presenter"
-require "source_monitor/dashboard/quick_actions_presenter"
-require "source_monitor/dashboard/queries"
-require "source_monitor/dashboard/turbo_broadcaster"
-require "source_monitor/logs/entry_sync"
-require "source_monitor/logs/filter_set"
-require "source_monitor/logs/query"
-require "source_monitor/logs/table_presenter"
-require "source_monitor/realtime"
-require "source_monitor/analytics/source_fetch_interval_distribution"
-require "source_monitor/analytics/source_activity_rates"
-require "source_monitor/analytics/sources_index_metrics"
-require "source_monitor/jobs/cleanup_options"
-require "source_monitor/jobs/visibility"
-require "source_monitor/jobs/solid_queue_metrics"
-require "source_monitor/security/parameter_sanitizer"
-require "source_monitor/security/authentication"
-require "source_monitor/pagination/paginator"
-require "source_monitor/turbo_streams/stream_responder"
-require "source_monitor/scrapers/base"
-require "source_monitor/scrapers/fetchers/http_fetcher"
-require "source_monitor/scrapers/parsers/readability_parser"
-require "source_monitor/scrapers/readability"
-require "source_monitor/scraping/enqueuer"
-require "source_monitor/scraping/bulk_source_scraper"
-require "source_monitor/scraping/state"
-require "source_monitor/scraping/scheduler"
-require "source_monitor/scraping/item_scraper"
-require "source_monitor/fetching/fetch_error"
-require "source_monitor/fetching/feed_fetcher"
-require "source_monitor/items/retention_pruner"
-require "source_monitor/fetching/fetch_runner"
-require "source_monitor/scheduler"
-require "source_monitor/items/item_creator"
 require "source_monitor/health"
-require "source_monitor/assets"
-require "source_monitor/setup/requirements"
-require "source_monitor/setup/shell_runner"
-require "source_monitor/setup/detectors"
-require "source_monitor/setup/dependency_checker"
-require "source_monitor/setup/prompter"
-require "source_monitor/setup/gemfile_editor"
-require "source_monitor/setup/bundle_installer"
-require "source_monitor/setup/node_installer"
-require "source_monitor/setup/install_generator"
-require "source_monitor/setup/migration_installer"
-require "source_monitor/setup/initializer_patcher"
-require "source_monitor/setup/verification/result"
-require "source_monitor/setup/verification/solid_queue_verifier"
-require "source_monitor/setup/verification/action_cable_verifier"
-require "source_monitor/setup/verification/runner"
-require "source_monitor/setup/verification/printer"
-require "source_monitor/setup/verification/telemetry_logger"
-require "source_monitor/setup/workflow"
-require "source_monitor/setup/cli"
+require "source_monitor/realtime"
+require "source_monitor/feedjira_extensions"
 
 module SourceMonitor
+  autoload :HTTP, "source_monitor/http"
+  autoload :Scheduler, "source_monitor/scheduler"
+  autoload :Assets, "source_monitor/assets"
+
+  module Analytics
+    autoload :SourceFetchIntervalDistribution, "source_monitor/analytics/source_fetch_interval_distribution"
+    autoload :SourceActivityRates, "source_monitor/analytics/source_activity_rates"
+    autoload :SourcesIndexMetrics, "source_monitor/analytics/sources_index_metrics"
+  end
+
+  module Dashboard
+    autoload :QuickAction, "source_monitor/dashboard/quick_action"
+    autoload :RecentActivity, "source_monitor/dashboard/recent_activity"
+    autoload :RecentActivityPresenter, "source_monitor/dashboard/recent_activity_presenter"
+    autoload :QuickActionsPresenter, "source_monitor/dashboard/quick_actions_presenter"
+    autoload :Queries, "source_monitor/dashboard/queries"
+    autoload :TurboBroadcaster, "source_monitor/dashboard/turbo_broadcaster"
+    autoload :UpcomingFetchSchedule, "source_monitor/dashboard/upcoming_fetch_schedule"
+  end
+
+  module Fetching
+    autoload :FetchError, "source_monitor/fetching/fetch_error"
+    autoload :TimeoutError, "source_monitor/fetching/fetch_error"
+    autoload :ConnectionError, "source_monitor/fetching/fetch_error"
+    autoload :HTTPError, "source_monitor/fetching/fetch_error"
+    autoload :ParsingError, "source_monitor/fetching/fetch_error"
+    autoload :UnexpectedResponseError, "source_monitor/fetching/fetch_error"
+    autoload :FeedFetcher, "source_monitor/fetching/feed_fetcher"
+    autoload :FetchRunner, "source_monitor/fetching/fetch_runner"
+    autoload :RetryPolicy, "source_monitor/fetching/retry_policy"
+    autoload :StalledFetchReconciler, "source_monitor/fetching/stalled_fetch_reconciler"
+    autoload :AdvisoryLock, "source_monitor/fetching/advisory_lock"
+  end
+
+  module ImportSessions
+    autoload :EntryNormalizer, "source_monitor/import_sessions/entry_normalizer"
+    autoload :HealthCheckBroadcaster, "source_monitor/import_sessions/health_check_broadcaster"
+  end
+
+  module Items
+    autoload :ItemCreator, "source_monitor/items/item_creator"
+    autoload :RetentionPruner, "source_monitor/items/retention_pruner"
+    autoload :RetentionStrategies, "source_monitor/items/retention_strategies"
+  end
+
+  module Jobs
+    autoload :CleanupOptions, "source_monitor/jobs/cleanup_options"
+    autoload :Visibility, "source_monitor/jobs/visibility"
+    autoload :SolidQueueMetrics, "source_monitor/jobs/solid_queue_metrics"
+    autoload :FetchFailureCallbacks, "source_monitor/jobs/fetch_failure_subscriber"
+    autoload :FetchFailureSubscriber, "source_monitor/jobs/fetch_failure_subscriber"
+  end
+
+  module Logs
+    autoload :EntrySync, "source_monitor/logs/entry_sync"
+    autoload :FilterSet, "source_monitor/logs/filter_set"
+    autoload :Query, "source_monitor/logs/query"
+    autoload :TablePresenter, "source_monitor/logs/table_presenter"
+  end
+
+  module Models
+    autoload :Sanitizable, "source_monitor/models/sanitizable"
+    autoload :UrlNormalizable, "source_monitor/models/url_normalizable"
+  end
+
+  module Pagination
+    autoload :Paginator, "source_monitor/pagination/paginator"
+  end
+
+  module Release
+    autoload :Changelog, "source_monitor/release/changelog"
+    autoload :Runner, "source_monitor/release/runner"
+  end
+
+  module Scrapers
+    autoload :Base, "source_monitor/scrapers/base"
+    autoload :Readability, "source_monitor/scrapers/readability"
+
+    module Fetchers
+      autoload :HttpFetcher, "source_monitor/scrapers/fetchers/http_fetcher"
+    end
+
+    module Parsers
+      autoload :ReadabilityParser, "source_monitor/scrapers/parsers/readability_parser"
+    end
+  end
+
+  module Scraping
+    autoload :Enqueuer, "source_monitor/scraping/enqueuer"
+    autoload :BulkSourceScraper, "source_monitor/scraping/bulk_source_scraper"
+    autoload :BulkResultPresenter, "source_monitor/scraping/bulk_result_presenter"
+    autoload :State, "source_monitor/scraping/state"
+    autoload :Scheduler, "source_monitor/scraping/scheduler"
+    autoload :ItemScraper, "source_monitor/scraping/item_scraper"
+  end
+
+  module Security
+    autoload :ParameterSanitizer, "source_monitor/security/parameter_sanitizer"
+    autoload :Authentication, "source_monitor/security/authentication"
+  end
+
+  module Setup
+    autoload :Requirements, "source_monitor/setup/requirements"
+    autoload :ShellRunner, "source_monitor/setup/shell_runner"
+    autoload :Detectors, "source_monitor/setup/detectors"
+    autoload :DependencyChecker, "source_monitor/setup/dependency_checker"
+    autoload :Prompter, "source_monitor/setup/prompter"
+    autoload :GemfileEditor, "source_monitor/setup/gemfile_editor"
+    autoload :BundleInstaller, "source_monitor/setup/bundle_installer"
+    autoload :NodeInstaller, "source_monitor/setup/node_installer"
+    autoload :InstallGenerator, "source_monitor/setup/install_generator"
+    autoload :MigrationInstaller, "source_monitor/setup/migration_installer"
+    autoload :InitializerPatcher, "source_monitor/setup/initializer_patcher"
+    autoload :Workflow, "source_monitor/setup/workflow"
+    autoload :CLI, "source_monitor/setup/cli"
+
+    module Verification
+      autoload :Result, "source_monitor/setup/verification/result"
+      autoload :Summary, "source_monitor/setup/verification/result"
+      autoload :SolidQueueVerifier, "source_monitor/setup/verification/solid_queue_verifier"
+      autoload :ActionCableVerifier, "source_monitor/setup/verification/action_cable_verifier"
+      autoload :Runner, "source_monitor/setup/verification/runner"
+      autoload :Printer, "source_monitor/setup/verification/printer"
+      autoload :TelemetryLogger, "source_monitor/setup/verification/telemetry_logger"
+    end
+  end
+
+  module Sources
+    autoload :Params, "source_monitor/sources/params"
+    autoload :TurboStreamPresenter, "source_monitor/sources/turbo_stream_presenter"
+  end
+
+  module TurboStreams
+    autoload :StreamResponder, "source_monitor/turbo_streams/stream_responder"
+  end
+
   class << self
     def configure
       yield config

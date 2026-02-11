@@ -1,0 +1,24 @@
+{
+  "answered": [
+    {
+      "question": "What matters most in the conventions cleanup?",
+      "answer": "All of the above: Model conventions, Controller patterns, Dead code removal",
+      "category": "scope",
+      "phase": "4",
+      "date": "2026-02-10"
+    },
+    {
+      "question": "How should we handle convention violations that would change public API behavior?",
+      "answer": "Fix everything -- rename/restructure even if it changes method signatures or route patterns",
+      "category": "api-policy",
+      "phase": "4",
+      "date": "2026-02-10"
+    }
+  ],
+  "inferred": [
+    "User wants comprehensive cleanup, not surface-level",
+    "Public API changes are acceptable for convention alignment",
+    "Tests should be updated to match any changes, not removed",
+    "All layers: models, controllers, services, dead code"
+  ]
+}

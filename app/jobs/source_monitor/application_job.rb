@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SourceMonitor
   parent_job = defined?(::ApplicationJob) ? ::ApplicationJob : ActiveJob::Base
 

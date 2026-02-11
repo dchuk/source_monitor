@@ -42,7 +42,7 @@ module SourceMonitor
             assert_equal "<article>HTML</article>", item.scraped_html
             assert_equal "Body", item.scraped_content
 
-            log = SourceMonitor::ScrapeLog.order(:created_at).last
+            log = SourceMonitor::ScrapeLog.where(item: item).order(:created_at).last
             assert_equal item, log.item
             assert_equal source, log.source
             assert log.success
@@ -85,7 +85,7 @@ module SourceMonitor
           assert_equal "failed", item.scrape_status
           assert_not_nil item.scraped_at
 
-          log = SourceMonitor::ScrapeLog.order(:created_at).last
+          log = SourceMonitor::ScrapeLog.where(item: item).order(:created_at).last
           refute log.success
           assert_equal "boom", log.error_message
           assert_equal "StandardError", log.error_class
