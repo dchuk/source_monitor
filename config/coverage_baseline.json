@@ -147,7 +147,12 @@
     15,
     16,
     18,
+    32,
     36,
+    49,
+    50,
+    52,
+    53,
     54,
     55,
     57
@@ -645,6 +650,9 @@
   ],
   "lib/source_monitor/setup/dependency_checker.rb": [
     50
+  ],
+  "lib/source_monitor/version.rb": [
+    4
   ],
   "lib/tasks/source_monitor_assets.rake": [
     9,

@@ -235,12 +235,13 @@ module SourceMonitor
       test "stats fetches_today counts only fetches from today" do
         source = create_source!(name: "Fetch Source")
         now = Time.current
+        today_noon = now.in_time_zone.beginning_of_day + 12.hours
 
-        SourceMonitor::FetchLog.create!(source: source, started_at: now - 1.hour, success: true)
-        SourceMonitor::FetchLog.create!(source: source, started_at: now - 2.hours, success: false)
-        SourceMonitor::FetchLog.create!(source: source, started_at: now - 2.days, success: true)
+        SourceMonitor::FetchLog.create!(source: source, started_at: today_noon - 1.hour, success: true)
+        SourceMonitor::FetchLog.create!(source: source, started_at: today_noon - 2.hours, success: false)
+        SourceMonitor::FetchLog.create!(source: source, started_at: today_noon - 2.days, success: true)
 
-        stats = SourceMonitor::Dashboard::Queries::StatsQuery.new(reference_time: now).call
+        stats = SourceMonitor::Dashboard::Queries::StatsQuery.new(reference_time: today_noon).call
 
         assert_equal 2, stats[:fetches_today]
       end

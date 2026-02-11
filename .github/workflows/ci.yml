@@ -10,6 +10,8 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      BUNDLE_FORCE_RUBY_PLATFORM: "true"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -19,7 +21,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.4.4
+          ruby-version: 4.0.1
           bundler-cache: true
 
       - name: Set up Node
@@ -51,6 +53,8 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
+    env:
+      BUNDLE_FORCE_RUBY_PLATFORM: "true"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -58,7 +62,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.4.4
+          ruby-version: 4.0.1
           bundler-cache: true
 
       - name: Run Brakeman security scanner
@@ -66,6 +70,8 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    env:
+      BUNDLE_FORCE_RUBY_PLATFORM: "true"
 
     services:
       postgres:
@@ -90,7 +96,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.4.4
+          ruby-version: 4.0.1
           bundler-cache: true
 
       - name: Set up Node
@@ -145,6 +151,8 @@ jobs:
   release_verification:
     runs-on: ubuntu-latest
     needs: [ lint, security, test ]
+    env:
+      BUNDLE_FORCE_RUBY_PLATFORM: "true"
 
     services:
       postgres:
@@ -169,7 +177,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.4.4
+          ruby-version: 4.0.1
           bundler-cache: true
 
       - name: Prepare database
@@ -224,6 +232,8 @@ jobs:
   profiling:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
+    env:
+      BUNDLE_FORCE_RUBY_PLATFORM: "true"
 
     services:
       postgres:
@@ -248,7 +258,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.4.4
+          ruby-version: 4.0.1
           bundler-cache: true
 
       - name: Set up Node
