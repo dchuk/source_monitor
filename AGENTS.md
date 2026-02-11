@@ -1,13 +1,13 @@
 # Repository Guidelines
 
-refer to ./ai/project_overview.md for full scope of this project
+Refer to `CLAUDE.md` for project conventions and skills catalog.
 
-use rbenv for all ruby and bundler/gem commands, not the system ruby
+Use rbenv for all ruby and bundler/gem commands, not the system ruby.
 
 ## Contribution Workflow
 
 - Treat the engine like any external contributor would: no direct commits to `main`.
-- Before writing code, branch off the latest `origin/main` (use a descriptive `feature/` or `bugfix/` prefix) and open a draft PR on `github.com/dchuk/source_monitor` referencing the active `.ai/tasks.md` slice.
+- Before writing code, branch off the latest `origin/main` (use a descriptive `feature/` or `bugfix/` prefix) and open a draft PR on `github.com/dchuk/source_monitor`.
 - Push early and often to that branch so history stays visible; keep commits scoped and rebases local to your branch only.
 - Move the PR out of draft once tests pass and the slice is ready for review; request at least one review and wait for all CI jobs (lint, security, Rails tests + diff coverage) to succeed before merging.
 - The `test` job enforces diff coverage via `bin/check-diff-coverage`; if legitimate gaps remain after new code paths, refresh `config/coverage_baseline.json` by running `bin/test-coverage` followed by `bin/update-coverage-baseline` on the updated branch and commit the regenerated baseline.
@@ -59,7 +59,7 @@ Run `bin/setup` to install gems, prepare the dummy database, and compile Tailwin
 
 ## Coding Style & Naming Conventions
 
-Use two-space indentation and Ruby 3.3 syntax. Keep engine classes under the `SourceMonitor::` namespace; new modules should mirror their directory, e.g., `lib/source_monitor/fetching/pipeline.rb`. Favor service objects ending in `Service`, jobs ending in `Job`, and background channels ending in `Channel`. Rails defaults handle formatting, but run `bundle exec rubocop` (configured via `.rubocop.yml`) before opening a PR. For views, stick with ERB and Tailwind utility classes.
+Use two-space indentation and Ruby 4.0+ syntax. Keep engine classes under the `SourceMonitor::` namespace; new modules should mirror their directory, e.g., `lib/source_monitor/fetching/pipeline.rb`. Favor service objects ending in `Service`, jobs ending in `Job`, and background channels ending in `Channel`. Rails defaults handle formatting, but run `bundle exec rubocop` (configured via `.rubocop.yml`) before opening a PR. For views, stick with ERB and Tailwind utility classes.
 
 ## Testing Guidelines
 
@@ -67,66 +67,29 @@ MiniTest drives coverage (`test/models`, `test/controllers`, `test/system`). Nam
 
 ## Commit & Pull Request Guidelines
 
-Adopt imperative commit messages in the format `scope: action`, e.g., `sources: enforce URL normalization`. Group unrelated work into separate commits. PRs should describe context, summarise the slice delivered, list validation steps (`bin/rails test`, manual fetch run), and reference roadmap items from `.ai/tasks.md`. Include screenshots or console output when altering UI or background jobs. Request at least one review and ensure CI completes before merge.
+Adopt imperative commit messages in the format `scope: action`, e.g., `sources: enforce URL normalization`. Group unrelated work into separate commits. PRs should describe context, summarise the slice delivered, and list validation steps (`bin/rails test`, manual fetch run). Include screenshots or console output when altering UI or background jobs. Request at least one review and ensure CI completes before merge.
 
 ## Security & Configuration Tips
 
 Store secrets (API keys, webhook tokens) in `config/credentials/` and never commit plain-text values. When adding HTTP endpoints or webhooks, default to Solid Queue middleware for retries and respect the allowlist in `config/source_monitor.yml`. Document new environment variables in `config/application.yml.sample` and call out any migrations that impact host apps.
 
-# Clean coding guidelines
+## Clean Coding Principles
 
-Object Orientated Design: You should write code that embraces change. Here’s how…
+- **SRP**: Classes and methods should have a single responsibility.
+- **DRY**: Avoid duplication; changes should only need one edit.
+- **Depend on behaviour, not data**: Wrap instance variables in methods (`attr_reader`); use Struct for data structures.
+- **Minimise dependencies**: Use dependency injection, encapsulate external messages, prefer hash arguments.
+- **Depend on things that change less often than you do.**
 
-SRP: A class should do the smallest possible useful thing; it should have a single responsibility. A class that has more than one responsibility is difficult to reuse. SRP requires that a class be cohesive, that everything the class does be highly related to its purpose. A class that is easy to reuse will make the application easier to change.
+## Claude Code Skills
 
-Methods, like classes, should have a single responsibility. All of the same reasons apply, having just one responsibility makes them easy to change and easy to reuse.
+SourceMonitor ships 14 engine-specific Claude Code skills (`sm-*` prefix) covering the domain model, configuration DSL, pipeline stages, testing conventions, and more. Skills are distributed with the gem and installed into `.claude/skills/` via rake tasks:
 
-DRY: DRY code tolerates change because any change in behaviour can be made by changing code in just one place.
+```bash
+bin/rails source_monitor:skills:install        # Consumer skills (host app integration)
+bin/rails source_monitor:skills:contributor     # Contributor skills (engine development)
+bin/rails source_monitor:skills:all            # All skills
+bin/rails source_monitor:skills:remove         # Remove all sm-* skills
+```
 
-Depend on behaviour not data:
-
-Hide instance variables by wrapping them in a method, an attr_reader. The method changes a variable from data ( which is referenced all over) to behaviour (which is defined once). This means if you need to adjust the data you only have to make a change in one place.
-
-Hide data structures using the Struct class.
-
-Minimise Dependencies: An object depends on another object if, when one object changes, the other might be forced to change in turn. An object has a dependency when it knows:
-
-The name of another class.
-
-The name of a message that it intends to send to someone other than self.
-
-The arguments that a message requires.
-
-The order of those arguments.
-
-Dependency Injection: Addresses the first dependency. It decouples two objects by moving the creation of object_A outside of object_B eg:
-
-object_A.new(1,2,object_B.new)
-
-Encapsulation: Addresses the second dependency. Create wrapper methods so that external messages are isolated in one place. The wrapper method is called throughout the class, rather than sending messages externally.
-
-Use hashes for initialization arguments: this addresses the final dependencies.
-
-Depend on things that change less often than you do
-
-## Agent Notes (2025-10-08)
-
-- Finished roadmap section 05.03 (structured fetch error handling). Added `SourceMonitor::Fetching::FetchError` hierarchy, expanded `FeedFetcher` error handling, and ensured instrumentation payloads include success/error context.
-- Fetch attempts now always create `FetchLog` records and update `Source` failure state; added MiniTest coverage for timeout, HTTP 404, and malformed feed scenarios.
-- Relevant tests: `bundle exec rails test test/lib/source_monitor/fetching/feed_fetcher_test.rb` and full suite via `bundle exec rails test` (both passing).
-- Next roadmap item is 05.04 (not started). Untracked tmp dir `test/lib/tmp` can be safely ignored if it reappears.
-
-## Agent Notes (2025-10-09)
-
-- Introduced `SourceMonitor::Scrapers::Base`, establishing the scraper adapter contract and Result object. Subclasses merge default, source, and invocation settings (HashWithIndifferentAccess) and must return a Result with status/html/content/metadata. Use `SourceMonitor::Scrapers::Base.call(item:, source:, settings:, http:)` to execute adapters.
-- Added Readability scraper adapter leveraging SourceMonitor::HTTP, Nokolexbor, and ruby-readability. Supports override selectors via `scrape_settings[:selectors]`, records extraction metadata including strategy and inferred status, and returns structured failure results on HTTP errors.
-- Extracted scraper HTTP fetching and parsing into dedicated collaborators (`SourceMonitor::Scrapers::Fetchers::HttpFetcher` and `SourceMonitor::Scrapers::Parsers::ReadabilityParser`). The adapter now orchestrates these services, simplifying future parser additions while keeping failure metadata consistent.
-- Added Readability scraper adapter leveraging SourceMonitor::HTTP, Nokolexbor, and ruby-readability. Supports override selectors via `scrape_settings[:selectors]`, records extraction metadata including strategy and inferred status, and returns structured failure results on HTTP errors.
-- Phase 07.03 complete: introduced `SourceMonitor::ItemContent` table with one-to-one association, virtual accessors on `Item`, and migration that backfills existing scraped data while dropping legacy columns. Clearing both fields now removes the content row. Run `bundle exec rails db:migrate` in host apps after upgrading.
-- Phase 07.04 complete: added `SourceMonitor::Scraping::ItemScraper` service with log recording, manual scrape controls in the item admin, and a dedicated scraping configuration section on the source form. Item show page now highlights content comparisons, status badges, and recent scrape errors. System coverage updated to exercise the manual scraping flow.
-- Phase 08.02 complete: created `SourceMonitor::FetchFeedJob`, introduced `SourceMonitor::Fetching::FetchRunner` with Postgres advisory locking, and added a temporary `ScrapeItemJob` stub so new items from auto-scrape sources are queued with `scrape_status` set to `pending`. Manual fetch UI now reuses the runner, and tests cover job retry behavior plus follow-up scraping enqueue (`bundle exec rails test test/lib/source_monitor/fetching/fetch_runner_test.rb`, `bundle exec rails test test/jobs/source_monitor/fetch_feed_job_test.rb`, and `bundle exec rails test test/lib/source_monitor/fetching/feed_fetcher_test.rb`).
-- Phase 08.03 complete: implemented `SourceMonitor::Scraping::Enqueuer` with deduplication/auto-scrape guards, promoted `SourceMonitor::ScrapeItemJob` to execute `ItemScraper`, and updated the manual item view to enqueue jobs instead of running scrapes inline. Added unit coverage for the enqueuer/job plus refreshed the manual scrape system test (`bundle exec rails test test/lib/source_monitor/scraping/enqueuer_test.rb test/jobs/source_monitor/scrape_item_job_test.rb test/system/items_test.rb test/lib/source_monitor/fetching/fetch_runner_test.rb`).
-- Phase 08.04 complete: manual "Fetch Now" now queues `FetchFeedJob` via `FetchRunner.enqueue`, dashboard shows live queue metrics from `SourceMonitor::Jobs::Visibility`, and optional Mission Control link appears when configured. System tests updated to assert job enqueues (`test/system/sources_test.rb`, `test/system/items_test.rb`, `test/system/dashboard_test.rb`); run `bundle exec rails test test/system` after UI tweaks.
-- Install generator now also creates `config/initializers/source_monitor.rb` with documented defaults for queue settings, metrics, and Mission Control hooks. Update the initializer if future configuration options are added.
-- `SourceMonitor.mission_control_dashboard_path` now validates that the configured path exists before rendering a dashboard link, preventing 404s when Mission Control isn't mounted yet. Template comments outline how to mount the engine when enabling it.
-- `test/dummy/bin/dev` now runs the Rails server with `BUNDLE_GEMFILE` pointing at the dummy app, so dummy-only gems (like mission_control-jobs) load correctly while the Tailwind watcher still uses the engine's Gemfile.
+See `CLAUDE.md` for the full skills catalog and usage details.

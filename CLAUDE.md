@@ -45,7 +45,7 @@ Run /vbw:help for all commands.
 
 | Layer | Technology |
 |-------|------------|
-| Ruby | 3.4+ |
+| Ruby | 4.0+ |
 | Rails | 8.x |
 | Testing | Minitest (no fixtures -- uses factory helpers + WebMock/VCR) |
 | Authorization | Host app responsibility (mountable engine) |
