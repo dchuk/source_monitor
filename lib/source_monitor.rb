@@ -161,6 +161,8 @@ module SourceMonitor
     autoload :InstallGenerator, "source_monitor/setup/install_generator"
     autoload :MigrationInstaller, "source_monitor/setup/migration_installer"
     autoload :InitializerPatcher, "source_monitor/setup/initializer_patcher"
+    autoload :ProcfilePatcher, "source_monitor/setup/procfile_patcher"
+    autoload :QueueConfigPatcher, "source_monitor/setup/queue_config_patcher"
     autoload :Workflow, "source_monitor/setup/workflow"
     autoload :CLI, "source_monitor/setup/cli"
 

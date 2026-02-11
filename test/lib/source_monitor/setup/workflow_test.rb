@@ -57,6 +57,8 @@ module SourceMonitor
         install_generator = Spy.new
         migration_installer = Spy.new
         initializer_patcher = Spy.new
+        procfile_patcher = Spy.new(true)
+        queue_config_patcher = Spy.new(true)
         skills_installer = Spy.new({ installed: [], skipped: [] })
 
         prompter = Minitest::Mock.new
@@ -75,6 +77,8 @@ module SourceMonitor
           install_generator: install_generator,
           migration_installer: migration_installer,
           initializer_patcher: initializer_patcher,
+          procfile_patcher: procfile_patcher,
+          queue_config_patcher: queue_config_patcher,
           devise_detector: -> { true },
           verifier: verifier,
           skills_installer: skills_installer
@@ -89,6 +93,8 @@ module SourceMonitor
         assert_equal "/admin/monitor", install_generator.calls.first[2][:mount_path]
         assert_equal :install, migration_installer.calls.first.first
         assert_equal :ensure_navigation_hint, initializer_patcher.calls.first.first
+        assert_equal :patch, procfile_patcher.calls.first.first
+        assert_equal :patch, queue_config_patcher.calls.first.first
         initializer_patcher.calls.detect { |call| call.first == :ensure_devise_hooks }
         assert_equal :call, verifier.calls.first.first
 
@@ -130,6 +136,8 @@ module SourceMonitor
           node_installer: Spy.new,
           install_generator: Spy.new,
           migration_installer: Spy.new,
+          procfile_patcher: Spy.new(true),
+          queue_config_patcher: Spy.new(true),
           verifier: Spy.new(StubSummary.new),
           skills_installer: Spy.new({ installed: [], skipped: [] })
         )
@@ -161,6 +169,8 @@ module SourceMonitor
           install_generator: Spy.new,
           migration_installer: Spy.new,
           initializer_patcher: Spy.new,
+          procfile_patcher: Spy.new(true),
+          queue_config_patcher: Spy.new(true),
           verifier: Spy.new(StubSummary.new),
           skills_installer: skills_installer
         )
@@ -195,6 +205,8 @@ module SourceMonitor
           install_generator: Spy.new,
           migration_installer: Spy.new,
           initializer_patcher: Spy.new,
+          procfile_patcher: Spy.new(true),
+          queue_config_patcher: Spy.new(true),
           verifier: Spy.new(StubSummary.new),
           skills_installer: skills_installer
         )
@@ -229,6 +241,8 @@ module SourceMonitor
           install_generator: Spy.new,
           migration_installer: Spy.new,
           initializer_patcher: Spy.new,
+          procfile_patcher: Spy.new(true),
+          queue_config_patcher: Spy.new(true),
           verifier: Spy.new(StubSummary.new),
           skills_installer: skills_installer
         )
