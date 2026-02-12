@@ -1137,6 +1137,26 @@ module SourceMonitor
         assert_equal 0.0, fetcher.send(:configured_non_negative, -5, 0.1)
       end
 
+      # ── Task 6: SSL cert store regression test ──
+
+      test "fetches Netflix Tech Blog feed via Medium RSS" do
+        source = build_source(
+          name: "Netflix Tech Blog",
+          feed_url: "https://netflixtechblog.com/feed"
+        )
+
+        result = nil
+        VCR.use_cassette("source_monitor/fetching/netflix_medium_rss") do
+          result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+        end
+
+        assert_equal :fetched, result.status
+        assert_not_nil result.feed
+        assert_kind_of Feedjira::Parser::RSS, result.feed
+        assert result.feed.entries.any?, "Expected at least one feed entry"
+        assert_match(/netflix/i, result.feed.title.to_s)
+      end
+
       test "configured_non_negative returns zero for zero value" do
         url = "https://example.com/config-nn-zero.xml"
         source = build_source(name: "Config NN Zero", feed_url: url)
