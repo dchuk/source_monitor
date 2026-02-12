@@ -856,5 +856,42 @@ module SourceMonitor
 
       assert_equal [ [ :callable, handler.object_id ], {} ], signature
     end
+
+    # =========================================================================
+    # Images settings (Plan 05-01)
+    # =========================================================================
+
+    test "images settings accessible via config" do
+      assert_instance_of SourceMonitor::Configuration::ImagesSettings, SourceMonitor.config.images
+    end
+
+    test "images download_to_active_storage defaults to false" do
+      assert_equal false, SourceMonitor.config.images.download_to_active_storage
+    end
+
+    test "images settings configurable via configure block" do
+      SourceMonitor.configure do |config|
+        config.images.download_to_active_storage = true
+        config.images.max_download_size = 5 * 1024 * 1024
+        config.images.download_timeout = 15
+        config.images.allowed_content_types = %w[image/jpeg]
+      end
+
+      images = SourceMonitor.config.images
+      assert_equal true, images.download_to_active_storage
+      assert_equal 5 * 1024 * 1024, images.max_download_size
+      assert_equal 15, images.download_timeout
+      assert_equal %w[image/jpeg], images.allowed_content_types
+    end
+
+    test "reset_configuration resets images settings" do
+      SourceMonitor.configure do |config|
+        config.images.download_to_active_storage = true
+      end
+
+      SourceMonitor.reset_configuration!
+
+      assert_equal false, SourceMonitor.config.images.download_to_active_storage
+    end
   end
 end

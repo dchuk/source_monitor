@@ -199,5 +199,36 @@ module SourceMonitor
         assert_equal 5, @settings.min_interval_minutes
       end
     end
+
+    class ImagesSettingsInSettingsTest < ActiveSupport::TestCase
+      setup do
+        @settings = ImagesSettings.new
+      end
+
+      test "has sensible defaults" do
+        assert_equal false, @settings.download_to_active_storage
+        assert_equal 10 * 1024 * 1024, @settings.max_download_size
+        assert_equal 30, @settings.download_timeout
+        assert_equal %w[image/jpeg image/png image/gif image/webp image/svg+xml], @settings.allowed_content_types
+      end
+
+      test "reset restores defaults" do
+        @settings.download_to_active_storage = true
+        @settings.max_download_size = 1
+        @settings.reset!
+        assert_equal false, @settings.download_to_active_storage
+        assert_equal 10 * 1024 * 1024, @settings.max_download_size
+      end
+
+      test "download_enabled? reflects download_to_active_storage" do
+        assert_equal false, @settings.download_enabled?
+        @settings.download_to_active_storage = true
+        assert_equal true, @settings.download_enabled?
+      end
+
+      test "config.images is an ImagesSettings instance" do
+        assert_instance_of ImagesSettings, SourceMonitor.config.images
+      end
+    end
   end
 end
