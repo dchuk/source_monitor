@@ -87,6 +87,10 @@ module SourceMonitor
     autoload :HealthCheckBroadcaster, "source_monitor/import_sessions/health_check_broadcaster"
   end
 
+  module Images
+    autoload :ContentRewriter, "source_monitor/images/content_rewriter"
+  end
+
   module Items
     autoload :ItemCreator, "source_monitor/items/item_creator"
     autoload :RetentionPruner, "source_monitor/items/retention_pruner"
