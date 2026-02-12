@@ -13,7 +13,10 @@ module SourceMonitor
         :retry_interval,
         :retry_interval_randomness,
         :retry_backoff_factor,
-        :retry_statuses
+        :retry_statuses,
+        :ssl_ca_file,
+        :ssl_ca_path,
+        :ssl_verify
 
       def initialize
         reset!
@@ -31,6 +34,9 @@ module SourceMonitor
         @retry_interval_randomness = 0.5
         @retry_backoff_factor = 2
         @retry_statuses = nil
+        @ssl_ca_file = nil
+        @ssl_ca_path = nil
+        @ssl_verify = true
       end
 
       private
