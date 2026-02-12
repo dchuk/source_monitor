@@ -21,6 +21,15 @@
             <div class="mt-1 text-xs text-slate-500">
               <%= event[:description].presence || "No additional details recorded." %>
             </div>
+            <% if event[:url_display].present? %>
+              <div class="mt-0.5 text-xs text-slate-400 truncate max-w-sm" data-testid="event-url-display">
+                <% if event[:url_href].present? %>
+                  <%= external_link_to event[:url_display], event[:url_href], class: "text-slate-400 hover:text-blue-500" %>
+                <% else %>
+                  <%= event[:url_display] %>
+                <% end %>
+              </div>
+            <% end %>
           </div>
           <div class="text-right">
             <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold <%= event[:status] == :success ? "bg-green-100 text-green-700" : "bg-rose-100 text-rose-700" %>">

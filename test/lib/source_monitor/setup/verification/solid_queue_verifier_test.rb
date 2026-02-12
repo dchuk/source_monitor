@@ -43,6 +43,7 @@ module SourceMonitor
 
           assert_equal :warning, result.status
           assert_match(/No Solid Queue workers/, result.details)
+          assert_match(/Procfile\.dev/, result.remediation)
         end
 
         test "errors when tables missing" do

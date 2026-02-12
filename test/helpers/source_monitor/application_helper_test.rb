@@ -236,5 +236,42 @@ module SourceMonitor
       refute badge[:show_spinner]
       assert_match(/slate/, badge[:classes])
     end
+
+    test "external_link_to renders link with target blank and icon" do
+      result = external_link_to("Example", "https://example.com")
+      assert_includes result, 'target="_blank"'
+      assert_includes result, 'rel="noopener noreferrer"'
+      assert_includes result, "Example"
+      assert_includes result, "<svg"
+    end
+
+    test "external_link_to returns plain label when url is blank" do
+      result = external_link_to("No URL", nil)
+      assert_equal "No URL", result
+    end
+
+    test "external_link_to returns plain label when url is empty string" do
+      result = external_link_to("No URL", "")
+      assert_equal "No URL", result
+    end
+
+    test "external_link_to accepts custom css class" do
+      result = external_link_to("Link", "https://example.com", class: "custom-class")
+      assert_includes result, "custom-class"
+    end
+
+    test "domain_from_url extracts host from valid URL" do
+      assert_equal "example.com", domain_from_url("https://example.com/path")
+      assert_equal "blog.example.org", domain_from_url("https://blog.example.org/feed.xml")
+    end
+
+    test "domain_from_url returns nil for blank URL" do
+      assert_nil domain_from_url(nil)
+      assert_nil domain_from_url("")
+    end
+
+    test "domain_from_url returns nil for invalid URL" do
+      assert_nil domain_from_url("not a url %%%")
+    end
   end
 end

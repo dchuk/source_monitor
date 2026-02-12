@@ -21,7 +21,7 @@ module SourceMonitor
           if recent
             ok_result("Solid Queue workers are reporting heartbeats")
           else
-            warning_result("No Solid Queue workers have reported in the last #{DEFAULT_HEARTBEAT_THRESHOLD.inspect}", "Start a Solid Queue worker with `bin/rails solid_queue:start` and ensure it stays running")
+            warning_result("No Solid Queue workers have reported in the last #{DEFAULT_HEARTBEAT_THRESHOLD.inspect}", "Start a Solid Queue worker with `bin/rails solid_queue:start` or add `jobs: bundle exec rake solid_queue:start` to Procfile.dev and run `bin/dev`")
           end
         rescue StandardError => e
           error_result("Solid Queue verification failed: #{e.message}", "Verify Solid Queue migrations are up to date and workers can access the database")

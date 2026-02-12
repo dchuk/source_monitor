@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "openssl"
 require "faraday"
 require "faraday/retry"
 require "faraday/follow_redirects"
@@ -57,7 +58,29 @@ module SourceMonitor
           connection.headers[key] = value
         end
 
+        configure_ssl(connection, settings)
+
         connection.adapter Faraday.default_adapter
+      end
+
+      # Configure SSL to use a proper cert store. Without this, some systems
+      # fail to verify certificate chains that depend on intermediate CAs
+      # (e.g., Medium/Netflix on AWS). OpenSSL::X509::Store#set_default_paths
+      # loads all system-trusted CAs including intermediates.
+      def configure_ssl(connection, settings)
+        connection.ssl.verify = settings.ssl_verify != false
+
+        if settings.ssl_ca_file
+          connection.ssl.ca_file = settings.ssl_ca_file
+        elsif settings.ssl_ca_path
+          connection.ssl.ca_path = settings.ssl_ca_path
+        else
+          connection.ssl.cert_store = default_cert_store
+        end
+      end
+
+      def default_cert_store
+        OpenSSL::X509::Store.new.tap(&:set_default_paths)
       end
 
       def default_headers(settings)

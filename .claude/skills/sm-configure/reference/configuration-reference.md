@@ -309,6 +309,39 @@ end
 
 ---
 
+## Images Settings (`config.images`)
+
+Class: `SourceMonitor::Configuration::ImagesSettings`
+
+Controls background downloading of inline images from feed content to Active Storage.
+
+**Prerequisite:** The host app must have Active Storage installed (`rails active_storage:install` + migrations).
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| `download_to_active_storage` | Boolean | `false` | Enable background image downloading for new items |
+| `max_download_size` | Integer | `10485760` (10 MB) | Maximum image file size in bytes; larger images are skipped |
+| `download_timeout` | Integer | `30` | HTTP timeout for image downloads in seconds |
+| `allowed_content_types` | Array | `["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"]` | Permitted MIME types for downloaded images |
+
+### Helper Method
+
+| Method | Returns | Description |
+|---|---|---|
+| `download_enabled?` | Boolean | Returns `true` when `download_to_active_storage` is truthy |
+
+```ruby
+# Enable image downloading with custom limits
+config.images.download_to_active_storage = true
+config.images.max_download_size = 5 * 1024 * 1024  # 5 MB
+config.images.download_timeout = 15
+config.images.allowed_content_types = %w[image/jpeg image/png image/webp]
+```
+
+When enabled, `DownloadContentImagesJob` is automatically enqueued after new items are created from feed entries. The job downloads inline `<img>` images from `item.content`, attaches them to `item_content.images` via Active Storage, and rewrites the HTML with Active Storage serving URLs. Failed downloads gracefully preserve the original image URL.
+
+---
+
 ## Environment Variables
 
 | Variable | Purpose |

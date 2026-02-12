@@ -134,6 +134,15 @@
               <% else %>
                 <%= row.primary_label %>
               <% end %>
+              <% if row.url_label.present? %>
+                <div class="mt-0.5 text-xs text-slate-400 truncate max-w-xs">
+                  <% if row.url_href.present? %>
+                    <%= external_link_to row.url_label, row.url_href, class: "text-slate-400 hover:text-blue-500" %>
+                  <% else %>
+                    <%= row.url_label %>
+                  <% end %>
+                </div>
+              <% end %>
             </td>
             <td class="px-6 py-4 text-sm">
               <% if row.source_path %>

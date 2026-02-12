@@ -86,6 +86,7 @@ production:
   dispatchers:
     - polling_interval: 1
       batch_size: 500
+      recurring_schedule: config/recurring.yml
   workers:
     - queues: "source_monitor_fetch"
       threads: 2
@@ -99,7 +100,39 @@ production:
 bin/rails solid_queue:start
 ```
 
+### Phase 6a: Procfile.dev for Development (Automatic)
+
+The install generator automatically patches `Procfile.dev` with a `jobs:` entry for Solid Queue. If no `Procfile.dev` exists, it creates one with `web:` and `jobs:` entries. If the file exists but lacks a `jobs:` entry, it appends one. This is idempotent -- re-running the generator is safe.
+
+Verify after running the generator:
+```
+# Expected Procfile.dev content:
+web: bin/rails server -p 3000
+jobs: bundle exec rake solid_queue:start
+```
+
+If the entry is missing, re-run: `bin/rails generate source_monitor:install`
+
+### Phase 6b: Recurring Schedule Dispatcher Wiring (Automatic)
+
+The install generator automatically patches `config/queue.yml` dispatchers with `recurring_schedule: config/recurring.yml`. If no dispatchers section exists, it creates a default one. This is idempotent -- re-running the generator is safe.
+
+Verify after running the generator:
+```yaml
+# Expected in config/queue.yml under dispatchers:
+dispatchers:
+  - polling_interval: 1
+    batch_size: 500
+    recurring_schedule: config/recurring.yml
+```
+
+If the key is missing, re-run: `bin/rails generate source_monitor:install`
+
+**Diagnostics:** Run `bin/source_monitor verify` to check that recurring tasks are registered. The RecurringScheduleVerifier will warn if no SourceMonitor recurring tasks are found in Solid Queue.
+
 - [ ] Queue configuration includes `source_monitor_fetch` and `source_monitor_scrape`
+- [x] `Procfile.dev` includes a `jobs:` entry for Solid Queue (handled by generator)
+- [x] Dispatcher config includes `recurring_schedule: config/recurring.yml` (handled by generator)
 - [ ] Workers started and processing
 
 ## Phase 7: Verify Installation

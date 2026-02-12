@@ -1,0 +1,94 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://netflixtechblog.com/feed
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - SourceMonitor/0.3.3
+      Accept:
+      - application/rss+xml, application/atom+xml, application/json;q=0.9, text/xml;q=0.8
+      Accept-Encoding:
+      - gzip,deflate
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - text/xml; charset=UTF-8
+      Server:
+      - nginx
+      Date:
+      - Wed, 12 Feb 2026 15:45:54 GMT
+      Cache-Control:
+      - private, must-revalidate, max-age=900
+      X-Content-Type-Options:
+      - nosniff
+      Medium-Fulfilled-By:
+      - valencia/main-20260212-143917-dc22615be3
+      Etag:
+      - W/"netflix-feed-abc123"
+    body:
+      encoding: UTF-8
+      string: "<?xml version='1.0' encoding='UTF-8'?><rss xmlns:atom='http://www.w3.org/2005/Atom'
+        xmlns:cc='http://cyber.law.harvard.edu/rss/creativeCommonsRssModule.html'
+        xmlns:content='http://purl.org/rss/1.0/modules/content/' xmlns:dc='http://purl.org/dc/elements/1.1/'
+        version='2.0'>\n    <channel>\n        <title><![CDATA[Netflix TechBlog -
+        Medium]]></title>\n        <description><![CDATA[Learn about Netflix’s world
+        class engineering efforts, company culture, product developments and more.
+        - Medium]]></description>\n        <link>https://netflixtechblog.com?source=rss----2615bd06b42e---4</link>\n
+        \       <image>\n            <url>https://cdn-images-1.medium.com/proxy/1*TGH72Nnw24QL3iV9IOm4VA.png</url>\n
+        \           <title>Netflix TechBlog - Medium</title>\n            <link>https://netflixtechblog.com?source=rss----2615bd06b42e---4</link>\n
+        \       </image>\n        <generator>Medium</generator>\n        <lastBuildDate>Thu,
+        12 Feb 2026 15:35:27 GMT</lastBuildDate>\n        <atom:link href='https://netflixtechblog.com/feed'
+        rel='self' type='application/rss+xml'/>\n        <webMaster><![CDATA[yourfriends@medium.com]]></webMaster>\n
+        \       <atom:link href='http://medium.superfeedr.com' rel='hub'/>\n        <item>\n
+        \           <title><![CDATA[Automating RDS Postgres to Aurora Postgres Migration]]></title>\n
+        \           <link>https://netflixtechblog.com/automating-rds-postgres-to-aurora-postgres-migration-261ca045447f?source=rss----2615bd06b42e---4</link>\n
+        \           <guid isPermaLink='false'>https://medium.com/p/261ca045447f</guid>\n
+        \           <category><![CDATA[postgresql]]></category>\n            <category><![CDATA[aurora]]></category>\n
+        \           <category><![CDATA[netflix]]></category>\n            <category><![CDATA[postgres]]></category>\n
+        \           <category><![CDATA[database-migration]]></category>\n            <dc:creator><![CDATA[Netflix
+        Technology Blog]]></dc:creator>\n            <pubDate>Thu, 12 Feb 2026 14:07:19
+        GMT</pubDate>\n            <atom:updated>2026-02-12T14:07:21.275Z</atom:updated>\n
+        \           <content:encoded>&lt;p&gt;&lt;a href=&quot;https://www.linkedin.com/in/ramsrivatsa/&quot;&gt;Ram
+        Srivasta Kannan,&lt;/a&gt; &lt;a href=&quot;https://www.linkedin.com/in/wale-akintayo-30782a82/&quot;&gt;Wale
+        Akintayo&lt;/a&gt;, &lt;a href=&quot;https://www.linkedin.com/in/jay-bharadwaj-4b310ab8/&quot;&gt;Jay
+        Bharadwaj&lt;/a&gt;, &lt;a href=&quot;https://www.linkedin.com/in/john-crimmins-39730b3a/&quot;&gt;John
+        Crimmins&lt;/a&gt;, &lt;a href=&quot;https://www.linkedin.com/in/shengwei4721/&quot;&gt;Shengwei
+        Wang,&lt;/a&gt; &lt;a href=&quot;https://www.linkedin.com/in/zhitao-cathy-zhu/&quot;&gt;Zhitaou Zhu&lt;/a&gt;&lt;/p&gt;&lt;h3&gt;Introduction&lt;/h3&gt;&lt;p&gt;In
+        2024, &lt;!-- truncated for test --&gt;</content:encoded>\n        </item>\n
+        \       <item>\n            <title><![CDATA[The AI Evolution of Graph Search
+        at Netflix]]></title>\n            <link>https://netflixtechblog.com/the-ai-evolution-of-graph-search-at-netflix-d416ec5b1151?source=rss----2615bd06b42e---4</link>\n
+        \           <guid isPermaLink='false'>https://medium.com/p/d416ec5b1151</guid>\n
+        \           <category><![CDATA[search-engines]]></category>\n            <category><![CDATA[graphql]]></category>\n
+        \           <category><![CDATA[software-engineering]]></category>\n            <category><![CDATA[ai]]></category>\n
+        \           <category><![CDATA[llm]]></category>\n            <dc:creator><![CDATA[Netflix
+        Technology Blog]]></dc:creator>\n            <pubDate>Mon, 26 Jan 2026 19:01:27
+        GMT</pubDate>\n            <atom:updated>2026-01-27T18:50:19.610Z</atom:updated>\n
+        \           <content:encoded>&lt;h3&gt;The AI Evolution of Graph Search at
+        Netflix: From Structured Queries to Natural Language&lt;/h3&gt;&lt;p&gt;By
+        &lt;a href=&quot;https://www.linkedin.com/in/ahutter/&quot;&gt;Alex Hutter&lt;/a&gt;
+        and &lt;a href=&quot;https://www.linkedin.com/in/bartosz-balukiewicz/&quot;&gt;Bartosz
+        Balukiewicz&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Our previous blog posts (&lt;a href=&quot;https://netflixtechblog.com/how-netflix-content-engineering-makes-a-federated-graph-searchable-5c0c1c7d7eaf&quot;&gt;part
+        1&lt;/a&gt;, &lt;a href=&quot;https://netflixtechblog.com/how-netflix-content-engineering-makes-a-federated-&lt;!--
+        truncated for test --&gt;</content:encoded>\n        </item>\n        <item>\n
+        \           <title><![CDATA[How Temporal Powers Reliable Cloud Operations
+        at Netflix]]></title>\n            <link>https://netflixtechblog.com/how-temporal-powers-reliable-cloud-operations-at-netflix-73c69ccb5953?source=rss----2615bd06b42e---4</link>\n
+        \           <guid isPermaLink='false'>https://medium.com/p/73c69ccb5953</guid>\n
+        \           <dc:creator><![CDATA[Netflix Technology Blog]]></dc:creator>\n
+        \           <pubDate>Mon, 15 Dec 2025 23:51:59 GMT</pubDate>\n            <atom:updated>2025-12-16T00:01:15.478Z</atom:updated>\n
+        \           <content:encoded>&lt;p&gt;By &lt;a href=&quot;https://www.linkedin.com/in/jacobmeyers35/&quot;&gt;Jacob
+        Meyers&lt;/a&gt; and &lt;a href=&quot;https://www.linkedin.com/in/robzienert/&quot;&gt;Rob Zienert&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;a
+        href=&quot;https://temporal.io/&quot;&gt;Temporal&lt;/a&gt; is a &lt;a href=&quot;https://docs.temporal.io/evaluate/understanding-temporal#durable-execution&quot;&gt;Durable
+        Execution&lt;/a&gt; platform which allows you to write code “as if failures
+        don’t exist”. It’s become increasingly critical to Netflix since its initial
+        adoption in 2021, with users ranging from the operators of o&lt;!-- truncated
+        for test --&gt;</content:encoded>\n        </item>\n        \n        \n        \n
+        \       \n        \n        \n        \n    </channel>\n</rss>"
+  recorded_at: Wed, 12 Feb 2026 15:45:54 GMT
+recorded_with: VCR 6.3.1

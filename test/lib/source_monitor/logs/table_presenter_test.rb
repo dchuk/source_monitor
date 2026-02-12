@@ -74,6 +74,8 @@ module SourceMonitor
         assert_equal "scrape-#{@scrape_log.id}", scrape_row.dom_id
         assert_equal "scrape", scrape_row.type_slug
         assert_equal item_path(@item), scrape_row.primary_path
+        assert_equal "https://example.com/articles/presenter", scrape_row.url_label
+        assert_equal "https://example.com/articles/presenter", scrape_row.url_href
 
         assert_equal "Fetch", fetch_row.type_label
         assert_equal "Presenter Source", fetch_row.primary_label
@@ -89,6 +91,8 @@ module SourceMonitor
         assert_equal "fetch", fetch_row.type_slug
         assert_equal "Presenter Source", fetch_row.primary_label
         assert_equal source_path(@source), fetch_row.primary_path
+        assert_equal URI.parse(@source.feed_url).host, fetch_row.url_label
+        assert_equal @source.feed_url, fetch_row.url_href
 
         assert_equal "Health Check", health_row.type_label
         assert_equal "Presenter Source", health_row.primary_label
@@ -105,6 +109,8 @@ module SourceMonitor
         refute health_row.fetch?
         refute health_row.scrape?
         assert_equal source_path(@source), health_row.primary_path
+        assert_nil health_row.url_label
+        assert_nil health_row.url_href
       end
     end
   end

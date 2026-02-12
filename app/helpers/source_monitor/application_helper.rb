@@ -212,7 +212,45 @@ module SourceMonitor
       end
     end
 
+    # Renders a clickable link that opens in a new tab with an external-link icon.
+    # Returns the label as plain text if the URL is blank.
+    def external_link_to(label, url, **options)
+      return label if url.blank?
+
+      css = options.delete(:class) || "text-blue-600 hover:text-blue-500"
+      link_to(url, target: "_blank", rel: "noopener noreferrer", class: css, title: url, **options) do
+        safe_join([ label, " ", external_link_icon ])
+      end
+    end
+
+    # Extracts the domain from a URL, returning nil if parsing fails.
+    def domain_from_url(url)
+      return nil if url.blank?
+
+      URI.parse(url.to_s).host
+    rescue URI::InvalidURIError
+      nil
+    end
+
     private
+
+    def external_link_icon
+      tag.svg(
+        class: "inline-block h-3 w-3 text-slate-400",
+        xmlns: "http://www.w3.org/2000/svg",
+        fill: "none",
+        viewBox: "0 0 24 24",
+        stroke_width: "2",
+        stroke: "currentColor",
+        aria: { hidden: "true" }
+      ) do
+        tag.path(
+          stroke_linecap: "round",
+          stroke_linejoin: "round",
+          d: "M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+        )
+      end
+    end
 
     def derive_item_scrape_status(item:, source: nil)
       return "idle" unless item
