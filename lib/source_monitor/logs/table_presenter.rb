@@ -61,6 +61,22 @@ module SourceMonitor
           end
         end
 
+        def url_label
+          if fetch?
+            domain_from_feed_url
+          elsif scrape?
+            entry.item&.url
+          end
+        end
+
+        def url_href
+          if fetch?
+            entry.source&.feed_url
+          elsif scrape?
+            entry.item&.url
+          end
+        end
+
         def source_label
           entry.source&.name
         end
@@ -142,6 +158,15 @@ module SourceMonitor
         private
 
         attr_reader :entry, :url_helpers
+
+        def domain_from_feed_url
+          feed_url = entry.source&.feed_url
+          return nil if feed_url.blank?
+
+          URI.parse(feed_url.to_s).host
+        rescue URI::InvalidURIError
+          nil
+        end
       end
 
       def initialize(entries:, url_helpers:)
