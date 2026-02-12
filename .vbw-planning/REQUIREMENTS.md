@@ -32,6 +32,28 @@ Core value: Drop-in Rails engine for feed monitoring, content scraping, and oper
 - [ ] **REQ-14**: Audit and fix any RuboCop violations against omakase ruleset
 - [ ] **REQ-15**: Ensure all models, controllers, and service objects follow Rails conventions
 
+### Generator Enhancements
+
+- [ ] **REQ-16**: Install generator patches `Procfile.dev` with a `jobs:` entry for Solid Queue
+- [ ] **REQ-17**: Install generator patches queue config dispatcher with `recurring_schedule: config/recurring.yml`
+- [ ] **REQ-18**: Guided workflow (`Setup::Workflow`) integrates both new generator steps
+- [ ] **REQ-19**: `RecurringScheduleVerifier` checks that recurring tasks are registered with Solid Queue
+- [ ] **REQ-20**: `SolidQueueVerifier` remediation suggests `Procfile.dev` when workers not detected
+- [ ] **REQ-21**: Skills and documentation updated to reflect automated Procfile.dev and recurring_schedule setup
+
+### Dashboard UX
+
+- [ ] **REQ-22**: Fetch logs show source URL for both success and failure entries on the dashboard
+- [ ] **REQ-23**: Dashboard links to sources and items are clickable and open in a new tab
+
+### Active Storage Image Downloads
+
+- [ ] **REQ-24**: Configurable option to download inline images from items to Active Storage instead of loading from source
+
+### Feed Compatibility
+
+- [ ] **REQ-25**: Investigate and fix failing fetch for Netflix Tech Blog feed (https://netflixtechblog.com/feed)
+
 ## v2 Requirements
 
 - [ ] **REQ-XX**: Improve optional dependency loading with clear error messages

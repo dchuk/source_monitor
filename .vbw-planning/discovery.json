@@ -19,6 +19,8 @@
     "User wants comprehensive cleanup, not surface-level",
     "Public API changes are acceptable for convention alignment",
     "Tests should be updated to match any changes, not removed",
-    "All layers: models, controllers, services, dead code"
+    "All layers: models, controllers, services, dead code",
+    "Generator should be maximally helpful -- create files rather than just warn",
+    "Target Rails 8 defaults (queue.yml) rather than supporting legacy naming"
   ]
 }
