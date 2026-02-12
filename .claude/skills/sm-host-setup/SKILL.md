@@ -73,11 +73,9 @@ bin/rails db:migrate
 # 5. Start background workers (recurring jobs configured automatically in config/recurring.yml)
 bin/rails solid_queue:start
 
-# 5a. If your host uses bin/dev (foreman/overmind), add a jobs: entry to Procfile.dev:
-#     jobs: bundle exec rake solid_queue:start
-
-# 5b. Ensure your dispatcher config in config/queue.yml includes
-#     recurring_schedule: config/recurring.yml so recurring jobs are loaded.
+# Note: The generator automatically patches Procfile.dev with a jobs: entry
+# and adds recurring_schedule to your queue.yml dispatcher config.
+# Re-run the generator if these were not applied: bin/rails generate source_monitor:install
 
 # 6. Verify
 bin/source_monitor verify
@@ -92,7 +90,7 @@ gem "source_monitor", github: "dchuk/source_monitor"
 
 ## What the Install Generator Does
 
-The generator (`SourceMonitor::Generators::InstallGenerator`) performs three actions:
+The generator (`SourceMonitor::Generators::InstallGenerator`) performs five actions:
 
 1. **Mounts the engine** in `config/routes.rb`:
    ```ruby
@@ -105,6 +103,12 @@ The generator (`SourceMonitor::Generators::InstallGenerator`) performs three act
 
 3. **Configures recurring jobs** in `config/recurring.yml`:
    Adds entries for `ScheduleFetchesJob` (every minute), scrape scheduling (every 2 minutes), `ItemCleanupJob` (2am daily), and `LogCleanupJob` (3am daily). If the file doesn't exist, creates it with `default: &default` and environment sections. If it exists, merges entries without overwriting. Skips if SourceMonitor entries are already present.
+
+4. **Patches Procfile.dev** with a `jobs:` entry for Solid Queue:
+   Creates the file with `web:` and `jobs:` entries if it does not exist. Appends a `jobs:` entry if the file exists but lacks one. Skips if a `jobs:` entry is already present.
+
+5. **Patches queue.yml dispatcher** with `recurring_schedule: config/recurring.yml`:
+   Adds the `recurring_schedule` key to each dispatcher entry in `config/queue.yml`. If no dispatchers section exists, creates a default one. Skips if `recurring_schedule` is already configured. Skips if `config/queue.yml` does not exist.
 
 Re-running the generator is safe and idempotent.
 
@@ -186,6 +190,8 @@ config.authentication.user_signed_in_method = :user_signed_in?
 | `lib/generators/source_monitor/install/install_generator.rb` | Rails generator |
 | `lib/generators/source_monitor/install/templates/source_monitor.rb.tt` | Initializer template |
 | `lib/source_monitor/setup/initializer_patcher.rb` | Post-install patching |
+| `lib/source_monitor/setup/procfile_patcher.rb` | Procfile.dev patching for guided workflow |
+| `lib/source_monitor/setup/queue_config_patcher.rb` | Queue config patching for guided workflow |
 | `lib/source_monitor/setup/verification/runner.rb` | Verification runner |
 | `lib/source_monitor/engine.rb` | Engine configuration and initializers |
 | `docs/setup.md` | Full setup documentation |
@@ -227,8 +233,8 @@ end
 - [ ] Install generator ran (`bin/rails generate source_monitor:install`)
 - [ ] Engine migrations copied and applied
 - [ ] Recurring jobs configured in `config/recurring.yml`
-- [ ] `Procfile.dev` includes `jobs:` entry for Solid Queue (for `bin/dev` usage)
-- [ ] Dispatcher config includes `recurring_schedule: config/recurring.yml`
+- [x] `Procfile.dev` includes `jobs:` entry for Solid Queue (handled by generator)
+- [x] Dispatcher config includes `recurring_schedule: config/recurring.yml` (handled by generator)
 - [ ] Solid Queue workers started
 - [ ] Authentication hooks configured in initializer
 - [ ] `bin/source_monitor verify` passes

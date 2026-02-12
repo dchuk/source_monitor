@@ -23,9 +23,13 @@ This guide lists common issues you might encounter while installing, upgrading, 
 ## 4. Recurring Jobs Not Running
 
 - **Symptoms:** Fetch scheduling, scrape scheduling, and cleanup jobs never fire. Sources never auto-fetch on their configured intervals.
-- Check that your dispatcher config in `config/queue.yml` (or `config/solid_queue.yml`) includes `recurring_schedule: config/recurring.yml` under the `dispatchers:` section.
-- Without this key, Solid Queue's dispatcher will not load the recurring schedule even though `config/recurring.yml` exists and contains the correct job entries.
-- **Fix:** Add the following to your dispatcher config and restart workers:
+- **Primary fix:** Re-run the install generator, which automatically patches the dispatcher config:
+  ```bash
+  bin/rails generate source_monitor:install
+  ```
+- **Diagnostics:** Run `bin/source_monitor verify` to check recurring task registration. The RecurringScheduleVerifier will report whether SourceMonitor recurring tasks are loaded into Solid Queue.
+- **Manual check:** Verify `config/queue.yml` includes `recurring_schedule: config/recurring.yml` under the `dispatchers:` section. Without this key, Solid Queue's dispatcher will not load the recurring schedule even though `config/recurring.yml` exists.
+- **Manual fix (if generator cannot patch):**
   ```yaml
   dispatchers:
     - polling_interval: 1
@@ -36,12 +40,16 @@ This guide lists common issues you might encounter while installing, upgrading, 
 ## 5. Jobs Not Processing with bin/dev
 
 - **Symptoms:** `bin/dev` starts the web server but jobs never run. Running `bin/rails solid_queue:start` manually works fine.
-- Check that `Procfile.dev` includes a `jobs:` line:
+- **Primary fix:** Re-run the install generator, which automatically patches `Procfile.dev`:
+  ```bash
+  bin/rails generate source_monitor:install
+  ```
+- **Diagnostics:** Run `bin/source_monitor verify` to check Solid Queue worker status. The SolidQueueVerifier will suggest Procfile.dev if no workers are detected.
+- **Manual check:** Verify `Procfile.dev` includes a `jobs:` line:
   ```
   jobs: bundle exec rake solid_queue:start
   ```
 - Most Rails 8 apps use foreman or overmind via `bin/dev`. Without a `jobs:` entry, the process manager only starts the web server and asset watchers -- Solid Queue workers are not launched.
-- **Fix:** Add the `jobs:` line to `Procfile.dev` and restart `bin/dev`.
 
 ## 6. Realtime Updates Do Not Stream
 

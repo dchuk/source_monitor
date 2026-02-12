@@ -49,21 +49,12 @@ This ensures Bundler can load SourceMonitor so the commands below are available.
    ```bash
    bin/rails solid_queue:start
    ```
-   Recurring jobs (fetch scheduling, scraping, cleanup) are automatically configured in `config/recurring.yml` by the install generator. They'll run automatically with `bin/dev` or `bin/jobs`.
+   The install generator automatically handles all worker configuration:
+   - **Recurring jobs** are configured in `config/recurring.yml` (fetch scheduling, scraping, cleanup).
+   - **Procfile.dev** is patched with a `jobs:` entry so `bin/dev` starts Solid Queue alongside the web server.
+   - **Queue dispatcher** is patched with `recurring_schedule: config/recurring.yml` in `config/queue.yml` so recurring jobs load on startup.
 
-   **For development with `bin/dev`:** Ensure `Procfile.dev` includes a `jobs:` entry so Solid Queue workers start alongside the web server:
-   ```
-   jobs: bundle exec rake solid_queue:start
-   ```
-
-   **For recurring jobs:** Ensure the dispatcher in `config/queue.yml` (or `config/solid_queue.yml`) references the recurring schedule:
-   ```yaml
-   dispatchers:
-     - polling_interval: 1
-       batch_size: 500
-       recurring_schedule: config/recurring.yml
-   ```
-   Without this key, Solid Queue will not load recurring jobs even though the file exists.
+   All three steps are idempotent. If any configuration is missing, re-run: `bin/rails generate source_monitor:install`
 
 4. **Visit the dashboard** at the chosen mount path, create a source, and trigger “Fetch Now” to validate realtime updates and Solid Queue processing.
 
@@ -101,8 +92,8 @@ Prefer to script each step or plug SourceMonitor into an existing deployment che
 | 4 | `bin/rails railties:install:migrations FROM=source_monitor` | Copy engine migrations (idempotent) |
 | 5 | `bin/rails db:migrate` | Apply schema updates, including Solid Queue tables |
 | 6 | `bin/rails solid_queue:start` | Ensure jobs process via Solid Queue |
-| 6a | Add `jobs:` line to `Procfile.dev` | Ensure `bin/dev` starts Solid Queue workers |
-| 6b | Add `recurring_schedule` to dispatcher config | Wire recurring jobs into Solid Queue dispatcher |
+| 6a | Handled by generator (patches `Procfile.dev`) | Ensure `bin/dev` starts Solid Queue workers |
+| 6b | Handled by generator (patches `config/queue.yml`) | Wire recurring jobs into Solid Queue dispatcher |
 | 7 | `bin/jobs --recurring_schedule_file=config/recurring.yml` | Start recurring scheduler (optional but recommended) |
 | 8 | `bin/source_monitor verify` | Confirm Solid Queue/Action Cable readiness and emit telemetry |
 
@@ -116,8 +107,8 @@ Prefer to script each step or plug SourceMonitor into an existing deployment che
 4. **Apply database changes** using `bin/rails db:migrate`. If your host already installed Solid Queue migrations manually, delete duplicate files before migrating.
 5. **Wire Action Cable** if necessary. SourceMonitor defaults to Solid Cable; confirm `ApplicationCable::Connection`/`Channel` exist and that `config/initializers/source_monitor.rb` uses the adapter you expect. To switch to Redis, set `config.realtime.adapter = :redis` and `config.realtime.redis_url`.
 6. **Start workers** with `bin/rails solid_queue:start` (or your process manager). The install generator automatically configures recurring jobs in `config/recurring.yml` for fetch scheduling, scraping, and cleanup. They'll run with `bin/dev` or `bin/jobs`.
-   - **Procfile.dev:** If your host uses `bin/dev` (foreman/overmind), add a `jobs:` entry to `Procfile.dev`: `jobs: bundle exec rake solid_queue:start`. Without this, `bin/dev` will not start Solid Queue workers.
-   - **Recurring schedule:** Ensure the dispatcher in `config/queue.yml` (or `config/solid_queue.yml`) includes `recurring_schedule: config/recurring.yml`. Without this key, recurring jobs will not load even though the file exists.
+   - **Procfile.dev:** The generator automatically patches `Procfile.dev` with a `jobs:` entry for Solid Queue. Verify the file contains `jobs: bundle exec rake solid_queue:start` after running the generator.
+   - **Recurring schedule:** The generator automatically patches `config/queue.yml` dispatchers with `recurring_schedule: config/recurring.yml`. Verify the key is present after running the generator.
 7. **Review the initializer** and tune queue names, HTTP timeouts, scraping adapters, retention limits, authentication hooks, and Mission Control integration. The [configuration reference](configuration.md) details every option.
 8. **Verify the install**: run `bin/source_monitor verify` to ensure Solid Queue workers and Action Cable are healthy, then visit the mount path to trigger a fetch manually. Enable telemetry if you want JSON logs recorded for support.
 

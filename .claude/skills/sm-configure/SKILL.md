@@ -146,7 +146,8 @@ end
 ## Checklist
 
 - [ ] Initializer exists at `config/initializers/source_monitor.rb`
-- [ ] Queue names match `config/solid_queue.yml` entries
+- [ ] Queue names match `config/queue.yml` (or `config/solid_queue.yml`) entries
+- [x] Dispatcher config includes `recurring_schedule: config/recurring.yml` (handled by install generator)
 - [ ] Authentication hooks configured for host auth system
 - [ ] HTTP timeouts appropriate for target feeds
 - [ ] Retention policy set for production
