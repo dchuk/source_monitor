@@ -111,6 +111,26 @@ module SourceMonitor
         assert_equal :failure, result[:status]
       end
 
+      test "fetch event with invalid URI returns nil url_display" do
+        event = SourceMonitor::Dashboard::RecentActivity::Event.new(
+          type: :fetch_log,
+          id: 13,
+          occurred_at: Time.current,
+          success: false,
+          items_created: 0,
+          items_updated: 0,
+          source_feed_url: "http://example.com:not_a_port/feed"
+        )
+
+        presenter = SourceMonitor::Dashboard::RecentActivityPresenter.new(
+          [ event ],
+          url_helpers: SourceMonitor::Engine.routes.url_helpers
+        )
+
+        result = presenter.to_a.first
+        assert_nil result[:url_display]
+      end
+
       test "scrape event includes item url as url_display" do
         event = SourceMonitor::Dashboard::RecentActivity::Event.new(
           type: :scrape_log,
