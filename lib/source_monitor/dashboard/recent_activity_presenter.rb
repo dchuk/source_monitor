@@ -30,13 +30,16 @@ module SourceMonitor
       end
 
       def fetch_event(event)
+        domain = source_domain(event.source_feed_url)
         {
           label: "Fetch ##{event.id}",
           description: "#{event.items_created.to_i} created / #{event.items_updated.to_i} updated",
           status: event.success? ? :success : :failure,
           type: :fetch,
           time: event.occurred_at,
-          path: url_helpers.fetch_log_path(event.id)
+          path: url_helpers.fetch_log_path(event.id),
+          url_display: domain,
+          url_href: event.source_feed_url
         }
       end
 
@@ -47,8 +50,18 @@ module SourceMonitor
           status: event.success? ? :success : :failure,
           type: :scrape,
           time: event.occurred_at,
-          path: url_helpers.scrape_log_path(event.id)
+          path: url_helpers.scrape_log_path(event.id),
+          url_display: event.item_url,
+          url_href: event.item_url
         }
+      end
+
+      def source_domain(feed_url)
+        return nil if feed_url.blank?
+
+        URI.parse(feed_url.to_s).host
+      rescue URI::InvalidURIError
+        nil
       end
 
       def item_event(event)

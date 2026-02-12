@@ -37,7 +37,8 @@ module SourceMonitor
             item_title: row["item_title"],
             item_url: row["item_url"],
             source_name: row["source_name"],
-            source_id: row["source_id"]
+            source_id: row["source_id"],
+            source_feed_url: row["source_feed_url"]
           )
         end
 
@@ -57,7 +58,8 @@ module SourceMonitor
                    item_title,
                    item_url,
                    source_name,
-                   source_id
+                   source_id,
+                   source_feed_url
             FROM (
               #{fetch_log_sql}
               UNION ALL
@@ -83,9 +85,12 @@ module SourceMonitor
               NULL AS scraper_adapter,
               NULL AS item_title,
               NULL AS item_url,
-              NULL AS source_name,
-              #{SourceMonitor::FetchLog.quoted_table_name}.source_id AS source_id
+              #{SourceMonitor::Source.quoted_table_name}.#{quoted_source_name} AS source_name,
+              #{SourceMonitor::FetchLog.quoted_table_name}.source_id AS source_id,
+              #{SourceMonitor::Source.quoted_table_name}.feed_url AS source_feed_url
             FROM #{SourceMonitor::FetchLog.quoted_table_name}
+            LEFT JOIN #{SourceMonitor::Source.quoted_table_name}
+              ON #{SourceMonitor::Source.quoted_table_name}.id = #{SourceMonitor::FetchLog.quoted_table_name}.source_id
           SQL
         end
 
@@ -100,12 +105,15 @@ module SourceMonitor
               NULL AS items_updated,
               #{SourceMonitor::ScrapeLog.quoted_table_name}.scraper_adapter AS scraper_adapter,
               NULL AS item_title,
-              NULL AS item_url,
+              #{SourceMonitor::Item.quoted_table_name}.url AS item_url,
               #{SourceMonitor::Source.quoted_table_name}.#{quoted_source_name} AS source_name,
-              #{SourceMonitor::ScrapeLog.quoted_table_name}.source_id AS source_id
+              #{SourceMonitor::ScrapeLog.quoted_table_name}.source_id AS source_id,
+              NULL AS source_feed_url
             FROM #{SourceMonitor::ScrapeLog.quoted_table_name}
             LEFT JOIN #{SourceMonitor::Source.quoted_table_name}
               ON #{SourceMonitor::Source.quoted_table_name}.id = #{SourceMonitor::ScrapeLog.quoted_table_name}.source_id
+            LEFT JOIN #{SourceMonitor::Item.quoted_table_name}
+              ON #{SourceMonitor::Item.quoted_table_name}.id = #{SourceMonitor::ScrapeLog.quoted_table_name}.item_id
           SQL
         end
 
@@ -122,7 +130,8 @@ module SourceMonitor
               #{SourceMonitor::Item.quoted_table_name}.title AS item_title,
               #{SourceMonitor::Item.quoted_table_name}.url AS item_url,
               #{SourceMonitor::Source.quoted_table_name}.#{quoted_source_name} AS source_name,
-              #{SourceMonitor::Item.quoted_table_name}.source_id AS source_id
+              #{SourceMonitor::Item.quoted_table_name}.source_id AS source_id,
+              NULL AS source_feed_url
             FROM #{SourceMonitor::Item.quoted_table_name}
             LEFT JOIN #{SourceMonitor::Source.quoted_table_name}
               ON #{SourceMonitor::Source.quoted_table_name}.id = #{SourceMonitor::Item.quoted_table_name}.source_id

@@ -15,6 +15,7 @@ module SourceMonitor
         :item_url,
         :source_name,
         :source_id,
+        :source_feed_url,
         keyword_init: true
       ) do
         def type
