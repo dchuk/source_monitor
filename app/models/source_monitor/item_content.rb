@@ -6,6 +6,8 @@ module SourceMonitor
 
     validates :item, presence: true
 
+    has_many_attached :images
+
     SourceMonitor::ModelExtensions.register(self, :item_content)
   end
 end
