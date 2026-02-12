@@ -22,7 +22,7 @@ module SourceMonitor
       test "image_urls extracts single img src URL" do
         html = '<p>Hello</p><img src="https://example.com/photo.jpg">'
         rewriter = ContentRewriter.new(html)
-        assert_equal ["https://example.com/photo.jpg"], rewriter.image_urls
+        assert_equal [ "https://example.com/photo.jpg" ], rewriter.image_urls
       end
 
       test "image_urls extracts multiple img src URLs" do
@@ -31,7 +31,7 @@ module SourceMonitor
           <img src="https://example.com/b.png">
         HTML
         rewriter = ContentRewriter.new(html)
-        assert_equal ["https://example.com/a.jpg", "https://example.com/b.png"], rewriter.image_urls
+        assert_equal [ "https://example.com/a.jpg", "https://example.com/b.png" ], rewriter.image_urls
       end
 
       test "image_urls deduplicates identical URLs" do
@@ -40,7 +40,7 @@ module SourceMonitor
           <img src="https://example.com/a.jpg">
         HTML
         rewriter = ContentRewriter.new(html)
-        assert_equal ["https://example.com/a.jpg"], rewriter.image_urls
+        assert_equal [ "https://example.com/a.jpg" ], rewriter.image_urls
       end
 
       test "image_urls skips data URIs" do
@@ -64,7 +64,7 @@ module SourceMonitor
       test "image_urls resolves relative URLs when base_url provided" do
         html = '<img src="/images/photo.jpg">'
         rewriter = ContentRewriter.new(html, base_url: "https://example.com/articles/123")
-        assert_equal ["https://example.com/images/photo.jpg"], rewriter.image_urls
+        assert_equal [ "https://example.com/images/photo.jpg" ], rewriter.image_urls
       end
 
       test "image_urls skips relative URLs when no base_url provided" do
@@ -88,13 +88,13 @@ module SourceMonitor
       test "image_urls works with self-closing img tags" do
         html = '<img src="https://example.com/photo.jpg" />'
         rewriter = ContentRewriter.new(html)
-        assert_equal ["https://example.com/photo.jpg"], rewriter.image_urls
+        assert_equal [ "https://example.com/photo.jpg" ], rewriter.image_urls
       end
 
       test "image_urls handles relative path resolution" do
         html = '<img src="photo.jpg">'
         rewriter = ContentRewriter.new(html, base_url: "https://example.com/blog/post/")
-        assert_equal ["https://example.com/blog/post/photo.jpg"], rewriter.image_urls
+        assert_equal [ "https://example.com/blog/post/photo.jpg" ], rewriter.image_urls
       end
 
       # =========================================================================
@@ -164,7 +164,7 @@ module SourceMonitor
           yielded_urls << url
           "https://cdn.example.com/new.jpg"
         end
-        assert_equal ["https://example.com/photo.jpg"], yielded_urls
+        assert_equal [ "https://example.com/photo.jpg" ], yielded_urls
       end
 
       test "rewrite handles mixed downloadable and non-downloadable URLs" do
@@ -179,7 +179,7 @@ module SourceMonitor
           yielded_urls << url
           "https://cdn.example.com/replaced.jpg"
         end
-        assert_equal ["https://example.com/real.jpg"], yielded_urls
+        assert_equal [ "https://example.com/real.jpg" ], yielded_urls
       end
 
       # =========================================================================
@@ -189,14 +189,14 @@ module SourceMonitor
       test "handles HTML fragments without full document structure" do
         html = '<div><img src="https://example.com/photo.jpg"><span>text</span></div>'
         rewriter = ContentRewriter.new(html)
-        assert_equal ["https://example.com/photo.jpg"], rewriter.image_urls
+        assert_equal [ "https://example.com/photo.jpg" ], rewriter.image_urls
       end
 
       test "handles srcset attribute does not affect image_urls" do
         html = '<img src="https://example.com/photo.jpg" srcset="https://example.com/photo-2x.jpg 2x">'
         rewriter = ContentRewriter.new(html)
         # Only src is extracted, not srcset
-        assert_equal ["https://example.com/photo.jpg"], rewriter.image_urls
+        assert_equal [ "https://example.com/photo.jpg" ], rewriter.image_urls
       end
 
       test "rewrite with base_url resolves relative URLs before yielding" do
@@ -207,13 +207,13 @@ module SourceMonitor
           yielded_urls << url
           "https://cdn.example.com/new.jpg"
         end
-        assert_equal ["https://example.com/images/photo.jpg"], yielded_urls
+        assert_equal [ "https://example.com/images/photo.jpg" ], yielded_urls
       end
 
       test "image_urls handles whitespace in src" do
         html = '<img src="  https://example.com/photo.jpg  ">'
         rewriter = ContentRewriter.new(html)
-        assert_equal ["https://example.com/photo.jpg"], rewriter.image_urls
+        assert_equal [ "https://example.com/photo.jpg" ], rewriter.image_urls
       end
     end
   end
