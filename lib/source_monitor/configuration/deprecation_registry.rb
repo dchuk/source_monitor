@@ -47,14 +47,15 @@ module SourceMonitor
         # @param message [String, nil] additional migration guidance
         def register(path, removed_in:, replacement: nil, severity: :warning, message: nil)
           segments = path.split(".")
+          source_prefix = nil
           if segments.length == 1
             target_class = Configuration
             option_name = segments.first
           else
-            settings_accessor = segments.first
+            source_prefix = segments.first
             option_name = segments.last
-            class_name = SETTINGS_CLASSES[settings_accessor]
-            raise ArgumentError, "Unknown settings accessor: #{settings_accessor}" unless class_name
+            class_name = SETTINGS_CLASSES[source_prefix]
+            raise ArgumentError, "Unknown settings accessor: #{source_prefix}" unless class_name
 
             target_class = Configuration.const_get(class_name)
           end
@@ -69,7 +70,8 @@ module SourceMonitor
             return
           end
 
-          define_trap_methods(target_class, option_name, deprecation_message, severity, replacement)
+          define_trap_methods(target_class, option_name, deprecation_message, severity, replacement,
+                              source_prefix: source_prefix)
 
           entries[path] = { path: path, removed_in: removed_in, replacement: replacement,
                             severity: severity, message: deprecation_message, skipped: false }
@@ -119,14 +121,14 @@ module SourceMonitor
           parts.freeze
         end
 
-        def define_trap_methods(target_class, option_name, deprecation_message, severity, replacement)
+        def define_trap_methods(target_class, option_name, deprecation_message, severity, replacement, source_prefix: nil)
           writer_name = :"#{option_name}="
           reader_name = option_name.to_sym
 
           case severity
           when :warning
-            define_warning_writer(target_class, writer_name, deprecation_message, replacement)
-            define_warning_reader(target_class, reader_name, deprecation_message, replacement)
+            define_warning_writer(target_class, writer_name, deprecation_message, replacement, source_prefix)
+            define_warning_reader(target_class, reader_name, deprecation_message, replacement, source_prefix)
           when :error
             define_error_method(target_class, writer_name, deprecation_message)
             define_error_method(target_class, reader_name, deprecation_message)
@@ -137,8 +139,8 @@ module SourceMonitor
           defined_methods.push([ target_class, writer_name ], [ target_class, reader_name ])
         end
 
-        def define_warning_writer(target_class, writer_name, deprecation_message, replacement)
-          replacement_writer = replacement_setter_for(replacement)
+        def define_warning_writer(target_class, writer_name, deprecation_message, replacement, source_prefix)
+          replacement_writer = replacement_setter_for(replacement, source_prefix)
 
           target_class.define_method(writer_name) do |value|
             Rails.logger.warn(deprecation_message)
@@ -150,8 +152,8 @@ module SourceMonitor
           end
         end
 
-        def define_warning_reader(target_class, reader_name, deprecation_message, replacement)
-          replacement_reader = replacement_getter_for(replacement)
+        def define_warning_reader(target_class, reader_name, deprecation_message, replacement, source_prefix)
+          replacement_reader = replacement_getter_for(replacement, source_prefix)
 
           target_class.define_method(reader_name) do
             Rails.logger.warn(deprecation_message)
@@ -170,26 +172,34 @@ module SourceMonitor
         end
 
         # Parse replacement path into target accessor chain and setter name.
-        # "http.proxy" => { target: "http", setter: "proxy=" }
+        # When source_prefix matches the replacement prefix, the target is nil
+        # (replacement is on the same settings class).
+        #
+        # "http.proxy" with source_prefix "http" => { target: nil, setter: "proxy=" }
         # "queue_namespace" => { target: nil, setter: "queue_namespace=" }
-        def replacement_setter_for(replacement)
+        # "http.proxy" with source_prefix nil => { target: :http, setter: "proxy=" }
+        def replacement_setter_for(replacement, source_prefix = nil)
           return nil unless replacement
 
           segments = replacement.split(".")
           if segments.length == 1
             { target: nil, setter: :"#{segments.first}=" }
+          elsif source_prefix && segments.first == source_prefix
+            { target: nil, setter: :"#{segments.last}=" }
           else
             { target: segments.first.to_sym, setter: :"#{segments.last}=" }
           end
         end
 
         # Parse replacement path into target accessor chain and getter name.
-        def replacement_getter_for(replacement)
+        def replacement_getter_for(replacement, source_prefix = nil)
           return nil unless replacement
 
           segments = replacement.split(".")
           if segments.length == 1
             { target: nil, getter: segments.first.to_sym }
+          elsif source_prefix && segments.first == source_prefix
+            { target: nil, getter: segments.last.to_sym }
           else
             { target: segments.first.to_sym, getter: segments.last.to_sym }
           end
