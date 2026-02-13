@@ -16,6 +16,7 @@ module SourceMonitor
         end
 
         test "uses default verifiers" do
+          pending_result = Result.new(key: :pending_migrations, name: "Pending Migrations", status: :ok, details: "ok")
           queue_result = Result.new(key: :solid_queue, name: "Solid Queue", status: :ok, details: "ok")
           recurring_result = Result.new(key: :recurring_schedule, name: "Recurring Schedule", status: :ok, details: "ok")
           action_result = Result.new(key: :action_cable, name: "Action Cable", status: :ok, details: "ok")
@@ -34,21 +35,25 @@ module SourceMonitor
             end
           end
 
+          pending_double = verifier_double.new(pending_result)
           queue_double = verifier_double.new(queue_result)
           recurring_double = verifier_double.new(recurring_result)
           action_double = verifier_double.new(action_result)
 
-          SolidQueueVerifier.stub(:new, ->(*) { queue_double }) do
-            RecurringScheduleVerifier.stub(:new, ->(*) { recurring_double }) do
-              ActionCableVerifier.stub(:new, ->(*) { action_double }) do
-                runner = Runner.new
-                summary = runner.call
-                assert_equal 3, summary.results.size
-                assert summary.ok?
+          PendingMigrationsVerifier.stub(:new, ->(*) { pending_double }) do
+            SolidQueueVerifier.stub(:new, ->(*) { queue_double }) do
+              RecurringScheduleVerifier.stub(:new, ->(*) { recurring_double }) do
+                ActionCableVerifier.stub(:new, ->(*) { action_double }) do
+                  runner = Runner.new
+                  summary = runner.call
+                  assert_equal 4, summary.results.size
+                  assert summary.ok?
+                end
               end
             end
           end
 
+          assert_equal 1, pending_double.calls
           assert_equal 1, queue_double.calls
           assert_equal 1, recurring_double.calls
           assert_equal 1, action_double.calls
