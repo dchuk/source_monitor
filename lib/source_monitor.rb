@@ -197,6 +197,7 @@ module SourceMonitor
   class << self
     def configure
       yield config
+      config.check_deprecations!
       SourceMonitor::ModelExtensions.reload!
     end
 
