@@ -15,6 +15,14 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.5.1] - 2026-02-13
+
+### Changed
+
+- Bumped puma from 7.1.0 to 7.2.0 (17% faster HTTP parsing, `workers :auto`, GC-compactible C extension).
+- Bumped solid_queue from 1.2.4 to 1.3.1 (async mode, bug fixes).
+- Bumped turbo-rails from 2.0.20 to 2.0.23 (broadcast suppression fix, navigator clobbering fix).
+
 ## [0.5.0] - 2026-02-13
 
 ### Added
