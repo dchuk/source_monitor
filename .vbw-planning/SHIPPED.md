@@ -26,3 +26,38 @@
 
 Location: `.vbw-planning/milestones/default/`
 Tag: `milestone/default`
+
+---
+
+## upgrade-assurance (2026-02-12 to 2026-02-13)
+
+**Goal:** Give host app developers confidence that gem updates go smoothly -- automated migration detection, upgrade command, config validation, and AI-assisted upgrade guidance.
+
+### Metrics
+
+| Metric | Value |
+|--------|-------|
+| Phases | 3 |
+| Plans completed | 3 |
+| Tasks completed | 14 |
+| Commits | 12 |
+| Requirements satisfied | 5/5 (REQ-26 through REQ-30) |
+| Tests | 1003 (up from 973) |
+
+### Phases
+
+1. Upgrade Command & Migration Verifier (1 plan, 5 tasks)
+2. Configuration Deprecation Framework (1 plan, 4 tasks)
+3. Upgrade Skill & Documentation (1 plan, 5 tasks)
+
+### Key Decisions
+
+- 3 phases: command, config, skill -- each independently valuable
+- `.source_monitor_version` marker file for version tracking
+- Deprecation registry with :warning and :error severities
+- sm-upgrade as a consumer skill (installed by default)
+
+### Archive
+
+Location: `.vbw-planning/milestones/upgrade-assurance/`
+Tag: `milestone/upgrade-assurance`

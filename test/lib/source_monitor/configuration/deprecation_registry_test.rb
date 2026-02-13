@@ -207,6 +207,82 @@ module SourceMonitor
         assert_match(/old_interval/, log_output.string)
       end
 
+      test "skips trap when method already exists on target class" do
+        DeprecationRegistry.register(
+          "http.timeout",
+          removed_in: "0.5.0",
+          replacement: "http.proxy",
+          severity: :warning
+        )
+
+        entry = DeprecationRegistry.entries["http.timeout"]
+        assert entry[:skipped], "Entry should be marked as skipped when method already exists"
+      end
+
+      test "raises ArgumentError for unknown severity" do
+        assert_raises(ArgumentError) do
+          DeprecationRegistry.register(
+            "http.bad_option",
+            removed_in: "0.5.0",
+            severity: :unknown
+          )
+        end
+      end
+
+      test "cross-prefix replacement forwards writer to different settings class" do
+        DeprecationRegistry.register(
+          "old_proxy",
+          removed_in: "0.5.0",
+          replacement: "http.proxy",
+          severity: :warning
+        )
+
+        log_output = StringIO.new
+        original_logger = Rails.logger
+        Rails.logger = ActiveSupport::Logger.new(log_output)
+
+        begin
+          SourceMonitor.configure { |c| c.old_proxy = "socks5://localhost" }
+        ensure
+          Rails.logger = original_logger
+        end
+
+        assert_equal "socks5://localhost", SourceMonitor.config.http.proxy
+      end
+
+      test "cross-prefix replacement forwards reader to different settings class" do
+        DeprecationRegistry.register(
+          "old_proxy",
+          removed_in: "0.5.0",
+          replacement: "http.proxy",
+          severity: :warning
+        )
+
+        SourceMonitor.config.http.proxy = "socks5://localhost"
+
+        log_output = StringIO.new
+        original_logger = Rails.logger
+        Rails.logger = ActiveSupport::Logger.new(log_output)
+
+        begin
+          value = SourceMonitor.config.old_proxy
+        ensure
+          Rails.logger = original_logger
+        end
+
+        assert_equal "socks5://localhost", value
+      end
+
+      test "raises ArgumentError for unknown settings accessor" do
+        assert_raises(ArgumentError) do
+          DeprecationRegistry.register(
+            "nonexistent_section.option",
+            removed_in: "0.5.0",
+            severity: :warning
+          )
+        end
+      end
+
       test "check_deprecations! is called during configure" do
         called = false
         SourceMonitor.config.define_singleton_method(:check_deprecations!) do

@@ -4,10 +4,10 @@
 
 ## Active Context
 
-**Milestone:** upgrade-assurance
-**Phase:** 1 of 3 -- Upgrade Command & Migration Verifier (Planned)
-**Last shipped:** generator-enhancements (2026-02-12) -- v0.4.0
-**Next action:** /vbw:vibe --execute to build Phase 1
+**Milestone:** (none active)
+**Last shipped:** upgrade-assurance (2026-02-13) -- 3 phases, 14 tasks, 12 commits
+**Previous:** generator-enhancements (2026-02-12) -- v0.4.0
+**Next action:** /vbw:vibe to start a new milestone
 
 ## Key Decisions
 
