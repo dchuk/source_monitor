@@ -19,3 +19,4 @@
 .vbw-planning/.notification-log.jsonl
 .vbw-planning/.session-log.jsonl
 .vbw-planning/.hook-errors.log
+.vbw-planning/.claude-md-migrated
