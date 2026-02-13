@@ -169,11 +169,13 @@ module SourceMonitor
     autoload :ProcfilePatcher, "source_monitor/setup/procfile_patcher"
     autoload :QueueConfigPatcher, "source_monitor/setup/queue_config_patcher"
     autoload :Workflow, "source_monitor/setup/workflow"
+    autoload :UpgradeCommand, "source_monitor/setup/upgrade_command"
     autoload :CLI, "source_monitor/setup/cli"
 
     module Verification
       autoload :Result, "source_monitor/setup/verification/result"
       autoload :Summary, "source_monitor/setup/verification/result"
+      autoload :PendingMigrationsVerifier, "source_monitor/setup/verification/pending_migrations_verifier"
       autoload :SolidQueueVerifier, "source_monitor/setup/verification/solid_queue_verifier"
       autoload :ActionCableVerifier, "source_monitor/setup/verification/action_cable_verifier"
       autoload :RecurringScheduleVerifier, "source_monitor/setup/verification/recurring_schedule_verifier"
@@ -195,6 +197,7 @@ module SourceMonitor
   class << self
     def configure
       yield config
+      config.check_deprecations!
       SourceMonitor::ModelExtensions.reload!
     end
 

@@ -14,6 +14,7 @@ require "source_monitor/configuration/events"
 require "source_monitor/configuration/validation_definition"
 require "source_monitor/configuration/model_definition"
 require "source_monitor/configuration/models"
+require "source_monitor/configuration/deprecation_registry"
 
 module SourceMonitor
   class Configuration
@@ -84,6 +85,13 @@ module SourceMonitor
       else
         raise ArgumentError, "unknown queue role #{role.inspect}"
       end
+    end
+
+    # Post-configure hook for deprecation validation.
+    # Delegates to DeprecationRegistry.check_defaults! for future
+    # "default changed" checks. Currently a no-op.
+    def check_deprecations!
+      DeprecationRegistry.check_defaults!(self)
     end
   end
 end

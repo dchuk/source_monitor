@@ -12,7 +12,7 @@ Guides integration of the SourceMonitor engine into a host Rails application.
 
 - Adding SourceMonitor to a new or existing Rails 8 host app
 - Troubleshooting a broken installation
-- Re-running setup after upgrading the gem
+- Re-running setup after upgrading the gem (see also: `sm-upgrade` skill for full upgrade workflow)
 - Rolling back the engine from a host app
 
 ## Prerequisites
@@ -202,6 +202,7 @@ config.authentication.user_signed_in_method = :user_signed_in?
 - `docs/setup.md` -- Complete setup workflow documentation
 - `docs/configuration.md` -- Configuration reference
 - `docs/troubleshooting.md` -- Common issues and fixes
+- `sm-upgrade` skill -- Upgrade workflow for gem version updates
 
 ## Testing
 
@@ -209,6 +210,7 @@ After setup, verify with:
 1. `bin/source_monitor verify` -- Checks Solid Queue and Action Cable
 2. Visit the mount path in browser -- Dashboard should load
 3. Create a source and trigger "Fetch Now" -- Validates end-to-end
+4. For subsequent gem updates, use `bin/source_monitor upgrade` -- see the `sm-upgrade` skill
 
 Optional system test for host apps using Devise:
 ```ruby

@@ -163,6 +163,10 @@ module SourceMonitor
         end
       end
 
+      test "sm-upgrade is included in consumer skills" do
+        assert_includes SkillsInstaller::CONSUMER_SKILLS, "sm-upgrade"
+      end
+
       test "install raises ArgumentError for unknown group" do
         Dir.mktmpdir do |gem_root|
           Dir.mktmpdir do |target_dir|

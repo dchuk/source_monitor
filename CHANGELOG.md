@@ -15,6 +15,23 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.5.0] - 2026-02-13
+
+### Added
+
+- `bin/source_monitor upgrade` command: detects version changes since last install, copies new migrations, re-runs the generator, runs verification, and reports what changed. Uses a `.source_monitor_version` marker file for version tracking.
+- `PendingMigrationsVerifier` checks for unmigrated SourceMonitor tables in the verification suite, integrated into both `bin/source_monitor verify` and the upgrade flow.
+- Configuration deprecation framework: engine developers can register deprecated config options with `DeprecationRegistry.register`. At boot time, stale options trigger `:warning` (renamed) or `:error` (removed) messages with actionable replacement paths.
+- `sm-upgrade` AI skill guides agents through post-update workflows: CHANGELOG parsing, running the upgrade command, interpreting verification results, and handling deprecation warnings.
+- `docs/upgrade.md` versioned upgrade guide with general steps, version-specific notes (0.1.x through 0.4.x), and troubleshooting.
+- `sm-host-setup` skill cross-references the upgrade workflow.
+
+### Testing
+
+- 1,003 tests, 0 failures (up from 973 in 0.4.0).
+- RuboCop: 397 files, 0 offenses.
+- Brakeman: 0 warnings.
+
 ## [0.4.0] - 2026-02-12
 
 ### Added
