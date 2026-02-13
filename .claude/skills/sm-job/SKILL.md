@@ -168,7 +168,7 @@ The install generator (`bin/rails generate source_monitor:install`) automaticall
 | `SourceMonitor::ItemCleanupJob` | at 2am every day |
 | `SourceMonitor::LogCleanupJob` | at 3am every day |
 
-These run automatically with `bin/dev` or `bin/jobs`. If you need to customize, edit `config/recurring.yml` directly.
+The install generator automatically configures `config/recurring.yml` with these entries AND patches the `config/queue.yml` dispatcher with `recurring_schedule: config/recurring.yml` so recurring jobs load on startup. Both steps are idempotent. If you need to customize schedules, edit `config/recurring.yml` directly.
 
 ## Retry Policies
 

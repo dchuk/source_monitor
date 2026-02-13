@@ -11,6 +11,7 @@ module SourceMonitor
       CONSUMER_SKILLS = %w[
         sm-host-setup sm-configure sm-scraper-adapter
         sm-event-handler sm-model-extension sm-dashboard-widget
+        sm-upgrade
       ].freeze
 
       CONTRIBUTOR_SKILLS = %w[

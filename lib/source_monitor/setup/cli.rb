@@ -23,6 +23,13 @@ module SourceMonitor
         handle_summary(summary)
       end
 
+      desc "upgrade", "Upgrade SourceMonitor after a gem version change"
+      def upgrade
+        command = UpgradeCommand.new
+        summary = command.call
+        handle_summary(summary)
+      end
+
       private
 
       def handle_summary(summary)

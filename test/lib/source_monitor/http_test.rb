@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "openssl"
 require "stringio"
 require "zlib"
 
@@ -111,6 +112,44 @@ module SourceMonitor
       assert_equal "application/json", client.headers["Accept"]
       assert_equal "true", client.headers["X-Feed-Monitor"]
       assert_equal "abc123", client.headers["X-Request-ID"]
+    end
+
+    test "configures SSL with default cert store" do
+      assert @connection.ssl.verify
+      assert_instance_of OpenSSL::X509::Store, @connection.ssl.cert_store
+      assert_nil @connection.ssl.ca_file
+    end
+
+    test "uses configured ssl_ca_file when set" do
+      SourceMonitor.configure do |config|
+        config.http.ssl_ca_file = "/path/to/custom/ca.pem"
+      end
+
+      connection = SourceMonitor::HTTP.client
+      assert_equal "/path/to/custom/ca.pem", connection.ssl.ca_file
+      assert_nil connection.ssl.cert_store
+    end
+
+    test "uses configured ssl_ca_path when set" do
+      SourceMonitor.configure do |config|
+        config.http.ssl_ca_path = "/path/to/certs"
+      end
+
+      connection = SourceMonitor::HTTP.client
+      assert_equal "/path/to/certs", connection.ssl.ca_path
+    end
+
+    test "ssl verify defaults to true" do
+      assert_equal true, @connection.ssl.verify
+    end
+
+    test "respects ssl_verify configuration" do
+      SourceMonitor.configure do |config|
+        config.http.ssl_verify = false
+      end
+
+      connection = SourceMonitor::HTTP.client
+      assert_equal false, connection.ssl.verify
     end
 
     test "fetches and parses gzipped feeds" do

@@ -87,6 +87,11 @@ module SourceMonitor
     autoload :HealthCheckBroadcaster, "source_monitor/import_sessions/health_check_broadcaster"
   end
 
+  module Images
+    autoload :ContentRewriter, "source_monitor/images/content_rewriter"
+    autoload :Downloader, "source_monitor/images/downloader"
+  end
+
   module Items
     autoload :ItemCreator, "source_monitor/items/item_creator"
     autoload :RetentionPruner, "source_monitor/items/retention_pruner"
@@ -161,14 +166,19 @@ module SourceMonitor
     autoload :InstallGenerator, "source_monitor/setup/install_generator"
     autoload :MigrationInstaller, "source_monitor/setup/migration_installer"
     autoload :InitializerPatcher, "source_monitor/setup/initializer_patcher"
+    autoload :ProcfilePatcher, "source_monitor/setup/procfile_patcher"
+    autoload :QueueConfigPatcher, "source_monitor/setup/queue_config_patcher"
     autoload :Workflow, "source_monitor/setup/workflow"
+    autoload :UpgradeCommand, "source_monitor/setup/upgrade_command"
     autoload :CLI, "source_monitor/setup/cli"
 
     module Verification
       autoload :Result, "source_monitor/setup/verification/result"
       autoload :Summary, "source_monitor/setup/verification/result"
+      autoload :PendingMigrationsVerifier, "source_monitor/setup/verification/pending_migrations_verifier"
       autoload :SolidQueueVerifier, "source_monitor/setup/verification/solid_queue_verifier"
       autoload :ActionCableVerifier, "source_monitor/setup/verification/action_cable_verifier"
+      autoload :RecurringScheduleVerifier, "source_monitor/setup/verification/recurring_schedule_verifier"
       autoload :Runner, "source_monitor/setup/verification/runner"
       autoload :Printer, "source_monitor/setup/verification/printer"
       autoload :TelemetryLogger, "source_monitor/setup/verification/telemetry_logger"
@@ -187,6 +197,7 @@ module SourceMonitor
   class << self
     def configure
       yield config
+      config.check_deprecations!
       SourceMonitor::ModelExtensions.reload!
     end
 

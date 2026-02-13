@@ -25,7 +25,7 @@
           </span>
         <% end %>
       </div>
-      <p class="mt-2 text-sm text-slate-500">Feed URL: <%= source.feed_url %></p>
+      <p class="mt-2 text-sm text-slate-500">Feed URL: <%= external_link_to source.feed_url, source.feed_url, class: "text-slate-500 hover:text-blue-500" %></p>
     </div>
     <div class="flex flex-wrap items-center justify-end gap-3">
       <% fetch_disabled = %w[queued fetching].include?(source.fetch_status) %>
@@ -137,7 +137,7 @@
                end
 
              details = {
-               "Website" => (source.website_url.presence || "—"),
+               "Website" => (source.website_url.present? ? external_link_to(source.website_url, source.website_url, class: "text-slate-900 hover:text-blue-500") : "\u2014"),
                "Fetch interval" => "#{source.fetch_interval_minutes} minutes (~#{interval_hours} hours)",
                "Adaptive interval" => source.adaptive_fetching_enabled? ? "Auto" : "Fixed",
                "Scraper" => source.scraper_adapter,

@@ -49,7 +49,48 @@ module SourceMonitor
         end
       end
 
+      def patch_procfile_dev
+        procfile_path = File.join(destination_root, "Procfile.dev")
+
+        if File.exist?(procfile_path)
+          content = File.read(procfile_path)
+          if content.match?(/^jobs:/)
+            say_status :skip, "Procfile.dev (jobs entry already present)", :yellow
+            return
+          end
+
+          File.open(procfile_path, "a") { |f| f.puts("", PROCFILE_JOBS_ENTRY) }
+          say_status :append, "Procfile.dev", :green
+        else
+          File.write(procfile_path, "web: bin/rails server -p 3000\n#{PROCFILE_JOBS_ENTRY}\n")
+          say_status :create, "Procfile.dev", :green
+        end
+      end
+
+      def configure_queue_dispatcher
+        queue_path = File.join(destination_root, "config/queue.yml")
+
+        unless File.exist?(queue_path)
+          say_status :skip, "config/queue.yml (file not found — create it or run rails app:update to generate)", :yellow
+          return
+        end
+
+        parsed = YAML.safe_load(File.read(queue_path), aliases: true) || {}
+
+        if queue_config_has_recurring_schedule?(parsed)
+          say_status :skip, "config/queue.yml (recurring_schedule already configured)", :yellow
+          return
+        end
+
+        add_recurring_schedule_to_dispatchers!(parsed)
+        File.write(queue_path, YAML.dump(parsed))
+        say_status :append, "config/queue.yml (added recurring_schedule to dispatchers)", :green
+      end
+
       def print_next_steps
+        say_status :info,
+          "Procfile.dev configured — run bin/dev to start both web server and Solid Queue workers.",
+          :green
         say_status :info,
           "Recurring jobs configured in config/recurring.yml — they'll run automatically with bin/dev or bin/jobs.",
           :green
@@ -59,6 +100,8 @@ module SourceMonitor
       end
 
       private
+
+      PROCFILE_JOBS_ENTRY = "jobs: bundle exec rake solid_queue:start"
 
       RECURRING_ENTRIES = {
         "source_monitor_schedule_fetches" => {
@@ -153,6 +196,64 @@ module SourceMonitor
         raw_path = options.key?(:mount_path) ? options[:mount_path] : "/source_monitor"
         path = (raw_path && !raw_path.strip.empty?) ? raw_path.strip : "/source_monitor"
         path.start_with?("/") ? path : "/#{path}"
+      end
+
+      RECURRING_SCHEDULE_VALUE = "config/recurring.yml"
+
+      DEFAULT_DISPATCHER = {
+        "polling_interval" => 1,
+        "batch_size" => 500,
+        "recurring_schedule" => RECURRING_SCHEDULE_VALUE
+      }.freeze
+
+      def queue_config_has_recurring_schedule?(parsed)
+        parsed.each_value do |value|
+          next unless value.is_a?(Hash)
+
+          dispatchers = value["dispatchers"] || value[:dispatchers]
+          if dispatchers.is_a?(Array)
+            return true if dispatchers.any? { |d| d.is_a?(Hash) && d.key?("recurring_schedule") }
+          end
+
+          return true if queue_config_has_recurring_schedule?(value)
+        end
+
+        # Check top-level dispatchers (flat config)
+        if parsed.key?("dispatchers") && parsed["dispatchers"].is_a?(Array)
+          return true if parsed["dispatchers"].any? { |d| d.is_a?(Hash) && d.key?("recurring_schedule") }
+        end
+
+        false
+      end
+
+      def add_recurring_schedule_to_dispatchers!(parsed)
+        found_dispatchers = false
+
+        parsed.each_value do |value|
+          next unless value.is_a?(Hash)
+
+          if value.key?("dispatchers") && value["dispatchers"].is_a?(Array)
+            value["dispatchers"].each do |dispatcher|
+              next unless dispatcher.is_a?(Hash)
+              dispatcher["recurring_schedule"] ||= RECURRING_SCHEDULE_VALUE
+            end
+            found_dispatchers = true
+          end
+        end
+
+        # Check top-level dispatchers (flat config)
+        if parsed.key?("dispatchers") && parsed["dispatchers"].is_a?(Array)
+          parsed["dispatchers"].each do |dispatcher|
+            next unless dispatcher.is_a?(Hash)
+            dispatcher["recurring_schedule"] ||= RECURRING_SCHEDULE_VALUE
+          end
+          found_dispatchers = true
+        end
+
+        # No dispatchers found at all — add a default section
+        unless found_dispatchers
+          parsed["dispatchers"] = [ DEFAULT_DISPATCHER.dup ]
+        end
       end
     end
   end

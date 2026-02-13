@@ -15,6 +15,54 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.5.0] - 2026-02-13
+
+### Added
+
+- `bin/source_monitor upgrade` command: detects version changes since last install, copies new migrations, re-runs the generator, runs verification, and reports what changed. Uses a `.source_monitor_version` marker file for version tracking.
+- `PendingMigrationsVerifier` checks for unmigrated SourceMonitor tables in the verification suite, integrated into both `bin/source_monitor verify` and the upgrade flow.
+- Configuration deprecation framework: engine developers can register deprecated config options with `DeprecationRegistry.register`. At boot time, stale options trigger `:warning` (renamed) or `:error` (removed) messages with actionable replacement paths.
+- `sm-upgrade` AI skill guides agents through post-update workflows: CHANGELOG parsing, running the upgrade command, interpreting verification results, and handling deprecation warnings.
+- `docs/upgrade.md` versioned upgrade guide with general steps, version-specific notes (0.1.x through 0.4.x), and troubleshooting.
+- `sm-host-setup` skill cross-references the upgrade workflow.
+
+### Testing
+
+- 1,003 tests, 0 failures (up from 973 in 0.4.0).
+- RuboCop: 397 files, 0 offenses.
+- Brakeman: 0 warnings.
+
+## [0.4.0] - 2026-02-12
+
+### Added
+
+- Install generator now auto-patches `Procfile.dev` with Solid Queue `jobs:` entry and `queue.yml` with `recurring_schedule` dispatcher wiring (idempotent, skip if already present).
+- `RecurringScheduleVerifier` checks that recurring tasks are registered with Solid Queue dispatchers; `SolidQueueVerifier` remediation now mentions `Procfile.dev` for `bin/dev` users.
+- Dashboard fetch log entries display source URL (domain for RSS, item URL for scrapes) alongside existing summary.
+- External links across dashboard, logs, sources, and items open in new tab with visual indicator icon.
+- Configurable Active Storage image downloads: `config.images.download_to_active_storage` (default `false`) detects inline images in feed content, downloads them via background job, and rewrites `<img>` src attributes with Active Storage URLs.
+- `Images::ContentRewriter` extracts and rewrites image URLs from HTML content using Nokolexbor.
+- `Images::Downloader` service validates content type and size before downloading images.
+- `DownloadContentImagesJob` orchestrates the download/attach/rewrite pipeline per item.
+- SSL certificate store configuration: every Faraday connection gets an `OpenSSL::X509::Store` initialized with `set_default_paths`, resolving "unable to get local issuer certificate" errors on systems with incomplete CA bundles.
+- Configurable SSL options in `HTTPSettings`: `ssl_ca_file`, `ssl_ca_path`, `ssl_verify` for non-standard certificate environments.
+- Netflix Tech Blog VCR cassette regression test proving Medium-hosted RSS feeds parse correctly with the SSL fix.
+
+### Fixed
+
+- SSL certificate verification failures for feeds hosted on services requiring intermediate CAs (e.g., Netflix Tech Blog via Medium/AWS).
+- Setup documentation now includes `Procfile.dev` and `recurring_schedule` guidance.
+
+### Changed
+
+- Updated `sm-host-setup`, `sm-configure`, and setup documentation to reflect that the generator handles Procfile.dev and recurring_schedule automatically.
+
+### Testing
+
+- 973 tests, 3,114 assertions, 0 failures (up from 841 tests in 0.3.3).
+- RuboCop: 389 files, 0 offenses.
+- Brakeman: 0 warnings.
+
 ## [0.3.3] - 2026-02-11
 
 ### Fixed

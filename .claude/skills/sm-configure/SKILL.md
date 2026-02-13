@@ -29,7 +29,7 @@ After the block executes, `ModelExtensions.reload!` runs automatically to apply 
 
 ## Configuration Sections
 
-The `config` object (`SourceMonitor::Configuration`) has 10 sub-sections plus top-level queue/job settings:
+The `config` object (`SourceMonitor::Configuration`) has 11 sub-sections plus top-level queue/job settings:
 
 | Section | Accessor | Class |
 |---|---|---|
@@ -44,6 +44,7 @@ The `config` object (`SourceMonitor::Configuration`) has 10 sub-sections plus to
 | Models | `config.models` | `Models` |
 | Realtime | `config.realtime` | `RealtimeSettings` |
 | Authentication | `config.authentication` | `AuthenticationSettings` |
+| Images | `config.images` | `ImagesSettings` |
 
 See `reference/configuration-reference.md` for every setting with types, defaults, and examples.
 
@@ -67,6 +68,14 @@ config.http.retry_max = 3
 ```ruby
 config.authentication.authenticate_with :authenticate_user!
 config.authentication.authorize_with ->(c) { c.current_user&.admin? }
+```
+
+### Image Downloads (Active Storage)
+```ruby
+config.images.download_to_active_storage = true
+config.images.max_download_size = 5 * 1024 * 1024  # 5 MB
+config.images.download_timeout = 15
+config.images.allowed_content_types = %w[image/jpeg image/png image/webp]
 ```
 
 ### Events
@@ -116,6 +125,7 @@ SourceMonitor.mission_control_dashboard_path # Resolved MC path or nil
 | `lib/source_monitor/configuration/model_definition.rb` | Per-model definition |
 | `lib/source_monitor/configuration/realtime_settings.rb` | Action Cable settings |
 | `lib/source_monitor/configuration/authentication_settings.rb` | Auth settings |
+| `lib/source_monitor/configuration/images_settings.rb` | Image download settings |
 | `lib/source_monitor/configuration/validation_definition.rb` | Validation wrapper |
 
 ## References
@@ -146,7 +156,8 @@ end
 ## Checklist
 
 - [ ] Initializer exists at `config/initializers/source_monitor.rb`
-- [ ] Queue names match `config/solid_queue.yml` entries
+- [ ] Queue names match `config/queue.yml` (or `config/solid_queue.yml`) entries
+- [x] Dispatcher config includes `recurring_schedule: config/recurring.yml` (handled by install generator)
 - [ ] Authentication hooks configured for host auth system
 - [ ] HTTP timeouts appropriate for target feeds
 - [ ] Retention policy set for production

@@ -22,6 +22,7 @@ TARGETED_TESTS=(
   "test/lib/source_monitor/fetching/stalled_fetch_reconciler_test.rb"
   "test/lib/source_monitor/jobs/fetch_failure_subscriber_test.rb"
   "test/lib/source_monitor/scheduler_test.rb"
+  "test/lib/source_monitor/configuration/deprecation_registry_test.rb"
 )
 
 run_tests() {

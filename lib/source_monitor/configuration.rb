@@ -8,11 +8,13 @@ require "source_monitor/configuration/scraping_settings"
 require "source_monitor/configuration/realtime_settings"
 require "source_monitor/configuration/retention_settings"
 require "source_monitor/configuration/authentication_settings"
+require "source_monitor/configuration/images_settings"
 require "source_monitor/configuration/scraper_registry"
 require "source_monitor/configuration/events"
 require "source_monitor/configuration/validation_definition"
 require "source_monitor/configuration/model_definition"
 require "source_monitor/configuration/models"
+require "source_monitor/configuration/deprecation_registry"
 
 module SourceMonitor
   class Configuration
@@ -26,7 +28,7 @@ module SourceMonitor
       :mission_control_enabled,
       :mission_control_dashboard_path
 
-    attr_reader :http, :scrapers, :retention, :events, :models, :realtime, :fetching, :health, :authentication, :scraping
+    attr_reader :http, :scrapers, :retention, :events, :models, :realtime, :fetching, :health, :authentication, :scraping, :images
 
     DEFAULT_QUEUE_NAMESPACE = "source_monitor"
 
@@ -50,6 +52,7 @@ module SourceMonitor
       @health = HealthSettings.new
       @authentication = AuthenticationSettings.new
       @scraping = ScrapingSettings.new
+      @images = ImagesSettings.new
     end
 
     def queue_name_for(role)
@@ -82,6 +85,13 @@ module SourceMonitor
       else
         raise ArgumentError, "unknown queue role #{role.inspect}"
       end
+    end
+
+    # Post-configure hook for deprecation validation.
+    # Delegates to DeprecationRegistry.check_defaults! for future
+    # "default changed" checks. Currently a no-op.
+    def check_deprecations!
+      DeprecationRegistry.check_defaults!(self)
     end
   end
 end

@@ -38,6 +38,7 @@ module SourceMonitor
                 created += 1
                 created_items << result.item
                 SourceMonitor::Events.after_item_created(item: result.item, source:, entry:, result: result)
+                enqueue_image_download(result.item)
               else
                 updated += 1
                 updated_items << result.item
@@ -60,6 +61,18 @@ module SourceMonitor
         end
 
         private
+
+        def enqueue_image_download(item)
+          return unless SourceMonitor.config.images.download_enabled?
+          return if item.content.blank?
+
+          SourceMonitor::DownloadContentImagesJob.perform_later(item.id)
+        rescue StandardError => error
+          # Image download enqueue failure must never break feed processing
+          if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+            Rails.logger.error("[SourceMonitor] Failed to enqueue image download for item #{item.id}: #{error.message}")
+          end
+        end
 
         def normalize_item_error(entry, error)
           {

@@ -12,7 +12,7 @@ Guides integration of the SourceMonitor engine into a host Rails application.
 
 - Adding SourceMonitor to a new or existing Rails 8 host app
 - Troubleshooting a broken installation
-- Re-running setup after upgrading the gem
+- Re-running setup after upgrading the gem (see also: `sm-upgrade` skill for full upgrade workflow)
 - Rolling back the engine from a host app
 
 ## Prerequisites
@@ -73,6 +73,10 @@ bin/rails db:migrate
 # 5. Start background workers (recurring jobs configured automatically in config/recurring.yml)
 bin/rails solid_queue:start
 
+# Note: The generator automatically patches Procfile.dev with a jobs: entry
+# and adds recurring_schedule to your queue.yml dispatcher config.
+# Re-run the generator if these were not applied: bin/rails generate source_monitor:install
+
 # 6. Verify
 bin/source_monitor verify
 ```
@@ -86,7 +90,7 @@ gem "source_monitor", github: "dchuk/source_monitor"
 
 ## What the Install Generator Does
 
-The generator (`SourceMonitor::Generators::InstallGenerator`) performs three actions:
+The generator (`SourceMonitor::Generators::InstallGenerator`) performs five actions:
 
 1. **Mounts the engine** in `config/routes.rb`:
    ```ruby
@@ -99,6 +103,12 @@ The generator (`SourceMonitor::Generators::InstallGenerator`) performs three act
 
 3. **Configures recurring jobs** in `config/recurring.yml`:
    Adds entries for `ScheduleFetchesJob` (every minute), scrape scheduling (every 2 minutes), `ItemCleanupJob` (2am daily), and `LogCleanupJob` (3am daily). If the file doesn't exist, creates it with `default: &default` and environment sections. If it exists, merges entries without overwriting. Skips if SourceMonitor entries are already present.
+
+4. **Patches Procfile.dev** with a `jobs:` entry for Solid Queue:
+   Creates the file with `web:` and `jobs:` entries if it does not exist. Appends a `jobs:` entry if the file exists but lacks one. Skips if a `jobs:` entry is already present.
+
+5. **Patches queue.yml dispatcher** with `recurring_schedule: config/recurring.yml`:
+   Adds the `recurring_schedule` key to each dispatcher entry in `config/queue.yml`. If no dispatchers section exists, creates a default one. Skips if `recurring_schedule` is already configured. Skips if `config/queue.yml` does not exist.
 
 Re-running the generator is safe and idempotent.
 
@@ -180,6 +190,8 @@ config.authentication.user_signed_in_method = :user_signed_in?
 | `lib/generators/source_monitor/install/install_generator.rb` | Rails generator |
 | `lib/generators/source_monitor/install/templates/source_monitor.rb.tt` | Initializer template |
 | `lib/source_monitor/setup/initializer_patcher.rb` | Post-install patching |
+| `lib/source_monitor/setup/procfile_patcher.rb` | Procfile.dev patching for guided workflow |
+| `lib/source_monitor/setup/queue_config_patcher.rb` | Queue config patching for guided workflow |
 | `lib/source_monitor/setup/verification/runner.rb` | Verification runner |
 | `lib/source_monitor/engine.rb` | Engine configuration and initializers |
 | `docs/setup.md` | Full setup documentation |
@@ -190,6 +202,7 @@ config.authentication.user_signed_in_method = :user_signed_in?
 - `docs/setup.md` -- Complete setup workflow documentation
 - `docs/configuration.md` -- Configuration reference
 - `docs/troubleshooting.md` -- Common issues and fixes
+- `sm-upgrade` skill -- Upgrade workflow for gem version updates
 
 ## Testing
 
@@ -197,6 +210,7 @@ After setup, verify with:
 1. `bin/source_monitor verify` -- Checks Solid Queue and Action Cable
 2. Visit the mount path in browser -- Dashboard should load
 3. Create a source and trigger "Fetch Now" -- Validates end-to-end
+4. For subsequent gem updates, use `bin/source_monitor upgrade` -- see the `sm-upgrade` skill
 
 Optional system test for host apps using Devise:
 ```ruby
@@ -221,6 +235,8 @@ end
 - [ ] Install generator ran (`bin/rails generate source_monitor:install`)
 - [ ] Engine migrations copied and applied
 - [ ] Recurring jobs configured in `config/recurring.yml`
+- [x] `Procfile.dev` includes `jobs:` entry for Solid Queue (handled by generator)
+- [x] Dispatcher config includes `recurring_schedule: config/recurring.yml` (handled by generator)
 - [ ] Solid Queue workers started
 - [ ] Authentication hooks configured in initializer
 - [ ] `bin/source_monitor verify` passes

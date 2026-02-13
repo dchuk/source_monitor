@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "pathname"
+require_relative "procfile_patcher"
+require_relative "queue_config_patcher"
 require_relative "skills_installer"
 
 module SourceMonitor
@@ -35,6 +37,8 @@ module SourceMonitor
         install_generator: InstallGenerator.new,
         migration_installer: MigrationInstaller.new,
         initializer_patcher: InitializerPatcher.new,
+        procfile_patcher: ProcfilePatcher.new,
+        queue_config_patcher: QueueConfigPatcher.new,
         devise_detector: method(:default_devise_detector),
         verifier: Verification::Runner.new,
         skills_installer: SkillsInstaller.new
@@ -47,6 +51,8 @@ module SourceMonitor
         @install_generator = install_generator
         @migration_installer = migration_installer
         @initializer_patcher = initializer_patcher
+        @procfile_patcher = procfile_patcher
+        @queue_config_patcher = queue_config_patcher
         @devise_detector = devise_detector
         @verifier = verifier
         @skills_installer = skills_installer
@@ -64,6 +70,8 @@ module SourceMonitor
         install_generator.run(mount_path: mount_path)
         migration_installer.install
         initializer_patcher.ensure_navigation_hint(mount_path: mount_path)
+        procfile_patcher.patch
+        queue_config_patcher.patch
 
         if devise_available? && prompter.yes?("Wire Devise authentication hooks into SourceMonitor?", default: true)
           initializer_patcher.ensure_devise_hooks
@@ -89,6 +97,8 @@ module SourceMonitor
         :install_generator,
         :migration_installer,
         :initializer_patcher,
+        :procfile_patcher,
+        :queue_config_patcher,
         :devise_detector,
         :verifier,
         :skills_installer

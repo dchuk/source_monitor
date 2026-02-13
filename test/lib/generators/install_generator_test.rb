@@ -154,6 +154,125 @@ module SourceMonitor
       assert_match(/skip/, output)
     end
 
+    # -- Procfile.dev tests --
+
+    def test_creates_procfile_dev_when_none_exists
+      run_generator
+
+      assert_file "Procfile.dev" do |content|
+        assert_match(/^web:/, content)
+        assert_match(/^jobs: bundle exec rake solid_queue:start/, content)
+      end
+    end
+
+    def test_appends_jobs_entry_to_existing_procfile_dev
+      File.write(File.join(destination_root, "Procfile.dev"), "web: bin/rails server -p 3000\n")
+
+      run_generator
+
+      assert_file "Procfile.dev" do |content|
+        assert_match(/^web:/, content)
+        assert_match(/^jobs: bundle exec rake solid_queue:start/, content)
+      end
+    end
+
+    def test_skips_procfile_dev_when_jobs_entry_already_present
+      File.write(File.join(destination_root, "Procfile.dev"), "web: bin/rails server -p 3000\njobs: bundle exec rake solid_queue:start\n")
+
+      output = run_generator
+
+      assert_match(/skip.*Procfile\.dev/, output)
+    end
+
+    def test_does_not_duplicate_jobs_entry_when_rerun
+      run_generator
+      run_generator
+
+      content = File.read(File.join(destination_root, "Procfile.dev"))
+      assert_equal 1, content.scan(/^jobs:/).count
+    end
+
+    # -- Queue config tests --
+
+    def test_patches_queue_yml_dispatcher_with_recurring_schedule
+      config_path = File.join(destination_root, "config")
+      FileUtils.mkdir_p(config_path)
+      File.write(File.join(config_path, "queue.yml"), <<~YAML)
+        default: &default
+          dispatchers:
+            - polling_interval: 1
+              batch_size: 500
+          workers:
+            - queues: "*"
+              threads: 3
+              polling_interval: 0.1
+
+        development:
+          <<: *default
+
+        test:
+          <<: *default
+
+        production:
+          <<: *default
+      YAML
+
+      run_generator
+
+      assert_file "config/queue.yml" do |content|
+        assert_match(/recurring_schedule/, content)
+      end
+    end
+
+    def test_skips_queue_yml_when_recurring_schedule_already_present
+      config_path = File.join(destination_root, "config")
+      FileUtils.mkdir_p(config_path)
+      File.write(File.join(config_path, "queue.yml"), <<~YAML)
+        default: &default
+          dispatchers:
+            - polling_interval: 1
+              batch_size: 500
+              recurring_schedule: config/recurring.yml
+          workers:
+            - queues: "*"
+              threads: 3
+
+        development:
+          <<: *default
+      YAML
+
+      output = run_generator
+
+      assert_match(/skip.*queue\.yml/, output)
+    end
+
+    def test_skips_queue_yml_when_file_missing
+      output = run_generator
+
+      assert_match(/skip.*queue\.yml.*not found/, output)
+    end
+
+    def test_adds_default_dispatcher_when_none_exists_in_queue_yml
+      config_path = File.join(destination_root, "config")
+      FileUtils.mkdir_p(config_path)
+      File.write(File.join(config_path, "queue.yml"), <<~YAML)
+        default: &default
+          workers:
+            - queues: "*"
+              threads: 3
+
+        development:
+          <<: *default
+      YAML
+
+      run_generator
+
+      assert_file "config/queue.yml" do |content|
+        assert_match(/dispatchers/, content)
+        assert_match(/recurring_schedule/, content)
+      end
+    end
+
     private
 
     def write_routes_file

@@ -44,6 +44,25 @@ module SourceMonitor
         assert_mock printer
       end
 
+      test "upgrade command delegates to upgrade command and prints summary" do
+        summary = SourceMonitor::Setup::Verification::Summary.new([])
+        upgrade_cmd = Minitest::Mock.new
+        upgrade_cmd.expect(:call, summary)
+        printer = Minitest::Mock.new
+        printer.expect(:print, nil, [ summary ])
+
+        SourceMonitor::Setup::UpgradeCommand.stub(:new, ->(*) { upgrade_cmd }) do
+          SourceMonitor::Setup::Verification::Printer.stub(:new, printer) do
+            CLI.start([ "upgrade" ])
+          end
+        end
+
+        upgrade_cmd.verify
+        printer.verify
+        assert_mock upgrade_cmd
+        assert_mock printer
+      end
+
       test "handle_summary exits when summary not ok" do
         cli = CLI.new
         summary = Minitest::Mock.new
