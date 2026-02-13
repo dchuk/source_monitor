@@ -4,9 +4,10 @@
 
 ## Active Context
 
-**Milestone:** none (archived)
-**Last shipped:** default (2026-02-10) -- 4 phases, 14 plans, 841 tests
-**Next action:** /vbw:plan to start new milestone
+**Milestone:** upgrade-assurance
+**Phase:** 1 of 3 -- Upgrade Command & Migration Verifier (Planned)
+**Last shipped:** generator-enhancements (2026-02-12) -- v0.4.0
+**Next action:** /vbw:vibe --execute to build Phase 1
 
 ## Key Decisions
 
@@ -192,6 +193,7 @@ Engine-specific skills (`sm-*` prefix). Consumer skills install by default; cont
 | `sm-event-handler` | Lifecycle callbacks (after_item_created, etc.) |
 | `sm-model-extension` | Extend engine models from host app |
 | `sm-dashboard-widget` | Dashboard queries, presenters, Turbo broadcasts |
+| `sm-upgrade` | Gem upgrade workflow with CHANGELOG parsing |
 
 ### Contributor Skills (opt-in)
 
