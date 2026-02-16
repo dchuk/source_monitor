@@ -23,7 +23,7 @@ Detailed step-by-step reference for AI agents guiding host app developers throug
 
 ## Upgrade Command Internals
 
-How `bin/source_monitor upgrade` works internally:
+How `bin/rails source_monitor:upgrade` works internally:
 
 1. Reads `.source_monitor_version` from host app root (nil if first run)
 2. Compares stored version against `SourceMonitor::VERSION` (current gem version)
@@ -71,7 +71,7 @@ Checks that Action Cable is configured with a production-ready adapter (Solid Ca
 
 - Check that `bundle update source_monitor` actually pulled the new version
 - Verify `Gemfile.lock` shows the expected version: `grep source_monitor Gemfile.lock`
-- If the `.source_monitor_version` marker was manually edited, delete it and re-run `bin/source_monitor upgrade`
+- If the `.source_monitor_version` marker was manually edited, delete it and re-run `bin/rails source_monitor:upgrade`
 
 ### Migrations fail
 

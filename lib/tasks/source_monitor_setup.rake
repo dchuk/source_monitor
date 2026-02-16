@@ -39,6 +39,18 @@ namespace :source_monitor do
     end
   end
 
+  desc "Upgrade SourceMonitor after a gem version change"
+  task upgrade: :environment do
+    command = SourceMonitor::Setup::UpgradeCommand.new
+    summary = command.call
+    printer = SourceMonitor::Setup::Verification::Printer.new
+    printer.print(summary)
+
+    unless summary.ok?
+      raise "SourceMonitor upgrade completed with issues. See output above for remediation steps."
+    end
+  end
+
   namespace :skills do
     desc "Install consumer Claude Code skills for using SourceMonitor"
     task :install do

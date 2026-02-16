@@ -20,3 +20,5 @@
 .vbw-planning/.session-log.jsonl
 .vbw-planning/.hook-errors.log
 .vbw-planning/.claude-md-migrated
+.vbw-planning/.watchdog-pid
+.vbw-planning/.watchdog.log
