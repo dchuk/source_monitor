@@ -13,6 +13,10 @@ All notable changes to this project are documented below. The format follows [Ke
 
 ## [Unreleased]
 
+- No unreleased changes yet.
+
+## [0.5.2] - 2026-02-16
+
 ### Added
 
 - `source_monitor:upgrade` rake task for host apps to run upgrades via `bin/rails source_monitor:upgrade` instead of the non-distributed `bin/source_monitor` CLI.
