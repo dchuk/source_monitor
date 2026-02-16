@@ -210,7 +210,7 @@ After setup, verify with:
 1. `bin/source_monitor verify` -- Checks Solid Queue and Action Cable
 2. Visit the mount path in browser -- Dashboard should load
 3. Create a source and trigger "Fetch Now" -- Validates end-to-end
-4. For subsequent gem updates, use `bin/source_monitor upgrade` -- see the `sm-upgrade` skill
+4. For subsequent gem updates, use `bin/rails source_monitor:upgrade` -- see the `sm-upgrade` skill
 
 Optional system test for host apps using Devise:
 ```ruby

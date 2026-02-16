@@ -13,7 +13,13 @@ All notable changes to this project are documented below. The format follows [Ke
 
 ## [Unreleased]
 
-- No unreleased changes yet.
+### Added
+
+- `source_monitor:upgrade` rake task for host apps to run upgrades via `bin/rails source_monitor:upgrade` instead of the non-distributed `bin/source_monitor` CLI.
+
+### Fixed
+
+- PendingMigrationsVerifier false positive when host migrations have `.source_monitor` engine suffix (e.g., `create_source_monitor_sources.source_monitor.rb`).
 
 ## [0.5.1] - 2026-02-13
 

@@ -28,10 +28,10 @@ Guides AI agents through upgrading SourceMonitor in a host Rails application aft
 
 1. **Review CHANGELOG** -- Read `CHANGELOG.md` in the gem source. Identify changes between the current installed version (from `.source_monitor_version` or `Gemfile.lock`) and the target version. Focus on Added, Changed, Fixed, Removed sections. Flag any breaking changes or deprecation notices.
 2. **Update Gemfile** -- Bump the version constraint in the host app's Gemfile: `gem "source_monitor", "~> X.Y"`. Run `bundle update source_monitor`.
-3. **Run the upgrade command** -- `bin/source_monitor upgrade`. This automatically: detects the version change via `.source_monitor_version` marker, copies new migrations, re-runs the install generator (idempotent), runs the full verification suite.
+3. **Run the upgrade command** -- `bin/rails source_monitor:upgrade`. This automatically: detects the version change via `.source_monitor_version` marker, copies new migrations, re-runs the install generator (idempotent), runs the full verification suite.
 4. **Run database migrations** -- `bin/rails db:migrate` if the upgrade command copied new migrations.
 5. **Handle deprecation warnings** -- If the configure block in the initializer uses deprecated options, Rails logger will show warnings at boot. Read each warning, identify the replacement, update the initializer. See `sm-configure` skill for configuration reference.
-6. **Run verification** -- `bin/source_monitor verify` to confirm all checks pass.
+6. **Run verification** -- `bin/rails source_monitor:setup:verify` to confirm all checks pass.
 7. **Restart processes** -- Restart web server and Solid Queue workers to pick up the new version.
 
 ## Interpreting Upgrade Results
@@ -77,7 +77,7 @@ Example deprecation message:
 | File | Purpose |
 |---|---|
 | `lib/source_monitor/setup/upgrade_command.rb` | Upgrade orchestrator |
-| `lib/source_monitor/setup/cli.rb` | CLI entry point (`bin/source_monitor upgrade`) |
+| `lib/source_monitor/setup/cli.rb` | CLI entry point (Thor, used in development) |
 | `lib/source_monitor/setup/verification/runner.rb` | Verification runner (4 verifiers) |
 | `lib/source_monitor/configuration/deprecation_registry.rb` | Deprecation framework |
 | `CHANGELOG.md` | Version history (Keep a Changelog format) |
@@ -95,8 +95,8 @@ Example deprecation message:
 
 - [ ] CHANGELOG reviewed for version range
 - [ ] Gemfile updated and `bundle update source_monitor` run
-- [ ] `bin/source_monitor upgrade` completed successfully
+- [ ] `bin/rails source_monitor:upgrade` completed successfully
 - [ ] Database migrations applied if needed
 - [ ] Deprecation warnings addressed in initializer
-- [ ] `bin/source_monitor verify` passes all checks
+- [ ] `bin/rails source_monitor:setup:verify` passes all checks
 - [ ] Web server and workers restarted

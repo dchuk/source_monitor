@@ -26,7 +26,7 @@ module SourceMonitor
           if missing.any?
             warning_result(
               "#{missing.size} SourceMonitor migration(s) not copied to host: #{missing.join(', ')}",
-              "Run `bin/source_monitor upgrade` or `bin/rails railties:install:migrations FROM=source_monitor`"
+              "Run `bin/rails source_monitor:upgrade` or `bin/rails railties:install:migrations FROM=source_monitor`"
             )
           elsif connection.migration_context.needs_migration?
             warning_result(
@@ -72,7 +72,7 @@ module SourceMonitor
         end
 
         def strip_timestamp(filename)
-          filename.sub(MIGRATION_TIMESTAMP_PATTERN, "").delete_suffix(".rb")
+          filename.sub(MIGRATION_TIMESTAMP_PATTERN, "").delete_suffix(".rb").delete_suffix(".source_monitor")
         end
 
         def ok_result(details)

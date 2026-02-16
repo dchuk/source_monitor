@@ -14,7 +14,7 @@ Version-specific migration notes for each major/minor version transition. Agents
 - Netflix Tech Blog VCR cassette regression test added
 
 **Action items:**
-1. Re-run `bin/source_monitor upgrade` (or `bin/rails generate source_monitor:install`) to get Procfile.dev and queue.yml patches
+1. Re-run `bin/rails source_monitor:upgrade` (or `bin/rails generate source_monitor:install`) to get Procfile.dev and queue.yml patches
 2. If using Active Storage image downloads, add `config.images.download_to_active_storage = true` to initializer
 3. If experiencing SSL certificate errors, new `config.http.ssl_ca_file`, `config.http.ssl_ca_path`, and `config.http.ssl_verify` settings are available
 4. No breaking changes -- all existing configuration remains valid
@@ -32,7 +32,7 @@ Version-specific migration notes for each major/minor version transition. Agents
 
 **Action items:**
 1. If you monkey-patched or referenced internal classes (FeedFetcher internals, Configuration nested classes), check that your references still resolve
-2. Run `bin/source_monitor upgrade` to copy any new migrations
+2. Run `bin/rails source_monitor:upgrade` to copy any new migrations
 3. Optionally install skills: `bin/rails source_monitor:skills:install`
 4. No configuration changes required -- public API unchanged
 

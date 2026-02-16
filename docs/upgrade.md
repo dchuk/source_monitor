@@ -6,10 +6,10 @@ This guide covers upgrading SourceMonitor to a new gem version in your host Rail
 
 1. Review the [CHANGELOG](../CHANGELOG.md) for changes between your current and target versions
 2. Update your Gemfile version constraint and run `bundle update source_monitor`
-3. Run the upgrade command: `bin/source_monitor upgrade`
+3. Run the upgrade command: `bin/rails source_monitor:upgrade`
 4. Apply database migrations if new ones were copied: `bin/rails db:migrate`
 5. Address any deprecation warnings in your initializer (see Deprecation Handling below)
-6. Run verification: `bin/source_monitor verify`
+6. Run verification: `bin/rails source_monitor:setup:verify`
 7. Restart your web server and background workers
 
 ## Quick Upgrade (Most Cases)
@@ -19,7 +19,7 @@ This guide covers upgrading SourceMonitor to a new gem version in your host Rail
 bundle update source_monitor
 
 # 2. Run the upgrade command (handles migrations, generator, verification)
-bin/source_monitor upgrade
+bin/rails source_monitor:upgrade
 
 # 3. Migrate if needed
 bin/rails db:migrate
@@ -60,7 +60,7 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 **Upgrade steps:**
 ```bash
 bundle update source_monitor
-bin/source_monitor upgrade
+bin/rails source_monitor:upgrade
 bin/rails db:migrate
 ```
 
@@ -81,7 +81,7 @@ bin/rails db:migrate
 **Upgrade steps:**
 ```bash
 bundle update source_monitor
-bin/source_monitor upgrade
+bin/rails source_monitor:upgrade
 bin/rails db:migrate
 ```
 

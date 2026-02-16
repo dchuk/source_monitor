@@ -73,7 +73,7 @@ module SourceMonitor
               assert_equal :warning, result.status
               assert_match(/1 SourceMonitor migration/, result.details)
               assert_match(/create_source_monitor_items/, result.details)
-              assert_match(/bin\/source_monitor upgrade/, result.remediation)
+              assert_match(/source_monitor:upgrade/, result.remediation)
             end
           end
         end
@@ -97,6 +97,30 @@ module SourceMonitor
               assert_equal :warning, result.status
               assert_match(/pending/, result.details)
               assert_match(/db:migrate/, result.remediation)
+            end
+          end
+        end
+
+        test "returns ok when host migrations have .source_monitor engine suffix" do
+          Dir.mktmpdir do |engine_dir|
+            Dir.mktmpdir do |host_dir|
+              File.write(File.join(engine_dir, "20241008120000_create_source_monitor_sources.rb"), "")
+              File.write(File.join(engine_dir, "20241008121000_create_source_monitor_items.rb"), "")
+
+              File.write(File.join(host_dir, "20250101000000_create_source_monitor_sources.source_monitor.rb"), "")
+              File.write(File.join(host_dir, "20250101000001_create_source_monitor_items.source_monitor.rb"), "")
+
+              connection = FakeConnection.new(needs_migration: false)
+              verifier = PendingMigrationsVerifier.new(
+                engine_migrations_path: engine_dir,
+                host_migrations_path: host_dir,
+                connection: connection
+              )
+
+              result = verifier.call
+
+              assert_equal :ok, result.status
+              assert_match(/present and up to date/, result.details)
             end
           end
         end
