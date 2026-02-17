@@ -9,11 +9,11 @@ module SourceMonitor
         def initialize(
           engine_migrations_path: default_engine_migrations_path,
           host_migrations_path: default_host_migrations_path,
-          connection: default_connection
+          migration_context: default_migration_context
         )
           @engine_migrations_path = engine_migrations_path
           @host_migrations_path = host_migrations_path
-          @connection = connection
+          @migration_context = migration_context
         end
 
         def call
@@ -28,7 +28,7 @@ module SourceMonitor
               "#{missing.size} SourceMonitor migration(s) not copied to host: #{missing.join(', ')}",
               "Run `bin/rails source_monitor:upgrade` or `bin/rails railties:install:migrations FROM=source_monitor`"
             )
-          elsif connection.migration_context.needs_migration?
+          elsif migration_context.needs_migration?
             warning_result(
               "All SourceMonitor migrations are copied but some migrations are pending",
               "Run `bin/rails db:migrate` to apply pending migrations"
@@ -45,7 +45,7 @@ module SourceMonitor
 
         private
 
-        attr_reader :engine_migrations_path, :host_migrations_path, :connection
+        attr_reader :engine_migrations_path, :host_migrations_path, :migration_context
 
         def default_engine_migrations_path
           SourceMonitor::Engine.root.join("db/migrate")
@@ -55,8 +55,8 @@ module SourceMonitor
           Rails.root.join("db/migrate")
         end
 
-        def default_connection
-          ActiveRecord::Base.connection
+        def default_migration_context
+          ActiveRecord::Base.connection_pool.migration_context
         end
 
         def source_monitor_migration_names(path)

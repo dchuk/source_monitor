@@ -18,16 +18,6 @@ module SourceMonitor
           end
         end
 
-        class FakeConnection
-          def initialize(needs_migration: false)
-            @context = FakeMigrationContext.new(needs_migration: needs_migration)
-          end
-
-          def migration_context
-            @context
-          end
-        end
-
         test "returns ok when all engine migrations are present and none pending" do
           Dir.mktmpdir do |engine_dir|
             Dir.mktmpdir do |host_dir|
@@ -37,11 +27,11 @@ module SourceMonitor
               File.write(File.join(host_dir, "20250101000000_create_source_monitor_sources.rb"), "")
               File.write(File.join(host_dir, "20250101000001_create_source_monitor_items.rb"), "")
 
-              connection = FakeConnection.new(needs_migration: false)
+              context = FakeMigrationContext.new(needs_migration: false)
               verifier = PendingMigrationsVerifier.new(
                 engine_migrations_path: engine_dir,
                 host_migrations_path: host_dir,
-                connection: connection
+                migration_context: context
               )
 
               result = verifier.call
@@ -61,11 +51,11 @@ module SourceMonitor
 
               File.write(File.join(host_dir, "20250101000000_create_source_monitor_sources.rb"), "")
 
-              connection = FakeConnection.new(needs_migration: false)
+              context = FakeMigrationContext.new(needs_migration: false)
               verifier = PendingMigrationsVerifier.new(
                 engine_migrations_path: engine_dir,
                 host_migrations_path: host_dir,
-                connection: connection
+                migration_context: context
               )
 
               result = verifier.call
@@ -85,11 +75,11 @@ module SourceMonitor
 
               File.write(File.join(host_dir, "20250101000000_create_source_monitor_sources.rb"), "")
 
-              connection = FakeConnection.new(needs_migration: true)
+              context = FakeMigrationContext.new(needs_migration: true)
               verifier = PendingMigrationsVerifier.new(
                 engine_migrations_path: engine_dir,
                 host_migrations_path: host_dir,
-                connection: connection
+                migration_context: context
               )
 
               result = verifier.call
@@ -110,11 +100,11 @@ module SourceMonitor
               File.write(File.join(host_dir, "20250101000000_create_source_monitor_sources.source_monitor.rb"), "")
               File.write(File.join(host_dir, "20250101000001_create_source_monitor_items.source_monitor.rb"), "")
 
-              connection = FakeConnection.new(needs_migration: false)
+              context = FakeMigrationContext.new(needs_migration: false)
               verifier = PendingMigrationsVerifier.new(
                 engine_migrations_path: engine_dir,
                 host_migrations_path: host_dir,
-                connection: connection
+                migration_context: context
               )
 
               result = verifier.call
@@ -131,11 +121,11 @@ module SourceMonitor
               File.write(File.join(engine_dir, "20251010160000_create_solid_cable_messages.rb"), "")
               File.write(File.join(engine_dir, "20240101000000_create_solid_queue_tables.rb"), "")
 
-              connection = FakeConnection.new(needs_migration: false)
+              context = FakeMigrationContext.new(needs_migration: false)
               verifier = PendingMigrationsVerifier.new(
                 engine_migrations_path: engine_dir,
                 host_migrations_path: host_dir,
-                connection: connection
+                migration_context: context
               )
 
               result = verifier.call
@@ -152,8 +142,8 @@ module SourceMonitor
               File.write(File.join(engine_dir, "20241008120000_create_source_monitor_sources.rb"), "")
               File.write(File.join(host_dir, "20250101000000_create_source_monitor_sources.rb"), "")
 
-              bad_connection = Class.new do
-                def migration_context
+              bad_context = Class.new do
+                def needs_migration?
                   raise "connection exploded"
                 end
               end.new
@@ -161,7 +151,7 @@ module SourceMonitor
               verifier = PendingMigrationsVerifier.new(
                 engine_migrations_path: engine_dir,
                 host_migrations_path: host_dir,
-                connection: bad_connection
+                migration_context: bad_context
               )
 
               result = verifier.call

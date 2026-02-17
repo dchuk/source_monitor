@@ -15,6 +15,12 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.5.3] - 2026-02-16
+
+### Fixed
+
+- `PendingMigrationsVerifier` crash on Rails 8 (`undefined method 'migration_context'` on connection adapter). Now uses `connection_pool.migration_context` which is the Rails 8-compatible API.
+
 ## [0.5.2] - 2026-02-16
 
 ### Added
