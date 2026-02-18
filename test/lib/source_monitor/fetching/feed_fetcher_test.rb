@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "faraday"
 require "uri"
 require "digest"
 

@@ -1,0 +1,17 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "SSL Verification Bypass",
+      "warning_code": 71,
+      "fingerprint": "17da2beb8f8ecf05b0ca1e3da89ee27d593395c711197f2f7dd38df759ea3720",
+      "check_name": "SSLVerify",
+      "message": "SSL certificate verification was bypassed",
+      "file": "lib/source_monitor/http/aia_resolver.rb",
+      "line": 77,
+      "code": "OpenSSL::SSL::SSLContext.new.verify_mode = OpenSSL::SSL::VERIFY_NONE",
+      "note": "Intentional: AIA resolver must connect without verification to fetch the leaf certificate from servers with broken certificate chains. This is the core purpose of the module -- it only uses VERIFY_NONE to read the cert, never to transmit data."
+    }
+  ],
+  "updated": "2026-02-17",
+  "brakeman_version": "8.0.2"
+}
