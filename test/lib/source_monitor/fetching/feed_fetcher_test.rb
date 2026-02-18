@@ -641,6 +641,60 @@ module SourceMonitor
         assert_match(/SSL certificate problem/, result.error.message)
       end
 
+      # -- AIA Certificate Resolution --
+
+      test "retries with AIA resolution when SSLError occurs and intermediate found" do
+        url = "https://example.com/aia-success.xml"
+        source = build_source(name: "AIA Success", feed_url: url)
+
+        body = File.read(file_fixture("feeds/rss_sample.xml"))
+        call_count = 0
+        stub_request(:get, url).to_return { |_req|
+          call_count += 1
+          if call_count == 1
+            raise Faraday::SSLError, "certificate verify failed"
+          else
+            { status: 200, body: body, headers: { "Content-Type" => "application/rss+xml" } }
+          end
+        }
+
+        SourceMonitor::HTTP::AIAResolver.stub(:resolve, :mock_cert) do
+          SourceMonitor::HTTP::AIAResolver.stub(:enhanced_cert_store, OpenSSL::X509::Store.new) do
+            result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+            assert_equal :fetched, result.status
+          end
+        end
+      end
+
+      test "raises ConnectionError when SSLError occurs and AIA resolve returns nil" do
+        url = "https://example.com/aia-nil.xml"
+        source = build_source(name: "AIA Nil", feed_url: url)
+
+        stub_request(:get, url).to_raise(Faraday::SSLError.new("certificate verify failed"))
+
+        SourceMonitor::HTTP::AIAResolver.stub(:resolve, nil) do
+          result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+          assert_equal :failed, result.status
+          assert_kind_of SourceMonitor::Fetching::ConnectionError, result.error
+        end
+      end
+
+      test "does not attempt AIA resolution for non-SSL ConnectionFailed" do
+        url = "https://example.com/aia-not-attempted.xml"
+        source = build_source(name: "AIA Not Attempted", feed_url: url)
+
+        stub_request(:get, url).to_raise(Faraday::ConnectionFailed.new("connection refused"))
+
+        resolve_called = false
+        mock_resolve = ->(_hostname, **_opts) { resolve_called = true; nil }
+        SourceMonitor::HTTP::AIAResolver.stub(:resolve, mock_resolve) do
+          result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+          assert_equal :failed, result.status
+          assert_kind_of SourceMonitor::Fetching::ConnectionError, result.error
+          refute resolve_called, "AIAResolver.resolve should not be called for ConnectionFailed"
+        end
+      end
+
       test "wraps generic Faraday::Error as FetchError" do
         url = "https://example.com/faraday-generic.xml"
         source = build_source(name: "Faraday Generic", feed_url: url)
