@@ -9,6 +9,8 @@ require "active_support/core_ext/object/blank"
 
 module SourceMonitor
   module HTTP
+    autoload :AIAResolver, "source_monitor/http/aia_resolver"
+
     DEFAULT_TIMEOUT = 15
     DEFAULT_OPEN_TIMEOUT = 5
     DEFAULT_MAX_REDIRECTS = 5
@@ -16,7 +18,7 @@ module SourceMonitor
     RETRY_STATUSES = [ 429, 500, 502, 503, 504 ].freeze
 
     class << self
-      def client(proxy: nil, headers: {}, timeout: nil, open_timeout: nil, retry_requests: true)
+      def client(proxy: nil, headers: {}, timeout: nil, open_timeout: nil, retry_requests: true, cert_store: nil)
         settings = SourceMonitor.config.http
 
         effective_proxy = resolve_proxy(proxy, settings)
@@ -30,14 +32,15 @@ module SourceMonitor
             timeout: effective_timeout,
             open_timeout: effective_open_timeout,
             settings: settings,
-            enable_retry: retry_requests
+            enable_retry: retry_requests,
+            cert_store: cert_store
           )
         end
       end
 
       private
 
-      def configure_request(connection, headers, timeout:, open_timeout:, settings:, enable_retry:) # rubocop:disable Metrics/MethodLength
+      def configure_request(connection, headers, timeout:, open_timeout:, settings:, enable_retry:, cert_store: nil) # rubocop:disable Metrics/MethodLength
         if enable_retry
           connection.request :retry,
                              max: settings.retry_max || 4,
@@ -58,7 +61,7 @@ module SourceMonitor
           connection.headers[key] = value
         end
 
-        configure_ssl(connection, settings)
+        configure_ssl(connection, settings, cert_store: cert_store)
 
         connection.adapter Faraday.default_adapter
       end
@@ -67,7 +70,7 @@ module SourceMonitor
       # fail to verify certificate chains that depend on intermediate CAs
       # (e.g., Medium/Netflix on AWS). OpenSSL::X509::Store#set_default_paths
       # loads all system-trusted CAs including intermediates.
-      def configure_ssl(connection, settings)
+      def configure_ssl(connection, settings, cert_store: nil)
         connection.ssl.verify = settings.ssl_verify != false
 
         if settings.ssl_ca_file
@@ -75,7 +78,7 @@ module SourceMonitor
         elsif settings.ssl_ca_path
           connection.ssl.ca_path = settings.ssl_ca_path
         else
-          connection.ssl.cert_store = default_cert_store
+          connection.ssl.cert_store = cert_store || default_cert_store
         end
       end
 

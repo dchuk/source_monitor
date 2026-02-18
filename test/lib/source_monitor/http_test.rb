@@ -152,6 +152,25 @@ module SourceMonitor
       assert_equal false, connection.ssl.verify
     end
 
+    test "uses custom cert_store when provided and no ssl_ca_file or ssl_ca_path" do
+      custom_store = OpenSSL::X509::Store.new
+      connection = SourceMonitor::HTTP.client(cert_store: custom_store)
+
+      assert_equal custom_store, connection.ssl.cert_store
+    end
+
+    test "ignores cert_store when ssl_ca_file is configured" do
+      SourceMonitor.configure do |config|
+        config.http.ssl_ca_file = "/path/to/custom/ca.pem"
+      end
+
+      custom_store = OpenSSL::X509::Store.new
+      connection = SourceMonitor::HTTP.client(cert_store: custom_store)
+
+      assert_equal "/path/to/custom/ca.pem", connection.ssl.ca_file
+      assert_nil connection.ssl.cert_store
+    end
+
     test "fetches and parses gzipped feeds" do
       body = File.read(file_fixture("feeds/rss_sample.xml"))
 

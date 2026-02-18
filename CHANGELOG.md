@@ -15,6 +15,21 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.6.0] - 2026-02-17
+
+### Added
+
+- AIA (Authority Information Access) certificate resolution for SSL failures. When feed fetching or scraping encounters `certificate verify failed` errors due to missing intermediate certificates, the engine now automatically fetches the missing intermediate via AIA URLs and retries the request. This fixes feeds hosted on servers with incomplete certificate chains (e.g., Medium/Netflix Tech Blog on AWS).
+- `SourceMonitor::HTTP::AIAResolver` module with thread-safe hostname-keyed cache (1-hour TTL), SNI support, and DER/PEM certificate parsing.
+- `cert_store:` parameter on `SourceMonitor::HTTP.client` for passing custom certificate stores.
+- Brakeman ignore configuration (`config/brakeman.ignore`) for the intentional `VERIFY_NONE` in the AIA resolver's leaf certificate fetch.
+
+### Testing
+
+- 1,028 tests, 0 failures (up from 1,003 in 0.5.x).
+- RuboCop: 0 offenses.
+- Brakeman: 0 warnings (1 intentional ignore).
+
 ## [0.5.3] - 2026-02-16
 
 ### Fixed

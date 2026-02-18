@@ -10,6 +10,7 @@ module SourceMonitor
 
         def initialize(http: SourceMonitor::HTTP)
           @http = http
+          @aia_attempted = false
         end
 
         def fetch(url:, settings: nil)
@@ -25,6 +26,11 @@ module SourceMonitor
               message: "Non-success HTTP status"
             )
           end
+        rescue Faraday::SSLError => error
+          result = attempt_aia_recovery(url, settings)
+          return result if result
+
+          Result.new(status: :failed, error: error.class.name, message: error.message)
         rescue Faraday::ClientError => error
           Result.new(
             status: :failed,
@@ -40,13 +46,34 @@ module SourceMonitor
 
         attr_reader :http
 
-        def connection(settings)
+        def attempt_aia_recovery(url, settings)
+          return if @aia_attempted
+
+          @aia_attempted = true
+          hostname = URI.parse(url).host
+          intermediate = SourceMonitor::HTTP::AIAResolver.resolve(hostname)
+          return unless intermediate
+
+          store = SourceMonitor::HTTP::AIAResolver.enhanced_cert_store([ intermediate ])
+          response = connection(settings, cert_store: store).get(url)
+
+          if success_status?(response.status)
+            Result.new(status: :success, body: response.body, headers: response.headers, http_status: response.status)
+          else
+            Result.new(status: :failed, http_status: response.status, error: "http_error", message: "Non-success HTTP status")
+          end
+        rescue StandardError
+          nil
+        end
+
+        def connection(settings, cert_store: nil)
           normalized = normalize_settings(settings)
           http.client(
             proxy: normalized[:proxy],
             headers: normalized[:headers],
             timeout: normalized[:timeout] || SourceMonitor::HTTP::DEFAULT_TIMEOUT,
-            open_timeout: normalized[:open_timeout] || SourceMonitor::HTTP::DEFAULT_OPEN_TIMEOUT
+            open_timeout: normalized[:open_timeout] || SourceMonitor::HTTP::DEFAULT_OPEN_TIMEOUT,
+            cert_store: cert_store
           )
         end
 

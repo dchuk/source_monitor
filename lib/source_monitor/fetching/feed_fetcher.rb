@@ -81,8 +81,11 @@ module SourceMonitor
         raise error
       rescue Faraday::TimeoutError => error
         raise TimeoutError.new(error.message, original_error: error)
-      rescue Faraday::ConnectionFailed, Faraday::SSLError => error
+      rescue Faraday::ConnectionFailed => error
         raise ConnectionError.new(error.message, original_error: error)
+      rescue Faraday::SSLError => error
+        attempt_aia_recovery(error, started_at, instrumentation_payload) ||
+          raise(ConnectionError.new(error.message, original_error: error))
       rescue Faraday::ClientError => error
         raise build_http_error_from_faraday(error)
       rescue Faraday::Error => error
@@ -234,6 +237,24 @@ module SourceMonitor
             updated_items: []
           )
         )
+      end
+
+      def attempt_aia_recovery(_error, started_at, instrumentation_payload)
+        return if @aia_attempted
+
+        @aia_attempted = true
+        hostname = URI.parse(source.feed_url).host
+        intermediate = SourceMonitor::HTTP::AIAResolver.resolve(hostname)
+        return unless intermediate
+
+        store = SourceMonitor::HTTP::AIAResolver.enhanced_cert_store([ intermediate ])
+        @connection = SourceMonitor::HTTP.client(cert_store: store, headers: request_headers)
+        instrumentation_payload[:aia_resolved] = true
+
+        response = perform_request
+        handle_response(response, started_at, instrumentation_payload)
+      rescue StandardError
+        nil
       end
 
       def build_http_error_from_faraday(error)
