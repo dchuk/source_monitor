@@ -79,6 +79,51 @@ module SourceMonitor
           end
         end
 
+        test "returns failure when AIA retry returns non-success HTTP status" do
+          mock_response = OpenStruct.new(status: 403, body: "Forbidden", headers: {})
+          call_count = 0
+          mock_http = build_mock_http(->(**_) {
+            call_count += 1
+            conn = Object.new
+            if call_count == 1
+              conn.define_singleton_method(:get) { |_| raise Faraday::SSLError, "certificate verify failed" }
+            else
+              conn.define_singleton_method(:get) { |_| mock_response }
+            end
+            conn
+          })
+
+          fetcher = HttpFetcher.new(http: mock_http)
+
+          SourceMonitor::HTTP::AIAResolver.stub(:resolve, :mock_cert) do
+            SourceMonitor::HTTP::AIAResolver.stub(:enhanced_cert_store, OpenSSL::X509::Store.new) do
+              result = fetcher.fetch(url: @url, settings: {})
+
+              assert_equal :failed, result.status
+              assert_equal 403, result.http_status
+              assert_equal "http_error", result.error
+            end
+          end
+        end
+
+        test "returns failure when AIA recovery raises unexpected error" do
+          mock_http = build_mock_http(->(**_) {
+            conn = Object.new
+            conn.define_singleton_method(:get) { |_| raise Faraday::SSLError, "certificate verify failed" }
+            conn
+          })
+
+          fetcher = HttpFetcher.new(http: mock_http)
+
+          SourceMonitor::HTTP::AIAResolver.stub(:resolve, ->(_h) { raise RuntimeError, "unexpected" }) do
+            result = fetcher.fetch(url: @url, settings: {})
+
+            assert_equal :failed, result.status
+            assert_equal "Faraday::SSLError", result.error
+            assert_includes result.message, "certificate verify failed"
+          end
+        end
+
         test "does not attempt AIA resolution for non-SSL ConnectionFailed" do
           stub_request(:get, @url).to_raise(Faraday::ConnectionFailed.new("connection refused"))
 
@@ -92,6 +137,13 @@ module SourceMonitor
             assert_equal "Faraday::ConnectionFailed", result.error
             refute resolve_called, "AIA resolve should not be called for non-SSL errors"
           end
+        end
+        private
+
+        def build_mock_http(client_proc)
+          obj = Object.new
+          obj.define_singleton_method(:client) { |**opts| client_proc.call(**opts) }
+          obj
         end
       end
     end
