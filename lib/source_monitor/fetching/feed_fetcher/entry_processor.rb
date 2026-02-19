@@ -14,6 +14,7 @@ module SourceMonitor
           return FeedFetcher::EntryProcessingResult.new(
             created: 0,
             updated: 0,
+            unchanged: 0,
             failed: 0,
             items: [],
             errors: [],
@@ -23,6 +24,7 @@ module SourceMonitor
 
           created = 0
           updated = 0
+          unchanged = 0
           failed = 0
           items = []
           created_items = []
@@ -39,6 +41,8 @@ module SourceMonitor
                 created_items << result.item
                 SourceMonitor::Events.after_item_created(item: result.item, source:, entry:, result: result)
                 enqueue_image_download(result.item)
+              elsif result.unchanged?
+                unchanged += 1
               else
                 updated += 1
                 updated_items << result.item
@@ -52,6 +56,7 @@ module SourceMonitor
           FeedFetcher::EntryProcessingResult.new(
             created:,
             updated:,
+            unchanged:,
             failed:,
             items:,
             errors: errors.compact,

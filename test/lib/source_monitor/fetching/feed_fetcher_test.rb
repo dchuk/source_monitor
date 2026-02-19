@@ -980,16 +980,48 @@ module SourceMonitor
         assert_equal result1.item_processing.created, result1.item_processing.created_items.size
         assert_empty result1.item_processing.updated_items
 
-        # Second fetch with same content: items should be updated, not created
+        # Second fetch with same body: short-circuited by feed signature match,
+        # so entry processing is skipped entirely (zero counts across the board)
         stub_request(:get, url)
           .to_return(status: 200, body: body, headers: { "Content-Type" => "application/rss+xml" })
 
         result2 = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
         assert_equal :fetched, result2.status
         assert_equal 0, result2.item_processing.created
-        assert result2.item_processing.updated.positive?
+        assert_equal 0, result2.item_processing.updated
+        assert_equal 0, result2.item_processing.unchanged
         assert_empty result2.item_processing.created_items
-        assert_equal result2.item_processing.updated, result2.item_processing.updated_items.size
+        assert_empty result2.item_processing.updated_items
+      end
+
+      test "unchanged items are tracked when feed body changes but items are identical" do
+        url = "https://example.com/unchanged-items.xml"
+        source = build_source(name: "Unchanged Items", feed_url: url)
+
+        body = File.read(file_fixture("feeds/rss_sample.xml"))
+        stub_request(:get, url)
+          .to_return(status: 200, body: body, headers: { "Content-Type" => "application/rss+xml" })
+
+        # First fetch: all items created
+        result1 = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+        assert_equal :fetched, result1.status
+        total_entries = result1.item_processing.created
+        assert total_entries.positive?
+
+        # Second fetch: slightly different body (appended comment) so signature changes,
+        # but most items are the same so unchanged should dominate
+        modified_body = body + "\n<!-- timestamp: #{Time.now.to_i} -->"
+        stub_request(:get, url)
+          .to_return(status: 200, body: modified_body, headers: { "Content-Type" => "application/rss+xml" })
+
+        result2 = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+        assert_equal :fetched, result2.status
+        assert_equal 0, result2.item_processing.created
+        assert result2.item_processing.unchanged.positive?,
+          "Expected unchanged items when re-fetching identical entries with different body"
+        # Unchanged + updated should account for all entries
+        assert_equal total_entries,
+          result2.item_processing.unchanged + result2.item_processing.updated + result2.item_processing.failed
       end
 
       test "failure result includes empty EntryProcessingResult" do

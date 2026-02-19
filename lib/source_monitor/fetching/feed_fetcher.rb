@@ -17,6 +17,7 @@ module SourceMonitor
       EntryProcessingResult = Struct.new(
         :created,
         :updated,
+        :unchanged,
         :failed,
         :items,
         :errors,
@@ -123,11 +124,28 @@ module SourceMonitor
       def handle_success(response, started_at, instrumentation_payload)
         duration_ms = source_updater.elapsed_ms(started_at)
         body = response.body
-        feed = parse_feed(body, response)
-        processing = entry_processor.process_feed_entries(feed)
-
         feed_body_signature = body_digest(body)
-        source_updater.update_source_for_success(response, duration_ms, feed, feed_body_signature)
+        feed = parse_feed(body, response)
+
+        if source_updater.feed_signature_changed?(feed_body_signature)
+          processing = entry_processor.process_feed_entries(feed)
+          content_changed = entries_digest_changed?(feed)
+        else
+          processing = EntryProcessingResult.new(
+            created: 0,
+            updated: 0,
+            unchanged: 0,
+            failed: 0,
+            items: [],
+            errors: [],
+            created_items: [],
+            updated_items: []
+          )
+          content_changed = false
+        end
+
+        feed_entries_digest = entries_digest(feed)
+        source_updater.update_source_for_success(response, duration_ms, feed, feed_body_signature, content_changed: content_changed, entries_digest: feed_entries_digest)
         source_updater.create_fetch_log(
           response: response,
           duration_ms: duration_ms,
@@ -180,6 +198,7 @@ module SourceMonitor
           item_processing: EntryProcessingResult.new(
             created: 0,
             updated: 0,
+            unchanged: 0,
             failed: 0,
             items: [],
             errors: [],
@@ -230,6 +249,7 @@ module SourceMonitor
           item_processing: EntryProcessingResult.new(
             created: 0,
             updated: 0,
+            unchanged: 0,
             failed: 0,
             items: [],
             errors: [],
@@ -275,6 +295,32 @@ module SourceMonitor
         return if body.blank?
 
         Digest::SHA256.hexdigest(body)
+      end
+
+      def entries_digest(feed)
+        return if feed.nil? || !feed.respond_to?(:entries)
+
+        ids = Array(feed.entries).map do |entry|
+          if entry.respond_to?(:entry_id) && entry.entry_id.present?
+            entry.entry_id
+          elsif entry.respond_to?(:url) && entry.url.present?
+            entry.url
+          elsif entry.respond_to?(:title) && entry.title.present?
+            entry.title
+          end
+        end.compact.sort
+
+        return if ids.empty?
+
+        Digest::SHA256.hexdigest(ids.join("\0"))
+      end
+
+      def entries_digest_changed?(feed)
+        digest = entries_digest(feed)
+        return false if digest.nil?
+
+        stored = (source.metadata || {}).fetch("last_entries_digest", nil)
+        stored != digest
       end
 
       def adaptive_interval

@@ -11,7 +11,7 @@ module SourceMonitor
           @adaptive_interval = adaptive_interval
         end
 
-        def update_source_for_success(response, duration_ms, feed, feed_signature)
+        def update_source_for_success(response, duration_ms, feed, feed_signature, content_changed: nil, entries_digest: nil)
           attributes = {
             last_fetched_at: Time.current,
             last_fetch_duration_ms: duration_ms,
@@ -31,8 +31,10 @@ module SourceMonitor
             attributes[:last_modified] = parsed_time if parsed_time
           end
 
-          adaptive_interval.apply_adaptive_interval!(attributes, content_changed: feed_signature_changed?(feed_signature))
-          attributes[:metadata] = updated_metadata(feed_signature: feed_signature)
+          # Use explicit content_changed if provided, otherwise fall back to feed signature comparison
+          changed = content_changed.nil? ? feed_signature_changed?(feed_signature) : content_changed
+          adaptive_interval.apply_adaptive_interval!(attributes, content_changed: changed)
+          attributes[:metadata] = updated_metadata(feed_signature: feed_signature, entries_digest: entries_digest)
           reset_retry_state!(attributes)
           source.update!(attributes)
         end
@@ -111,10 +113,11 @@ module SourceMonitor
           (source.metadata || {}).fetch("last_feed_signature", nil) != feed_signature
         end
 
-        def updated_metadata(feed_signature: nil)
+        def updated_metadata(feed_signature: nil, entries_digest: nil)
           metadata = (source.metadata || {}).dup
           metadata.delete("dynamic_fetch_interval_seconds")
           metadata["last_feed_signature"] = feed_signature if feed_signature.present?
+          metadata["last_entries_digest"] = entries_digest if entries_digest.present?
           metadata
         end
 

@@ -220,7 +220,7 @@ module SourceMonitor
           ItemCreator.call(source: @source, entry: duplicate_entry)
         end
 
-        assert duplicate_result.updated?
+        assert duplicate_result.unchanged?, "Expected unchanged status for identical duplicate entry"
         duplicate_item = duplicate_result.item
 
         assert_equal 1, SourceMonitor::Item.count
@@ -414,7 +414,7 @@ module SourceMonitor
         attributes[:guid] = attributes[:guid].presence || attributes[:content_fingerprint]
 
         result = creator.send(:handle_concurrent_duplicate, attributes, raw_guid_present: true)
-        assert result.updated?
+        assert result.unchanged?, "expected unchanged for identical duplicate entry"
         assert_equal original_item.id, result.item.id
         assert_equal :guid, result.matched_by
       end
@@ -430,7 +430,7 @@ module SourceMonitor
         attributes[:guid] = attributes[:guid].presence || attributes[:content_fingerprint]
 
         result = creator.send(:handle_concurrent_duplicate, attributes, raw_guid_present: false)
-        assert result.updated?
+        assert result.unchanged?, "expected unchanged for identical duplicate entry"
         assert_equal original_item.id, result.item.id
         assert_equal :fingerprint, result.matched_by
       end
@@ -1121,14 +1121,21 @@ module SourceMonitor
         assert_equal result.item.content_fingerprint, result.item.guid
       end
 
-      test "Result struct created? and updated? predicates" do
+      test "Result struct created? and updated? and unchanged? predicates" do
         created = ItemCreator::Result.new(item: nil, status: :created)
         assert created.created?
         refute created.updated?
+        refute created.unchanged?
 
         updated = ItemCreator::Result.new(item: nil, status: :updated)
         refute updated.created?
         assert updated.updated?
+        refute updated.unchanged?
+
+        unchanged = ItemCreator::Result.new(item: nil, status: :unchanged)
+        refute unchanged.created?
+        refute unchanged.updated?
+        assert unchanged.unchanged?
       end
 
       test "deep_copy handles nested hashes and arrays" do
