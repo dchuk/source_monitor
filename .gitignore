@@ -22,3 +22,10 @@
 .vbw-planning/.claude-md-migrated
 .vbw-planning/.watchdog-pid
 .vbw-planning/.watchdog.log
+.vbw-planning/.agent-pids
+.vbw-planning/.agent-panes
+.vbw-planning/.active-agent
+.vbw-planning/.active-agent-count
+.vbw-planning/.todo-flat-migrated
+/codebase_analysis.md
+*.gem
