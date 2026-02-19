@@ -21,6 +21,10 @@ module SourceMonitor
         def updated?
           status == :updated
         end
+
+        def unchanged?
+          status == :unchanged
+        end
       end
 
       FINGERPRINT_SEPARATOR = "\u0000".freeze
@@ -46,8 +50,15 @@ module SourceMonitor
         existing_item, matched_by = existing_item_for(attributes, raw_guid_present: raw_guid.present?)
 
         if existing_item
-          updated_item = update_existing_item(existing_item, attributes, matched_by)
-          return Result.new(item: updated_item, status: :updated, matched_by: matched_by)
+          apply_attributes(existing_item, attributes)
+          instrument_duplicate(existing_item, matched_by)
+          if significant_changes?(existing_item)
+            existing_item.save!
+            return Result.new(item: existing_item, status: :updated, matched_by: matched_by)
+          else
+            existing_item.reload if existing_item.changed?
+            return Result.new(item: existing_item, status: :unchanged, matched_by: matched_by)
+          end
         end
 
         create_new_item(attributes, raw_guid_present: raw_guid.present?)
@@ -100,7 +111,7 @@ module SourceMonitor
 
       def update_existing_item(existing_item, attributes, matched_by)
         apply_attributes(existing_item, attributes)
-        existing_item.save!
+        existing_item.save! if significant_changes?(existing_item)
         instrument_duplicate(existing_item, matched_by)
         existing_item
       end
@@ -117,8 +128,15 @@ module SourceMonitor
       def handle_concurrent_duplicate(attributes, raw_guid_present:)
         matched_by = raw_guid_present ? :guid : :fingerprint
         existing = find_conflicting_item(attributes, matched_by)
-        updated = update_existing_item(existing, attributes, matched_by)
-        Result.new(item: updated, status: :updated, matched_by: matched_by)
+        apply_attributes(existing, attributes)
+        instrument_duplicate(existing, matched_by)
+        if significant_changes?(existing)
+          existing.save!
+          Result.new(item: existing, status: :updated, matched_by: matched_by)
+        else
+          existing.reload if existing.changed?
+          Result.new(item: existing, status: :unchanged, matched_by: matched_by)
+        end
       end
 
       def find_conflicting_item(attributes, matched_by)
@@ -131,11 +149,19 @@ module SourceMonitor
         end
       end
 
+      # Attributes that should not trigger an "updated" status when they change.
+      # Metadata contains feedjira object references that differ between parses.
+      IGNORED_CHANGE_ATTRIBUTES = %w[metadata].freeze
+
       def apply_attributes(record, attributes)
         attributes = attributes.dup
         metadata = attributes.delete(:metadata)
         record.assign_attributes(attributes)
         record.metadata = metadata if metadata
+      end
+
+      def significant_changes?(record)
+        (record.changed - IGNORED_CHANGE_ATTRIBUTES).any?
       end
 
       def build_attributes

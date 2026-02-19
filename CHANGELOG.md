@@ -15,6 +15,20 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.7.0] - 2026-02-18
+
+### Fixed
+
+- **False "updated" counts on unchanged feed items.** ItemCreator now checks for significant attribute changes before saving. Items with no real changes return a new `:unchanged` status instead of `:updated`, eliminating unnecessary database writes and misleading dashboard statistics.
+- **Redundant entry processing on unchanged feeds.** When a feed's body SHA-256 signature matches the previous fetch, entry processing is now skipped entirely (like the existing 304 Not Modified path), avoiding unnecessary parsing, DB lookups, and saves.
+- **Adaptive interval not backing off for stable feeds.** The `content_changed` signal for adaptive fetch scheduling now uses an item-level content hash (sorted entry IDs) instead of the raw XML body hash. This prevents cosmetic feed changes (e.g., `<lastBuildDate>` updates) from defeating interval backoff, allowing stable feeds to correctly increase their fetch interval.
+
+### Testing
+
+- 1,031 tests, 3,300 assertions, 0 failures.
+- RuboCop: 0 offenses.
+- Brakeman: 0 warnings.
+
 ## [0.6.0] - 2026-02-17
 
 ### Added

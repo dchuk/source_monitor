@@ -50,7 +50,6 @@ Progress: [##########] 100%
 - [phase-4]: Fix-everything approach for public API convention violations
 - [phase-4]: 3 files slightly exceed 300 lines (entry_parser 390, queries 356, application_helper 346) -- all single-responsibility, cannot be split further
 
-### Pending Todos
 
 None
 
