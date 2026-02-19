@@ -33,7 +33,6 @@ require_relative "../test/dummy/config/environment"
 ActiveRecord::Migrator.migrations_paths = [ File.expand_path("../test/dummy/db/migrate", __dir__) ]
 ActiveRecord::Migrator.migrations_paths << File.expand_path("../db/migrate", __dir__)
 require "rails/test_help"
-require_relative "test_prof"
 require "webmock/minitest"
 require "vcr"
 require "turbo-rails"
@@ -75,6 +74,9 @@ class ActiveSupport::TestCase
     count
   end
   parallelize(workers: worker_count, with: :threads)
+  # Load TestProf AFTER parallelize so its before_all prepend doesn't
+  # intercept the call and emit a spurious threads-incompatibility warning.
+  require_relative "test_prof"
   self.test_order = :random
 
   setup do
