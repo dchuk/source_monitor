@@ -84,6 +84,10 @@ class ActiveSupport::TestCase
     # Each test gets a fresh config object. No concurrent mutation risk since
     # tests read config only after their own setup completes.
     SourceMonitor.reset_configuration!
+    # Disable Faraday retry middleware in tests. Without this, tests that
+    # stub WebMock to raise Faraday::TimeoutError trigger 4 retries with
+    # exponential backoff (0.5s + 1s + 2s + 4s = 7.5s of real sleep).
+    SourceMonitor.config.http.retry_max = 0
   end
 
   # Clean all engine tables in FK-safe order (children before parents).
