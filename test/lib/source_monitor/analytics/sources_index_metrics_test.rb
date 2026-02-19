@@ -5,17 +5,15 @@ require "test_helper"
 module SourceMonitor
   module Analytics
     class SourcesIndexMetricsTest < ActiveSupport::TestCase
-      setup do
+      setup_once do
         clean_source_monitor_tables!
 
-        travel_to Time.current.change(usec: 0)
-
-        @fast_source = create_source!(name: "Fast", fetch_interval_minutes: 30)
-        @medium_source = create_source!(name: "Medium", fetch_interval_minutes: 120)
-        @slow_source = create_source!(name: "Slow", fetch_interval_minutes: 480)
+        @fast_source_id = create_source!(name: "Fast", fetch_interval_minutes: 30).id
+        @medium_source_id = create_source!(name: "Medium", fetch_interval_minutes: 120).id
+        @slow_source_id = create_source!(name: "Slow", fetch_interval_minutes: 480).id
 
         SourceMonitor::Item.create!(
-          source: @fast_source,
+          source_id: @fast_source_id,
           guid: SecureRandom.uuid,
           url: "https://example.com/fast-1",
           title: "Fast 1",
@@ -24,7 +22,7 @@ module SourceMonitor
         )
 
         SourceMonitor::Item.create!(
-          source: @fast_source,
+          source_id: @fast_source_id,
           guid: SecureRandom.uuid,
           url: "https://example.com/fast-2",
           title: "Fast 2",
@@ -33,13 +31,20 @@ module SourceMonitor
         )
 
         SourceMonitor::Item.create!(
-          source: @medium_source,
+          source_id: @medium_source_id,
           guid: SecureRandom.uuid,
           url: "https://example.com/medium-1",
           title: "Medium 1",
           created_at: 12.hours.ago,
           published_at: 12.hours.ago
         )
+      end
+
+      setup do
+        travel_to Time.current.change(usec: 0)
+        @fast_source = SourceMonitor::Source.find(@fast_source_id)
+        @medium_source = SourceMonitor::Source.find(@medium_source_id)
+        @slow_source = SourceMonitor::Source.find(@slow_source_id)
       end
 
       teardown do

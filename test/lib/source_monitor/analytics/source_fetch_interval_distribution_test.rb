@@ -5,7 +5,7 @@ require "test_helper"
 module SourceMonitor
   module Analytics
     class SourceFetchIntervalDistributionTest < ActiveSupport::TestCase
-      setup do
+      setup_once do
         clean_source_monitor_tables!
       end
 
