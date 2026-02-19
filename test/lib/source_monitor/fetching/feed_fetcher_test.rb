@@ -1024,6 +1024,30 @@ module SourceMonitor
           result2.item_processing.unchanged + result2.item_processing.updated + result2.item_processing.failed
       end
 
+      test "entries_digest falls back to url when entry_id is absent" do
+        url = "https://example.com/entries-digest-url.xml"
+        source = build_source(name: "Digest URL Fallback", feed_url: url)
+        fetcher = FeedFetcher.new(source: source, jitter: ->(_) { 0 })
+
+        entry_with_url = OpenStruct.new(url: "https://example.com/post-1", title: "Post One")
+        feed = OpenStruct.new(entries: [ entry_with_url ])
+
+        digest = fetcher.send(:entries_digest, feed)
+        refute_nil digest, "Expected digest when entries have url but no entry_id"
+      end
+
+      test "entries_digest falls back to title when entry_id and url are absent" do
+        url = "https://example.com/entries-digest-title.xml"
+        source = build_source(name: "Digest Title Fallback", feed_url: url)
+        fetcher = FeedFetcher.new(source: source, jitter: ->(_) { 0 })
+
+        entry_with_title = OpenStruct.new(title: "Only a Title")
+        feed = OpenStruct.new(entries: [ entry_with_title ])
+
+        digest = fetcher.send(:entries_digest, feed)
+        refute_nil digest, "Expected digest when entries have only title"
+      end
+
       test "failure result includes empty EntryProcessingResult" do
         url = "https://example.com/failure-processing.xml"
         source = build_source(name: "Failure Processing", feed_url: url)
