@@ -15,6 +15,27 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.7.1] - 2026-02-18
+
+### Changed
+
+- **Test suite 60% faster (118s → 46s).** Disabled Faraday retry middleware in tests — WebMock-stubbed timeout errors triggered 4 retries with exponential backoff (7.5s of real sleep per test), consuming 73% of total runtime across 11 FeedFetcher tests.
+- Split monolithic FeedFetcherTest (71 tests, 84.8s) into 6 concern-based test classes for better parallelization and maintainability.
+- Switched default test parallelism from fork-based to thread-based, eliminating PG segfault on single-file runs.
+- Reduced test log IO by setting test log level to `:warn` (was `:debug`, generating 95MB of output).
+- Adopted `setup_once`/`before_all` in 5 DB-heavy analytics/dashboard test files.
+- Added `test:fast` rake task to exclude integration and system tests during development.
+
+### Fixed
+
+- Suppressed spurious TestProf "before_all is not implemented for threads" warning by loading TestProf after `parallelize` call.
+
+### Testing
+
+- 1,033 tests, 3,302 assertions, 0 failures.
+- RuboCop: 0 offenses.
+- Brakeman: 0 warnings.
+
 ## [0.7.0] - 2026-02-18
 
 ### Fixed

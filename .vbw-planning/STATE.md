@@ -3,7 +3,7 @@
 ## Current Position
 
 - **Milestone:** aia-ssl-fix
-- **Phase:** 1 -- AIA Certificate Resolution
+- **Phase:** 2 -- Test Performance
 - **Status:** Complete
 - **Progress:** 100%
 

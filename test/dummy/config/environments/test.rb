@@ -24,6 +24,9 @@ Rails.application.configure do
   config.consider_all_requests_local = true
   config.cache_store = :null_store
 
+  # Reduce log IO in tests -- :debug generates ~95MB of output.
+  config.log_level = :warn
+
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
 

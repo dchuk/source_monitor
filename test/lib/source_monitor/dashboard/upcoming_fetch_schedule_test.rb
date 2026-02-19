@@ -5,7 +5,7 @@ require "test_helper"
 module SourceMonitor
   module Dashboard
     class UpcomingFetchScheduleTest < ActiveSupport::TestCase
-      setup do
+      setup_once do
         clean_source_monitor_tables!
       end
 

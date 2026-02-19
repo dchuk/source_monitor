@@ -15,8 +15,10 @@ These are real issues encountered in previous releases. Each step below accounts
 3. **VBW volatile files**: Files in `.vbw-planning/` (`.cost-ledger.json`, `.notification-log.jsonl`, `.session-log.jsonl`, `.hook-errors.log`) are continuously modified by VBW hooks. They should be in `.gitignore`. If they aren't, add them before proceeding.
 4. **Pre-push hook**: The VBW pre-push hook at `.git/hooks/pre-push` requires the `VERSION` file to appear in the diff for any push. For new branches, it compares the commit against the working tree -- any dirty files will trigger a false positive. For force-pushes to existing branches where `VERSION` hasn't changed since the last push, use `--no-verify`.
 5. **Single squashed commit**: Always create ONE commit on the release branch with ALL changes (version bump, changelog, Gemfile.lock, any fixes). Multiple commits cause pre-push hook issues.
-6. **Diff coverage CI gate**: The `test` CI job enforces diff coverage. Any changed lines in source code (not just test files) must have test coverage. If you change source code during the release (e.g., bug fixes), you must add corresponding tests.
-7. **Local main divergence after merge**: After the PR merges, local main will have different commits than origin/main (pre-squash vs merged). You must `git reset --hard origin/main` to sync -- this requires user approval since the sandbox blocks it.
+6. **Diff coverage CI gate**: The `test` CI job enforces diff coverage. Any changed lines in source code (not just test files) must have test coverage. **This applies to ALL changes in the PR diff vs main, including unpushed commits made before the release started.** If the release includes source code changes (bug fixes, features), every changed source line must be covered.
+7. **Local main divergence after merge**: After the PR merges, `gh pr merge --merge --delete-branch` will attempt to fast-forward local main. This usually succeeds automatically. If it doesn't (divergent history), you must `git reset --hard origin/main` to sync -- this requires user approval since the sandbox blocks it.
+8. **Run local checks BEFORE pushing**: Always run `bin/rubocop` and `PARALLEL_WORKERS=1 bin/rails test` locally before the first push to the release branch. Each CI roundtrip (fail → fix → amend → force-push → re-run) costs ~5 minutes. In v0.7.0, skipping local checks caused two wasted CI cycles: first for uncovered diff lines, then for a RuboCop violation in the fix.
+9. **Zsh glob nomatch**: Commands like `rm -f *.gem` fail in zsh when no files match. Always use `rm -f *.gem 2>/dev/null || true` or check existence first with `ls`.
 
 ## Step 1: Git Hygiene
 
@@ -112,7 +114,25 @@ The changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 2. Verify the output shows the new version: `Using source_monitor X.Y.Z (was X.Y.Z-1)`.
 3. If `bundle install` fails, resolve the issue before proceeding.
 
-## Step 5: Create Release Branch with Single Squashed Commit
+## Step 5: Local Pre-flight Checks
+
+**CRITICAL**: Run these checks BEFORE creating the release branch and pushing. Each CI failure → fix → amend → force-push cycle wastes ~5 minutes. In v0.7.0, skipping this step caused two wasted CI roundtrips.
+
+1. **RuboCop**: Run `bin/rubocop` and fix any violations. Auto-fix with `bin/rubocop -a` if needed. This catches lint issues (like `SpaceInsideArrayLiteralBrackets`) that would fail the CI lint job.
+
+2. **Tests**: Run `PARALLEL_WORKERS=1 bin/rails test` and ensure all tests pass.
+
+3. **Diff coverage pre-check**: If the release includes source code changes beyond version/changelog/lockfile (check with `git diff --name-only origin/main`), review those files for uncovered branches. The CI diff coverage gate will reject any changed source lines without test coverage. Common blind spots:
+   - Fallback/else branches in new methods
+   - Error handling paths
+   - Guard clauses
+   If you find uncovered source lines, write tests for them NOW before creating the release commit — it's far cheaper than a CI roundtrip.
+
+4. **Brakeman**: Run `bin/brakeman --no-pager` and ensure zero warnings.
+
+Only proceed to Step 6 when all local checks pass.
+
+## Step 6: Create Release Branch with Single Squashed Commit
 
 **IMPORTANT**: All release changes MUST be in a single commit on the release branch. This avoids pre-push hook issues where individual commits are checked for VERSION changes.
 
@@ -124,13 +144,13 @@ The changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
    Also stage any other files that were changed (updated skills, docs, etc.).
 3. Create a single commit:
    ```
-   chore: release vX.Y.Z
+   chore(release): release vX.Y.Z
    ```
 4. Push the branch: `git push -u origin release/vX.Y.Z`
    - If the pre-push hook blocks with a false positive (e.g., VBW files dirty in working tree despite being gitignored), use `git push -u --no-verify origin release/vX.Y.Z`. This is safe because we've verified VERSION is in the commit.
 5. If the push fails for other reasons, diagnose and fix before proceeding.
 
-## Step 6: Create PR
+## Step 7: Create PR
 
 1. Create the PR using `gh pr create`:
    - Title: `Release vX.Y.Z`
@@ -152,7 +172,7 @@ The changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
    - Base: `main`
 2. Report the PR URL to the user.
 
-## Step 7: Monitor CI Pipeline
+## Step 8: Monitor CI Pipeline
 
 Poll the CI status using repeated `gh pr checks <PR_NUMBER>` calls. The CI has 4 required jobs: `lint`, `security`, `test`, `release_verification` (release_verification only runs after test passes).
 
@@ -163,7 +183,7 @@ Poll the CI status using repeated `gh pr checks <PR_NUMBER>` calls. The CI has 4
 
 ### If CI PASSES (all checks green):
 
-Continue to Step 8.
+Continue to Step 9. If Step 5 (local pre-flight) was done properly, CI should pass on the first attempt.
 
 ### If CI FAILS:
 
@@ -173,32 +193,32 @@ Continue to Step 8.
    gh run view <RUN_ID> --log-failed | tail -80
    ```
 3. **Common failure: diff coverage** -- If the `test` job fails on "Enforce diff coverage", it means changed source lines lack test coverage. Read the error to identify uncovered files/lines, write tests, and add them to the release commit.
-4. **Common failure: Gemfile.lock frozen** -- If `bundle install` fails in CI with "frozen mode", you forgot to run `bundle install` locally (Step 4).
-5. Present failure details to the user and ask what to do:
-   - "Fix the issues and re-push" -- Fix issues, amend the commit (`git commit --amend --no-edit`), force push (`git push --force-with-lease --no-verify origin release/vX.Y.Z`), and restart CI monitoring.
+4. **Common failure: Gemfile.lock frozen** -- If `bundle install` fails in CI with "frozen mode", you forgot to run `bundle install` locally (Step 4). Amend the commit with the updated lockfile.
+5. **Common failure: RuboCop lint** -- If the `lint` job fails, a RuboCop violation slipped through. This should have been caught in Step 5.
+6. **IMPORTANT: When fixing CI failures, run ALL local checks again before re-pushing.** Don't just fix the one failure — run `bin/rubocop` AND `PARALLEL_WORKERS=1 bin/rails test` to catch cascading issues. In v0.7.0, fixing a diff coverage failure introduced a RuboCop violation, requiring a third CI cycle.
+7. Present failure details to the user and ask what to do:
+   - "Fix the issues and re-push" -- Fix issues, run ALL local checks (rubocop + tests), amend the commit (`git commit --amend --no-edit`), force push (`git push --force-with-lease --no-verify origin release/vX.Y.Z`), and restart CI monitoring.
    - "Close the PR and abort" -- Close the PR, delete the branch, switch back to main.
    - "Investigate manually" -- Stop and let the user handle it.
 
 **Note on force pushes**: When force-pushing the release branch after amending, always use `--no-verify` because the pre-push hook will see the diff between old and new branch tips, and `VERSION` won't appear as changed (it's the same in both). This is expected and safe.
 
-## Step 8: Auto-Merge PR
+## Step 9: Auto-Merge PR
 
 Once CI is green:
 
 1. Merge the PR: `gh pr merge <PR_NUMBER> --merge --delete-branch`
+   - The `--delete-branch` flag also fetches and fast-forwards local main in most cases.
 
-2. **Sync local main with remote** (this is the tricky part):
-   - The merge creates a merge commit on origin/main that doesn't exist locally.
-   - Local main may have different commits (pre-squash) than what was merged.
+2. **Sync local main with remote**:
    - Switch to main: `git checkout main`
-   - Try `git pull origin main`. If it fails with conflicts or divergence:
-     - Ask the user to run `git reset --hard origin/main` (the sandbox blocks this command).
-     - Explain this is safe because the PR is merged and all changes are on origin/main.
-   - Verify with `git log --oneline -3` that local matches remote.
+   - The `gh pr merge` command usually auto-syncs local main via fast-forward. Verify with `git log --oneline -3` that local matches remote (`git rev-parse HEAD` == `git rev-parse origin/main`).
+   - If local is behind or diverged, try `git pull origin main`.
+   - If pull fails with conflicts or divergence (rare): ask the user to run `git reset --hard origin/main` (the sandbox blocks this command). Explain this is safe because the PR is merged and all changes are on origin/main.
 
 3. Report: "PR #N merged successfully."
 
-## Step 9: Tag the Release
+## Step 10: Tag the Release
 
 1. Verify you're on main and synced with origin.
 2. Create an annotated tag:
@@ -212,14 +232,17 @@ Once CI is green:
    ```
 5. Report the release URL.
 
-## Step 10: Build the Gem
+## Step 11: Build the Gem
 
-1. Clean any old gem files: `ls source_monitor-*.gem` and remove them if found (don't error if none exist).
+1. Clean any old gem files. **Note**: zsh fails on `rm -f *.gem` when no files match due to `nomatch`. Use:
+   ```
+   find . -maxdepth 1 -name 'source_monitor-*.gem' -delete
+   ```
 2. Build the gem: `gem build source_monitor.gemspec`
 3. Verify the gem was built: check for `source_monitor-X.Y.Z.gem` in the project root.
 4. Show the file size: `ls -la source_monitor-X.Y.Z.gem`
 
-## Step 11: Gem Push Instructions
+## Step 12: Gem Push Instructions
 
 Present the final instructions to the user:
 

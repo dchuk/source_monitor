@@ -33,7 +33,6 @@ require_relative "../test/dummy/config/environment"
 ActiveRecord::Migrator.migrations_paths = [ File.expand_path("../test/dummy/db/migrate", __dir__) ]
 ActiveRecord::Migrator.migrations_paths << File.expand_path("../db/migrate", __dir__)
 require "rails/test_help"
-require_relative "test_prof"
 require "webmock/minitest"
 require "vcr"
 require "turbo-rails"
@@ -66,18 +65,29 @@ end
 WebMock.disable_net_connect!(allow_localhost: true)
 
 class ActiveSupport::TestCase
-  if ENV["COVERAGE"]
-    parallelize(workers: 1, with: :threads)
+  worker_count = if ENV["COVERAGE"]
+    1
   else
-    worker_count = ENV.fetch("SOURCE_MONITOR_TEST_WORKERS", :number_of_processors)
-    worker_count = worker_count.to_i if worker_count.is_a?(String) && !worker_count.empty?
-    worker_count = :number_of_processors if worker_count.respond_to?(:zero?) && worker_count.zero?
-    parallelize(workers: worker_count)
+    count = ENV.fetch("SOURCE_MONITOR_TEST_WORKERS", :number_of_processors)
+    count = count.to_i if count.is_a?(String) && !count.empty?
+    count = :number_of_processors if count.respond_to?(:zero?) && count.zero?
+    count
   end
+  parallelize(workers: worker_count, with: :threads)
+  # Load TestProf AFTER parallelize so its before_all prepend doesn't
+  # intercept the call and emit a spurious threads-incompatibility warning.
+  require_relative "test_prof"
   self.test_order = :random
 
   setup do
+    # Thread-safe: reset_configuration! replaces @configuration atomically.
+    # Each test gets a fresh config object. No concurrent mutation risk since
+    # tests read config only after their own setup completes.
     SourceMonitor.reset_configuration!
+    # Disable Faraday retry middleware in tests. Without this, tests that
+    # stub WebMock to raise Faraday::TimeoutError trigger 4 retries with
+    # exponential backoff (0.5s + 1s + 2s + 4s = 7.5s of real sleep).
+    SourceMonitor.config.http.retry_max = 0
   end
 
   # Clean all engine tables in FK-safe order (children before parents).
