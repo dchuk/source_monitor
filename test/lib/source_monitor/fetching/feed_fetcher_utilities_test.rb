@@ -45,6 +45,28 @@ module SourceMonitor
         assert_equal :not_modified, result.status
       end
 
+      test "request_headers includes Referer from source website_url" do
+        url = "https://example.com/referer-test.xml"
+        source = build_source(name: "Referer Test", feed_url: url)
+        source.update_columns(website_url: "https://example.com")
+
+        fetcher = FeedFetcher.new(source: source)
+        headers = fetcher.send(:request_headers)
+
+        assert_equal "https://example.com", headers["Referer"]
+      end
+
+      test "request_headers omits Referer when website_url is blank" do
+        url = "https://example.com/no-referer-test.xml"
+        source = build_source(name: "No Referer Test", feed_url: url)
+        source.update_columns(website_url: nil)
+
+        fetcher = FeedFetcher.new(source: source)
+        headers = fetcher.send(:request_headers)
+
+        refute headers.key?("Referer")
+      end
+
       test "includes custom_headers in request" do
         url = "https://example.com/custom-headers.xml"
         source = build_source(name: "Custom Headers", feed_url: url)

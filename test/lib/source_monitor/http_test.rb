@@ -93,7 +93,7 @@ module SourceMonitor
       custom = SourceMonitor::HTTP.client(headers: { "User-Agent" => "SourceMonitor/Test" })
 
       assert_equal "SourceMonitor/Test", custom.headers["User-Agent"]
-      assert_equal "application/rss+xml, application/atom+xml, application/json;q=0.9, text/xml;q=0.8", custom.headers["Accept"]
+      assert_equal "text/html, application/rss+xml, application/atom+xml, application/json;q=0.9, text/xml;q=0.8", custom.headers["Accept"]
       assert_equal "gzip,deflate", custom.headers["Accept-Encoding"]
     end
 
@@ -112,6 +112,16 @@ module SourceMonitor
       assert_equal "application/json", client.headers["Accept"]
       assert_equal "true", client.headers["X-Feed-Monitor"]
       assert_equal "abc123", client.headers["X-Request-ID"]
+    end
+
+    test "default user agent is browser-like" do
+      assert_includes @connection.headers["User-Agent"], "Mozilla/5.0"
+      assert_includes @connection.headers["User-Agent"], "SourceMonitor/"
+    end
+
+    test "includes Accept-Language and DNT in default headers" do
+      assert_equal "en-US,en;q=0.9", @connection.headers["Accept-Language"]
+      assert_equal "1", @connection.headers["DNT"]
     end
 
     test "configures SSL with default cert store" do
