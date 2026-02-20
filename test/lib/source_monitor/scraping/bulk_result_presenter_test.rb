@@ -61,6 +61,44 @@ module SourceMonitor
         assert_includes payload[:message], "Stopped after reaching the per-source limit"
       end
 
+      test "partial status with rate limiting omits number when limit is nil" do
+        # Default max_in_flight_per_source is nil -- message should not include a number
+        assert_nil SourceMonitor.config.scraping.max_in_flight_per_source
+
+        result = mock_result(
+          status: :partial,
+          selection: :all,
+          enqueued_count: 8,
+          already_enqueued_count: 0,
+          rate_limited: true,
+          failure_details: { rate_limited: 3 }
+        )
+
+        presenter = BulkResultPresenter.new(result:, pluralizer: @pluralizer)
+        payload = presenter.to_flash_payload
+
+        assert_includes payload[:message], "Stopped after reaching the per-source limit"
+        refute_includes payload[:message], "of "
+      end
+
+      test "partial status with rate limiting shows number when limit is set" do
+        SourceMonitor.configure { |c| c.scraping.max_in_flight_per_source = 10 }
+
+        result = mock_result(
+          status: :partial,
+          selection: :all,
+          enqueued_count: 8,
+          already_enqueued_count: 0,
+          rate_limited: true,
+          failure_details: { rate_limited: 3 }
+        )
+
+        presenter = BulkResultPresenter.new(result:, pluralizer: @pluralizer)
+        payload = presenter.to_flash_payload
+
+        assert_includes payload[:message], "Stopped after reaching the per-source limit of 10"
+      end
+
       test "partial status with mixed failures" do
         result = mock_result(
           status: :partial,
