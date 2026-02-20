@@ -42,7 +42,7 @@ module SourceMonitor
       private
 
       def default_user_agent
-        "SourceMonitor/#{SourceMonitor::VERSION}"
+        "Mozilla/5.0 (compatible; SourceMonitor/#{SourceMonitor::VERSION})"
       end
     end
   end

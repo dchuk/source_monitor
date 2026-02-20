@@ -14,7 +14,7 @@ module SourceMonitor
     DEFAULT_TIMEOUT = 15
     DEFAULT_OPEN_TIMEOUT = 5
     DEFAULT_MAX_REDIRECTS = 5
-    DEFAULT_USER_AGENT = "SourceMonitor/#{SourceMonitor::VERSION}"
+    DEFAULT_USER_AGENT = "Mozilla/5.0 (compatible; SourceMonitor/#{SourceMonitor::VERSION})"
     RETRY_STATUSES = [ 429, 500, 502, 503, 504 ].freeze
 
     class << self
