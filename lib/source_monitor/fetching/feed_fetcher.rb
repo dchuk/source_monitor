@@ -103,6 +103,7 @@ module SourceMonitor
 
       def request_headers
         headers = (source.custom_headers || {}).transform_keys { |key| key.to_s }
+        headers["Referer"] = source.website_url if source.website_url.present?
         headers["If-None-Match"] = source.etag if source.etag.present?
         if source.last_modified.present?
           headers["If-Modified-Since"] = source.last_modified.httpdate
