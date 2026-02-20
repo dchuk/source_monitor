@@ -126,6 +126,70 @@ module SourceMonitor
       assert_match(/failed/i, toasts.last[:message])
     end
 
+    test "enqueues fetch when health check succeeds on declining source" do
+      source = create_source!(feed_url: "https://example.com/feed.xml", health_status: "declining")
+
+      stub_request(:get, source.feed_url).to_return(
+        status: 200, body: "", headers: { "Content-Type" => "application/rss+xml" }
+      )
+
+      SourceMonitor::SourceHealthCheckJob.perform_now(source.id)
+
+      fetch_jobs = enqueued_jobs.select { |j| j["job_class"] == "SourceMonitor::FetchFeedJob" }
+      assert_equal 1, fetch_jobs.size, "expected FetchFeedJob to be enqueued"
+      assert_equal source.id, fetch_jobs.first["arguments"].first
+    end
+
+    test "enqueues fetch when health check succeeds on critical source" do
+      source = create_source!(feed_url: "https://example.com/feed.xml", health_status: "critical")
+
+      stub_request(:get, source.feed_url).to_return(
+        status: 200, body: "", headers: { "Content-Type" => "application/rss+xml" }
+      )
+
+      SourceMonitor::SourceHealthCheckJob.perform_now(source.id)
+
+      fetch_jobs = enqueued_jobs.select { |j| j["job_class"] == "SourceMonitor::FetchFeedJob" }
+      assert_equal 1, fetch_jobs.size, "expected FetchFeedJob to be enqueued"
+    end
+
+    test "enqueues fetch when health check succeeds on warning source" do
+      source = create_source!(feed_url: "https://example.com/feed.xml", health_status: "warning")
+
+      stub_request(:get, source.feed_url).to_return(
+        status: 200, body: "", headers: { "Content-Type" => "application/rss+xml" }
+      )
+
+      SourceMonitor::SourceHealthCheckJob.perform_now(source.id)
+
+      fetch_jobs = enqueued_jobs.select { |j| j["job_class"] == "SourceMonitor::FetchFeedJob" }
+      assert_equal 1, fetch_jobs.size, "expected FetchFeedJob to be enqueued"
+    end
+
+    test "does not enqueue fetch when health check succeeds on healthy source" do
+      source = create_source!(feed_url: "https://example.com/feed.xml", health_status: "healthy")
+
+      stub_request(:get, source.feed_url).to_return(
+        status: 200, body: "", headers: { "Content-Type" => "application/rss+xml" }
+      )
+
+      SourceMonitor::SourceHealthCheckJob.perform_now(source.id)
+
+      fetch_jobs = enqueued_jobs.select { |j| j["job_class"] == "SourceMonitor::FetchFeedJob" }
+      assert_empty fetch_jobs, "expected no FetchFeedJob to be enqueued for healthy source"
+    end
+
+    test "does not enqueue fetch when health check fails on degraded source" do
+      source = create_source!(feed_url: "https://example.com/feed.xml", health_status: "declining")
+
+      stub_request(:get, source.feed_url).to_timeout
+
+      SourceMonitor::SourceHealthCheckJob.perform_now(source.id)
+
+      fetch_jobs = enqueued_jobs.select { |j| j["job_class"] == "SourceMonitor::FetchFeedJob" }
+      assert_empty fetch_jobs, "expected no FetchFeedJob to be enqueued after failed health check"
+    end
+
     test "swallows logging errors when failure recording fails" do
       source = create_source!(feed_url: "https://example.com/feed.xml")
 
