@@ -5,7 +5,7 @@ module SourceMonitor
     class ScrapingSettings
       attr_accessor :max_in_flight_per_source, :max_bulk_batch_size
 
-      DEFAULT_MAX_IN_FLIGHT = 25
+      DEFAULT_MAX_IN_FLIGHT = nil
       DEFAULT_MAX_BULK_BATCH_SIZE = 100
 
       def initialize
