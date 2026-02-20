@@ -12,6 +12,7 @@ module SourceMonitor
 
       result = SourceMonitor::Health::SourceHealthCheck.new(source: source).call
       broadcast_outcome(source, result)
+      trigger_fetch_if_degraded(source, result)
       result
     rescue StandardError => error
       Rails.logger&.error(
@@ -23,7 +24,16 @@ module SourceMonitor
       nil
     end
 
+    DEGRADED_STATUSES = %w[declining critical warning].freeze
+
     private
+
+    def trigger_fetch_if_degraded(source, result)
+      return unless result&.success?
+      return unless DEGRADED_STATUSES.include?(source.health_status.to_s)
+
+      SourceMonitor::FetchFeedJob.perform_later(source.id, force: true)
+    end
 
     def record_unexpected_failure(source, error)
       SourceMonitor::HealthCheckLog.create!(
