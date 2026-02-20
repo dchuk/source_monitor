@@ -89,8 +89,10 @@ module SourceMonitor
       def default_headers(settings)
         base_headers = {
           "User-Agent" => resolve_callable(settings.user_agent).presence || DEFAULT_USER_AGENT,
-          "Accept" => "application/rss+xml, application/atom+xml, application/json;q=0.9, text/xml;q=0.8",
-          "Accept-Encoding" => "gzip,deflate"
+          "Accept" => "text/html, application/rss+xml, application/atom+xml, application/json;q=0.9, text/xml;q=0.8",
+          "Accept-Encoding" => "gzip,deflate",
+          "Accept-Language" => "en-US,en;q=0.9",
+          "DNT" => "1"
         }
 
         base_headers.merge(settings.headers || {})
