@@ -12,6 +12,7 @@ export default class extends Controller {
 
     this.clearTimeout();
     this.registerController();
+    this.applyLevelDelay();
     this.startTimer();
   }
 
@@ -34,8 +35,18 @@ export default class extends Controller {
     this.timeoutId = window.setTimeout(() => this.dismiss(), this.delayValue);
   }
 
+  applyLevelDelay() {
+    const level = this.element.dataset.level;
+    if (level === "error" && this.delayValue === 5000) {
+      this.delayValue = 10000;
+    }
+  }
+
   dismiss() {
     if (!this.element) return;
+    this.element.dispatchEvent(
+      new CustomEvent("notification:dismissed", { bubbles: true })
+    );
     this.element.classList.add("opacity-0", "translate-y-2");
     window.setTimeout(() => {
       if (this.element && this.element.remove) {
