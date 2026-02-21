@@ -57,6 +57,17 @@ module SourceMonitor
       assert_includes @response.body, "Favicon fetch could not be enqueued"
     end
 
+    test "clears favicon cooldown before enqueuing" do
+      @source.update_column(:metadata, { "favicon_last_attempted_at" => 1.hour.ago.iso8601 })
+
+      assert_enqueued_with(job: SourceMonitor::FaviconFetchJob) do
+        post source_favicon_fetch_path(@source), as: :turbo_stream
+      end
+
+      @source.reload
+      assert_nil @source.metadata&.dig("favicon_last_attempted_at")
+    end
+
     test "redirects on HTML request" do
       assert_enqueued_with(job: SourceMonitor::FaviconFetchJob) do
         post source_favicon_fetch_path(@source)

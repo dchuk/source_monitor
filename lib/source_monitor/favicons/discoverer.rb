@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "faraday"
+require "faraday/follow_redirects"
 require "securerandom"
 require "nokogiri"
 
@@ -182,6 +183,7 @@ module SourceMonitor
         timeout = settings.fetch_timeout
 
         Faraday.new do |f|
+          f.response :follow_redirects, limit: 3
           f.options.timeout = timeout
           f.options.open_timeout = [ timeout / 2, 3 ].min
           f.headers["User-Agent"] = SourceMonitor.config.http.user_agent || "SourceMonitor/#{SourceMonitor::VERSION}"

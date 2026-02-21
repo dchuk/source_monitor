@@ -15,6 +15,9 @@ module SourceMonitor
         @source.favicon.purge
       end
 
+      # Clear cooldown so the job doesn't skip this attempt
+      clear_favicon_cooldown(@source)
+
       SourceMonitor::FaviconFetchJob.perform_later(@source.id)
       render_fetch_enqueue_response("Favicon fetch has been enqueued.")
     rescue StandardError => error
@@ -25,6 +28,11 @@ module SourceMonitor
 
     def set_source
       @source = Source.find(params[:source_id])
+    end
+
+    def clear_favicon_cooldown(source)
+      metadata = (source.metadata || {}).except("favicon_last_attempted_at")
+      source.update_column(:metadata, metadata)
     end
   end
 end
