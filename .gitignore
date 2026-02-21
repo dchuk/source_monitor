@@ -27,5 +27,15 @@
 .vbw-planning/.active-agent
 .vbw-planning/.active-agent-count
 .vbw-planning/.todo-flat-migrated
+.vbw-planning/.agent-worktrees/
+.vbw-planning/.cache/
+.vbw-planning/.context-usage
+.vbw-planning/.contracts/
+.vbw-planning/.events/
+.vbw-planning/.execution-state.json
 /codebase_analysis.md
+/VERIFICATION.md
+/test/dummy/public/assets/
+/test/lib/tmp/
 *.gem
+.vbw-worktrees/

@@ -2,26 +2,29 @@
 
 ## Current Position
 
-- **Milestone:** aia-ssl-fix
-- **Phase:** 2 -- Test Performance
+- **Milestone:** polish-and-reliability
+- **Phase:** 3 -- Toast Stacking
 - **Status:** Complete
 - **Progress:** 100%
+- **Plans:** 1 (1/1 complete)
 
 ## Decisions
 
 | Decision | Date | Context |
 |----------|------|---------|
-| Single-phase milestone for AIA fix | 2026-02-17 | Complete plan already validated; no scoping needed |
-| 3 plans with wave parallelism | 2026-02-17 | Plans 01+02 (wave 1, disjoint files), Plan 03 (wave 2, integration) |
+| Active Storage for favicons | 2026-02-20 | has_one_attached with guard, consistent with ItemContent pattern |
+| Smarter scrape limit | 2026-02-20 | Count only running jobs, not queued; keeps safety but removes false bottleneck |
+| Browser-like default UA | 2026-02-20 | Simple global fix for bot-blocked feeds like Uber |
+| Health check triggers status update | 2026-02-20 | Successful manual health check should transition declining -> improving |
+| Toast cap + hover expand | 2026-02-20 | Max 3 visible, +N more badge, hover to see all |
 
 ## Todos
 
 ## Metrics
 
-- **Started:** 2026-02-17
-- **Phases:** 1
-- **Plans:** 3
-- **Tests at start:** 1003
-- **Tests at end:** 1025
-- **Commits:** 4 (f60e9bf, 4c9568a, 9c38bc3, e68a6b0)
-- **Plans completed:** 3/3
+- **Started:** 2026-02-20
+- **Phases:** 3
+- **Tests at start:** 1033
+
+## Blockers
+None
