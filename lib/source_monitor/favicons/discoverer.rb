@@ -19,7 +19,7 @@ module SourceMonitor
       def call
         return if website_url.blank?
 
-        try_html_link_tags || try_favicon_ico || try_google_favicon_api
+        try_html_link_tags || try_google_favicon_api || try_favicon_ico
       rescue Faraday::Error, URI::InvalidURIError, Timeout::Error
         nil
       end

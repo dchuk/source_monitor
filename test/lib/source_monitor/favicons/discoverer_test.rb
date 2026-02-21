@@ -28,9 +28,11 @@ module SourceMonitor
       # -- try_favicon_ico --
 
       test "returns Result when /favicon.ico returns 200 with valid content type" do
-        # HTML page has no icon links, so cascade falls through to /favicon.ico
+        # HTML page has no icon links and Google API fails, so cascade falls through to /favicon.ico
         stub_request(:get, "https://example.com")
           .to_return(status: 200, body: "<html><head></head></html>", headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
+          .to_return(status: 404, body: "")
         stub_request(:get, "https://example.com/favicon.ico")
           .to_return(status: 200, body: ICON_BODY, headers: { "Content-Type" => "image/x-icon" })
 
@@ -131,9 +133,7 @@ module SourceMonitor
 
       # -- try_google_favicon_api --
 
-      test "falls back to Google Favicon API" do
-        stub_request(:get, "https://example.com/favicon.ico")
-          .to_return(status: 404)
+      test "falls back to Google Favicon API when HTML has no icons" do
         stub_request(:get, "https://example.com")
           .to_return(status: 200, body: "<html><head></head></html>", headers: { "Content-Type" => "text/html" })
         stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
@@ -178,9 +178,9 @@ module SourceMonitor
       test "rejects non-image content types" do
         stub_request(:get, "https://example.com")
           .to_return(status: 200, body: "<html><head></head></html>", headers: { "Content-Type" => "text/html" })
-        stub_request(:get, "https://example.com/favicon.ico")
-          .to_return(status: 200, body: "not an image", headers: { "Content-Type" => "text/html" })
         stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
+          .to_return(status: 200, body: "not an image", headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://example.com/favicon.ico")
           .to_return(status: 200, body: "not an image", headers: { "Content-Type" => "text/html" })
 
         result = Discoverer.new(@website_url).call
@@ -194,9 +194,9 @@ module SourceMonitor
         oversized_body = "x" * 20
         stub_request(:get, "https://example.com")
           .to_return(status: 200, body: "<html><head></head></html>", headers: { "Content-Type" => "text/html" })
-        stub_request(:get, "https://example.com/favicon.ico")
-          .to_return(status: 200, body: oversized_body, headers: { "Content-Type" => "image/x-icon" })
         stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
+          .to_return(status: 200, body: oversized_body, headers: { "Content-Type" => "image/x-icon" })
+        stub_request(:get, "https://example.com/favicon.ico")
           .to_return(status: 200, body: oversized_body, headers: { "Content-Type" => "image/x-icon" })
 
         result = Discoverer.new(@website_url, settings: settings).call
