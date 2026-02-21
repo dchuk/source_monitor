@@ -87,6 +87,10 @@ module SourceMonitor
     autoload :HealthCheckBroadcaster, "source_monitor/import_sessions/health_check_broadcaster"
   end
 
+  module Favicons
+    autoload :Discoverer, "source_monitor/favicons/discoverer"
+  end
+
   module Images
     autoload :ContentRewriter, "source_monitor/images/content_rewriter"
     autoload :Downloader, "source_monitor/images/downloader"
