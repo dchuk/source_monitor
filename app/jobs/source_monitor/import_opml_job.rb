@@ -72,6 +72,7 @@ module SourceMonitor
 
       if source.save
         imported_sources << { id: source.id, feed_url: source.feed_url, name: source.name }
+        SourceMonitor::FaviconFetchJob.perform_later(source.id) if should_fetch_favicon?(source)
         processed << normalized_url
       else
         failed_sources << failure_payload(feed_url, "ValidationFailed", source.errors.full_messages.to_sentence)
@@ -128,6 +129,14 @@ module SourceMonitor
         feed_url: feed_url,
         reason: reason
       }
+    end
+
+    def should_fetch_favicon?(source)
+      defined?(ActiveStorage) &&
+        SourceMonitor.config.favicons.enabled? &&
+        source.website_url.present?
+    rescue StandardError
+      false
     end
 
     def broadcast_completion(history)
