@@ -63,6 +63,7 @@ module SourceMonitor
           attributes[:metadata] = updated_metadata
           reset_retry_state!(attributes)
           source.update!(attributes)
+          enqueue_favicon_fetch_if_needed
         end
 
         def update_source_for_failure(error, duration_ms)

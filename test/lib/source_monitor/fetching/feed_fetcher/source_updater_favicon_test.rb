@@ -99,7 +99,22 @@ module SourceMonitor
           assert_not_nil @source.last_fetched_at, "source should still be updated despite enqueue failure"
         end
 
-        test "update_source_for_not_modified does not enqueue favicon" do
+        test "update_source_for_not_modified enqueues favicon when not attached" do
+          response = stub_response(304)
+
+          assert_enqueued_with(job: SourceMonitor::FaviconFetchJob, args: [@source.id]) do
+            @updater.update_source_for_not_modified(response, 50)
+          end
+        end
+
+        test "update_source_for_not_modified does not enqueue when favicon already attached" do
+          blob = ActiveStorage::Blob.create_and_upload!(
+            io: StringIO.new("existing-icon"),
+            filename: "existing.ico",
+            content_type: "image/x-icon"
+          )
+          @source.favicon.attach(blob)
+
           response = stub_response(304)
 
           assert_no_enqueued_jobs(only: SourceMonitor::FaviconFetchJob) do

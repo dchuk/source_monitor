@@ -22,5 +22,6 @@ SourceMonitor::Engine.routes.draw do
     resource :bulk_scrape, only: :create, controller: "source_bulk_scrapes"
     resource :health_check, only: :create, controller: "source_health_checks"
     resource :health_reset, only: :create, controller: "source_health_resets"
+    resource :favicon_fetch, only: :create, controller: "source_favicon_fetches"
   end
 end
