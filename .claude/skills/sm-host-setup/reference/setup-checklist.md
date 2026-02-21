@@ -155,6 +155,8 @@ bin/source_monitor verify
 - [ ] Event callbacks wired for host integration
 - [ ] Realtime adapter confirmed (Solid Cable or Redis)
 - [ ] Mission Control integration enabled (if desired)
+- [ ] Active Storage installed (required for favicons and image downloads)
+- [ ] Favicon settings configured (`config.favicons.*`) if customization needed
 
 ## Troubleshooting
 

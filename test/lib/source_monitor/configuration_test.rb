@@ -221,7 +221,7 @@ module SourceMonitor
 
     test "scraping settings have correct defaults" do
       settings = SourceMonitor.config.scraping
-      assert_equal 25, settings.max_in_flight_per_source
+      assert_nil settings.max_in_flight_per_source
       assert_equal 100, settings.max_bulk_batch_size
     end
 
@@ -289,7 +289,7 @@ module SourceMonitor
       SourceMonitor.config.scraping.reset!
 
       settings = SourceMonitor.config.scraping
-      assert_equal 25, settings.max_in_flight_per_source
+      assert_nil settings.max_in_flight_per_source
       assert_equal 100, settings.max_bulk_batch_size
     end
 

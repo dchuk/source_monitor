@@ -141,6 +141,20 @@ SourceMonitor.configure do |config|
   # config.models.source.validate :enforce_custom_rules
   # config.models.source.validate ->(record) { record.errors.add(:base, "custom error") }
 
+  # ---- Favicons ----------------------------------------------------------
+  # Automatically fetch and store source favicons via Active Storage.
+  # Requires Active Storage in the host app (rails active_storage:install).
+  # Without Active Storage, favicons are silently disabled and colored
+  # initials placeholders are shown instead.
+  # config.favicons.enabled = true                    # default: true
+  # config.favicons.fetch_timeout = 5                 # seconds
+  # config.favicons.max_download_size = 1_048_576     # 1 MB
+  # config.favicons.retry_cooldown_days = 7
+  # config.favicons.allowed_content_types = %w[
+  #   image/x-icon image/vnd.microsoft.icon image/png
+  #   image/jpeg image/gif image/svg+xml image/webp
+  # ]
+
   # ---- Realtime adapter -------------------------------------------------
   # Choose the Action Cable backend powering Turbo Streams. Solid Cable keeps
   # everything in the primary database so Redis is no longer required. Switch

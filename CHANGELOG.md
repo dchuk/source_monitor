@@ -13,7 +13,13 @@ All notable changes to this project are documented below. The format follows [Ke
 
 ## [Unreleased]
 
-- No unreleased changes yet.
+### Added
+
+- **Automatic source favicons.** Sources now display favicons next to their names in list and detail views. Favicons are fetched automatically via background job on source creation and successful feed fetches using a multi-strategy cascade: `/favicon.ico` direct fetch, HTML `<link>` tag parsing (preferring largest available), and Google Favicon API fallback. Requires Active Storage in the host app.
+  - New configuration section: `config.favicons` with `enabled` (default: `true`), `fetch_timeout` (5s), `max_download_size` (1MB), `retry_cooldown_days` (7), and `allowed_content_types` settings.
+  - Colored initials placeholder shown when no favicon is available (consistent HSL color derived from source name).
+  - Graceful degradation: host apps without Active Storage see placeholders only, no errors.
+  - OPML imports also trigger favicon fetches for each imported source with a `website_url`.
 
 ## [0.7.1] - 2026-02-18
 

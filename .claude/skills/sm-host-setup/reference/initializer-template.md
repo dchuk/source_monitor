@@ -177,6 +177,23 @@ SourceMonitor.configure do |config|
   # }
 
   # ===========================================================================
+  # Favicons (Active Storage)
+  # ===========================================================================
+  # Automatically fetch and store source favicons via Active Storage.
+  # Requires Active Storage in the host app (rails active_storage:install).
+  # Without Active Storage, favicons are silently disabled -- colored
+  # initials placeholders are shown instead.
+
+  # config.favicons.enabled = true                    # default: true
+  # config.favicons.fetch_timeout = 5                 # seconds
+  # config.favicons.max_download_size = 1_048_576     # 1 MB
+  # config.favicons.retry_cooldown_days = 7
+  # config.favicons.allowed_content_types = %w[
+  #   image/x-icon image/vnd.microsoft.icon image/png
+  #   image/jpeg image/gif image/svg+xml image/webp
+  # ]
+
+  # ===========================================================================
   # Realtime (Action Cable) Adapter
   # ===========================================================================
 

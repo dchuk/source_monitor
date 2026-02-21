@@ -2,6 +2,21 @@
 
 Version-specific migration notes for each major/minor version transition. Agents should reference this file when guiding users through multi-version upgrades.
 
+## 0.7.x to next release
+
+**Key changes:**
+- Automatic source favicons via Active Storage with multi-strategy discovery (direct `/favicon.ico`, HTML `<link>` parsing, Google Favicon API fallback)
+- New configuration section: `config.favicons` with `enabled`, `fetch_timeout`, `max_download_size`, `retry_cooldown_days`, and `allowed_content_types` settings
+- Colored initials placeholder shown when no favicon is available or Active Storage is not installed
+- OPML imports trigger favicon fetches for each imported source with a `website_url`
+
+**Action items:**
+1. Re-run `bin/rails source_monitor:upgrade` to get updated initializer template
+2. If using Active Storage, favicons are enabled by default -- no action needed
+3. If NOT using Active Storage, favicons are silently disabled -- no action needed
+4. To customize favicon behavior, add `config.favicons.*` settings to your initializer (see configuration reference)
+5. No breaking changes -- all existing configuration remains valid
+
 ## 0.3.x to 0.4.0
 
 **Released:** 2026-02-12
