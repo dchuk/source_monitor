@@ -360,8 +360,8 @@ module SourceMonitor
       within "turbo-frame#source_monitor_sources_table" do
         expected.each_with_index do |name, index|
           assert_selector :xpath,
-            format(".//tbody/tr[%<row>d]/td[1]", row: index + 1),
-            text: /\A#{Regexp.escape(name)}/
+            format(".//tbody/tr[%<row>d]/td[1]//a", row: index + 1),
+            text: name
         end
       end
     end

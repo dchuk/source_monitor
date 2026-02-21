@@ -9,6 +9,7 @@ require "source_monitor/configuration/realtime_settings"
 require "source_monitor/configuration/retention_settings"
 require "source_monitor/configuration/authentication_settings"
 require "source_monitor/configuration/images_settings"
+require "source_monitor/configuration/favicons_settings"
 require "source_monitor/configuration/scraper_registry"
 require "source_monitor/configuration/events"
 require "source_monitor/configuration/validation_definition"
@@ -28,7 +29,7 @@ module SourceMonitor
       :mission_control_enabled,
       :mission_control_dashboard_path
 
-    attr_reader :http, :scrapers, :retention, :events, :models, :realtime, :fetching, :health, :authentication, :scraping, :images
+    attr_reader :http, :scrapers, :retention, :events, :models, :realtime, :fetching, :health, :authentication, :scraping, :images, :favicons
 
     DEFAULT_QUEUE_NAMESPACE = "source_monitor"
 
@@ -53,6 +54,7 @@ module SourceMonitor
       @authentication = AuthenticationSettings.new
       @scraping = ScrapingSettings.new
       @images = ImagesSettings.new
+      @favicons = FaviconsSettings.new
     end
 
     def queue_name_for(role)

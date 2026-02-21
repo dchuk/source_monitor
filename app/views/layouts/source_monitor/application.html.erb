@@ -13,8 +13,29 @@
 </head>
 <body class="fm-admin">
   <%= turbo_stream_from "source_monitor_notifications" %>
-  <div class="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-end px-6">
-    <div id="source_monitor_notifications" class="flex w-full max-w-sm flex-col gap-3"></div>
+  <div class="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-end px-6"
+       data-controller="notification-container">
+    <div class="flex w-full max-w-sm flex-col items-end gap-3">
+      <div id="source_monitor_notifications"
+           data-notification-container-target="list"
+           class="flex w-full flex-col gap-3">
+      </div>
+      <div data-notification-container-target="badge"
+           class="pointer-events-auto hidden">
+        <button type="button"
+                data-action="notification-container#toggleExpand"
+                class="inline-flex items-center gap-1.5 rounded-full bg-slate-700 px-3 py-1 text-xs font-medium text-white shadow-lg transition hover:bg-slate-600"
+                aria-live="polite">
+          <span data-notification-container-target="badgeCount">+0 more</span>
+        </button>
+      </div>
+      <button type="button"
+              data-action="notification-container#clearAll"
+              data-notification-container-target="clearAll"
+              class="pointer-events-auto hidden text-xs font-medium text-slate-400 underline transition hover:text-white">
+        Clear all
+      </button>
+    </div>
   </div>
   <div id="source_monitor_redirects" class="hidden" aria-hidden="true"></div>
   <div class="flex min-h-screen flex-col">

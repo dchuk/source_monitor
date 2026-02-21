@@ -29,7 +29,7 @@ After the block executes, `ModelExtensions.reload!` runs automatically to apply 
 
 ## Configuration Sections
 
-The `config` object (`SourceMonitor::Configuration`) has 11 sub-sections plus top-level queue/job settings:
+The `config` object (`SourceMonitor::Configuration`) has 13 sub-sections plus top-level queue/job settings:
 
 | Section | Accessor | Class |
 |---|---|---|
@@ -45,6 +45,7 @@ The `config` object (`SourceMonitor::Configuration`) has 11 sub-sections plus to
 | Realtime | `config.realtime` | `RealtimeSettings` |
 | Authentication | `config.authentication` | `AuthenticationSettings` |
 | Images | `config.images` | `ImagesSettings` |
+| Favicons | `config.favicons` | `FaviconsSettings` |
 
 See `reference/configuration-reference.md` for every setting with types, defaults, and examples.
 
@@ -89,6 +90,14 @@ config.events.register_item_processor ->(ctx) { Indexer.index(ctx.item) }
 config.models.table_name_prefix = "sm_"
 config.models.source.include_concern "MyApp::SourceExtension"
 config.models.item.validate :custom_check
+```
+
+### Favicons (Active Storage)
+```ruby
+config.favicons.enabled = true
+config.favicons.fetch_timeout = 10
+config.favicons.max_download_size = 512 * 1024  # 512 KB
+config.favicons.retry_cooldown_days = 14
 ```
 
 ### Realtime

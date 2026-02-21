@@ -9,8 +9,8 @@ SourceMonitor is a production-ready Rails 8 mountable engine for ingesting, norm
 In your host Rails app:
 
 ```bash
-bundle add source_monitor --version "~> 0.3.1"
-# or add `gem "source_monitor", "~> 0.3.1"` manually, then run:
+bundle add source_monitor --version "~> 0.7.1"
+# or add `gem "source_monitor", "~> 0.7.1"` manually, then run:
 bundle install
 ```
 
@@ -19,7 +19,9 @@ This exposes `bin/source_monitor` (via Bundler binstubs) so you can run the guid
 ## Highlights
 - Full-featured source and item administration backed by Turbo Streams and Tailwind UI components
 - Adaptive fetch pipeline (Feedjira + Faraday) with conditional GETs, retention pruning, and scrape orchestration
+- Automatic source favicons via Active Storage with multi-strategy discovery and graceful fallback
 - Realtime dashboard metrics, batching/caching query layer, and Mission Control integration hooks
+- Smart toast notification stacking (max 3 visible, "+N more" overflow badge, click-to-expand)
 - Extensible scraper adapters (Readability included) with per-source settings and structured result metadata
 - Declarative configuration DSL covering queues, HTTP, retention, events, model extensions, authentication, and realtime transports
 - First-class observability through ActiveSupport notifications and `SourceMonitor::Metrics` counters/gauges
@@ -41,7 +43,7 @@ This exposes `bin/source_monitor` (via Bundler binstubs) so you can run the guid
 Before running any SourceMonitor commands inside your host app, add the gem and install dependencies:
 
 ```bash
-bundle add source_monitor --version "~> 0.3.1"
+bundle add source_monitor --version "~> 0.7.1"
 # or edit your Gemfile, then run
 bundle install
 ```
@@ -113,7 +115,7 @@ See [docs/configuration.md](docs/configuration.md) for exhaustive coverage and e
 
 ## Claude Code Skills
 
-SourceMonitor ships 14 engine-specific Claude Code skills (`sm-*` prefix) that give AI agents deep context about the engine's domain model, configuration DSL, pipeline stages, and testing conventions. Skills are bundled with the gem and installed into your host app's `.claude/skills/` directory.
+SourceMonitor ships 15 engine-specific Claude Code skills (`sm-*` prefix) that give AI agents deep context about the engine's domain model, configuration DSL, pipeline stages, and testing conventions. Skills are bundled with the gem and installed into your host app's `.claude/skills/` directory.
 
 ```bash
 bin/rails source_monitor:skills:install        # Consumer skills (host app integration)

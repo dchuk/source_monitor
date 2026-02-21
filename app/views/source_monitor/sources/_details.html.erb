@@ -8,13 +8,40 @@
 
 <div class="space-y-8">
   <div class="flex items-start justify-between">
-    <div>
-      <h1 class="text-3xl font-semibold text-slate-900"><%= source.name %></h1>
-      <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-        <span data-testid="fetch-status-badge" class="inline-flex items-center rounded-full px-3 py-1 font-semibold <%= fetch_status[:classes] %>">
+    <div class="flex items-start gap-4">
+      <div class="flex flex-col items-center">
+        <div class="group relative">
+          <%= source_favicon_tag(source, size: 40) %>
+          <% if defined?(ActiveStorage) && SourceMonitor.config.favicons.enabled? %>
+            <%= button_to source_monitor.source_favicon_fetch_path(source),
+                  method: :post,
+                  class: "absolute -bottom-1 -right-1 hidden group-hover:inline-flex items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm p-0.5 hover:bg-slate-50",
+                  title: "Fetch favicon",
+                  data: {
+                    "async-submit-target": "button",
+                    turbo_confirm: source.respond_to?(:favicon) && source.favicon.attached? ? "Replace existing favicon?" : nil
+                  }.compact,
+                  form: {
+                    class: "inline",
+                    data: {
+                      controller: "async-submit",
+                      action: "turbo:submit-start->async-submit#start turbo:submit-end->async-submit#finish"
+                    }
+                  } do %>
+              <svg class="h-4 w-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            <% end %>
+          <% end %>
+        </div>
+        <span data-testid="fetch-status-badge" class="mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold <%= fetch_status[:classes] %>">
           <%= loading_spinner_svg if fetch_status[:show_spinner] %>
           <%= fetch_status[:label] %>
         </span>
+      </div>
+      <div>
+        <h1 class="text-3xl font-semibold text-slate-900"><%= source.name %></h1>
+      <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
         <% if source.last_fetch_started_at.present? %>
           <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
             Started <%= time_ago_in_words(source.last_fetch_started_at) %> ago
@@ -24,8 +51,10 @@
             Last fetched <%= time_ago_in_words(source.last_fetched_at) %> ago
           </span>
         <% end %>
+        <span class="text-slate-400">&middot;</span>
+        <%= external_link_to source.feed_url, source.feed_url, class: "text-slate-500 hover:text-blue-500" %>
       </div>
-      <p class="mt-2 text-sm text-slate-500">Feed URL: <%= external_link_to source.feed_url, source.feed_url, class: "text-slate-500 hover:text-blue-500" %></p>
+      </div>
     </div>
     <div class="flex flex-wrap items-center justify-end gap-3">
       <% fetch_disabled = %w[queued fetching].include?(source.fetch_status) %>

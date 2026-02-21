@@ -46,7 +46,7 @@ The helper `SourceMonitor.mission_control_dashboard_path` performs a routing che
 - `timeout` – total request timeout in seconds (default `15`)
 - `open_timeout` – connection open timeout in seconds (`5`)
 - `max_redirects` – maximum redirects to follow (`5`)
-- `user_agent` – defaults to `SourceMonitor/<version>`
+- `user_agent` – defaults to `Mozilla/5.0 (compatible; SourceMonitor/<version>)` (browser-like to avoid bot-blocking)
 - `proxy` – hash or URL to configure proxy usage
 - `headers` – hash (or callables) merged into every request
 - `retry_max`, `retry_interval`, `retry_interval_randomness`, `retry_backoff_factor`, `retry_statuses` – mapped to `faraday-retry`

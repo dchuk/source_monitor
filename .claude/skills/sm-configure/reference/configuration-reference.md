@@ -342,6 +342,50 @@ When enabled, `DownloadContentImagesJob` is automatically enqueued after new ite
 
 ---
 
+## Favicons Settings (`config.favicons`)
+
+Class: `SourceMonitor::Configuration::FaviconsSettings`
+
+Controls automatic favicon fetching and storage for sources via Active Storage.
+
+**Prerequisite:** The host app must have Active Storage installed (`rails active_storage:install` + migrations). Without Active Storage, favicons are silently disabled and colored initials placeholders are shown instead.
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | Boolean | `true` | Enable automatic favicon fetching |
+| `fetch_timeout` | Integer | `5` | HTTP timeout for favicon requests (seconds) |
+| `max_download_size` | Integer | `1048576` (1 MB) | Maximum favicon file size in bytes; larger files are skipped |
+| `retry_cooldown_days` | Integer | `7` | Days to wait before retrying a failed favicon fetch |
+| `allowed_content_types` | Array | `["image/x-icon", "image/vnd.microsoft.icon", "image/png", "image/jpeg", "image/gif", "image/svg+xml", "image/webp"]` | Permitted MIME types for downloaded favicons |
+
+### Helper Method
+
+| Method | Returns | Description |
+|---|---|---|
+| `enabled?` | Boolean | Returns `true` when `enabled` is truthy AND `ActiveStorage` is defined |
+
+```ruby
+# Customize favicon settings
+config.favicons.enabled = true
+config.favicons.fetch_timeout = 10
+config.favicons.max_download_size = 512 * 1024  # 512 KB
+config.favicons.retry_cooldown_days = 14
+config.favicons.allowed_content_types = %w[image/png image/x-icon image/svg+xml]
+```
+
+When enabled, `FaviconFetchJob` is automatically enqueued:
+1. After a new source is created (via UI or OPML import) with a `website_url`
+2. After a successful feed fetch when the source has no favicon attached and is outside the retry cooldown
+
+The job uses `Favicons::Discoverer` which tries three strategies in order:
+1. Direct `/favicon.ico` fetch from the source's domain
+2. HTML page parsing for `<link rel="icon">`, `<link rel="apple-touch-icon">`, and similar tags (prefers largest by `sizes` attribute)
+3. Google Favicon API as a last resort
+
+Failed attempts are tracked in the source's `metadata` JSONB column (`favicon_last_attempted_at`) to respect the cooldown period.
+
+---
+
 ## Environment Variables
 
 | Variable | Purpose |

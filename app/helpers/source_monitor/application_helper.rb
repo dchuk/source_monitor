@@ -232,6 +232,23 @@ module SourceMonitor
       nil
     end
 
+    # Renders the source favicon as an <img> tag or a colored-circle initials
+    # placeholder when no favicon is attached.  Handles the case where
+    # ActiveStorage is not loaded (host app without AS).
+    #
+    # Options:
+    #   size: pixel dimension for width/height (default: 24)
+    #   class: additional CSS classes
+    def source_favicon_tag(source, size: 24, **options)
+      css = options.delete(:class) || ""
+
+      if favicon_attached?(source)
+        favicon_image_tag(source, size: size, css: css)
+      else
+        favicon_placeholder_tag(source, size: size, css: css)
+      end
+    end
+
     private
 
     def external_link_icon
@@ -269,6 +286,40 @@ module SourceMonitor
       return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
 
       Rails.logger.debug("[SourceMonitor] Skipping #{kind} bundle include: #{error.message}")
+    end
+
+    def favicon_attached?(source)
+      defined?(ActiveStorage) &&
+        source.respond_to?(:favicon) &&
+        source.favicon.attached?
+    end
+
+    def favicon_image_tag(source, size:, css:)
+      blob = source.favicon.blob
+      url = Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
+
+      image_tag(url,
+        alt: "#{source.name} favicon",
+        width: size,
+        height: size,
+        class: "rounded object-contain #{css}".strip,
+        style: "max-width: #{size}px; max-height: #{size}px;",
+        loading: "lazy")
+    rescue StandardError
+      favicon_placeholder_tag(source, size: size, css: css)
+    end
+
+    def favicon_placeholder_tag(source, size:, css:)
+      initial = source.name.to_s.strip.first.presence&.upcase || "?"
+      hue = source.name.to_s.bytes.sum % 360
+      bg_color = "hsl(#{hue}, 45%, 65%)"
+
+      content_tag(:span,
+        initial,
+        class: "inline-flex items-center justify-center rounded-full text-white font-semibold #{css}".strip,
+        style: "width: #{size}px; height: #{size}px; background-color: #{bg_color}; font-size: #{(size * 0.5).round}px; line-height: #{size}px;",
+        title: source.name,
+        "aria-hidden": "true")
     end
   end
 end

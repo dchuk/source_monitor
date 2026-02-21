@@ -8,6 +8,8 @@ module SourceMonitor
     include SourceMonitor::Models::Sanitizable
     include SourceMonitor::Models::UrlNormalizable
 
+    has_one_attached :favicon if defined?(ActiveStorage)
+
     FETCH_STATUS_VALUES = %w[idle queued fetching failed].freeze
 
     has_many :all_items, class_name: "SourceMonitor::Item", inverse_of: :source, dependent: :destroy

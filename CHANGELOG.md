@@ -15,6 +15,41 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.8.0] - 2026-02-21
+
+### Added
+
+- **Automatic source favicons.** Sources now display favicons next to their names in list and detail views. Favicons are fetched automatically via background job on source creation and successful feed fetches using a multi-strategy cascade: `/favicon.ico` direct fetch, HTML `<link>` tag parsing (preferring largest available), and Google Favicon API fallback. Requires Active Storage in the host app.
+  - New configuration section: `config.favicons` with `enabled` (default: `true`), `fetch_timeout` (5s), `max_download_size` (1MB), `retry_cooldown_days` (7), and `allowed_content_types` settings.
+  - Colored initials placeholder shown when no favicon is available (consistent HSL color derived from source name).
+  - Graceful degradation: host apps without Active Storage see placeholders only, no errors.
+  - OPML imports also trigger favicon fetches for each imported source with a `website_url`.
+  - Manual "Fetch Favicon" button on source detail pages; favicon fetch also triggered on 304 Not Modified responses when missing.
+  - Redirect-following in favicon discoverer for domains that redirect (e.g., `reddit.com` -> `www.reddit.com`).
+- **Toast notification stacking.** Bulk operations no longer flood the screen with overlapping toasts. At most 3 toasts are visible at a time; overflow is shown as a "+N more" badge that expands the full stack on click. "Clear all" button dismisses every toast at once.
+  - Error-level toasts persist for 10 seconds (vs 5 seconds for info/success).
+  - Hidden toasts promote into visible slots as earlier toasts auto-dismiss.
+  - Container controller tracks DOM changes via MutationObserver and properly cleans up event listeners on disconnect.
+
+### Changed
+
+- **Browser-like default User-Agent.** Default HTTP User-Agent changed from `SourceMonitor/<version>` to `Mozilla/5.0 (compatible; SourceMonitor/<version>)` with full browser-like headers (Accept, Accept-Language, DNT, Referer from source `website_url`). This prevents bot-blocking by feed servers.
+- **Smarter scrape rate limiting.** Default `max_in_flight_per_source` changed from `25` to `nil` (unlimited). The previous default unnecessarily throttled scraping for sources with many items. Set an explicit value in your initializer if you need per-source caps.
+- **Health check triggers status re-evaluation.** A successful manual health check on a degraded (declining/critical/warning) source now triggers a feed fetch, allowing the health monitor to transition the source back to "improving" status instead of requiring the source to recover on its own schedule.
+
+### Fixed
+
+- Favicon discoverer properly follows HTTP redirects (e.g., `reddit.com` -> `www.reddit.com`).
+- Favicon fetch uses `rails_blob_path` for correct routing within the engine context.
+- Favicon display prefers PNG format (via Google Favicon API) over raw ICO for better browser compatibility.
+- Gemspec excludes `.vbw-planning/` from gem package to reduce gem size.
+
+### Testing
+
+- 1,125 tests, 0 failures.
+- RuboCop: 0 offenses.
+- Brakeman: 0 warnings.
+
 ## [0.7.1] - 2026-02-18
 
 ### Changed

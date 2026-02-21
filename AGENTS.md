@@ -83,7 +83,7 @@ Store secrets (API keys, webhook tokens) in `config/credentials/` and never comm
 
 ## Claude Code Skills
 
-SourceMonitor ships 14 engine-specific Claude Code skills (`sm-*` prefix) covering the domain model, configuration DSL, pipeline stages, testing conventions, and more. Skills are distributed with the gem and installed into `.claude/skills/` via rake tasks:
+SourceMonitor ships 15 engine-specific Claude Code skills (`sm-*` prefix) covering the domain model, configuration DSL, pipeline stages, testing conventions, and more. Skills are distributed with the gem and installed into `.claude/skills/` via rake tasks:
 
 ```bash
 bin/rails source_monitor:skills:install        # Consumer skills (host app integration)

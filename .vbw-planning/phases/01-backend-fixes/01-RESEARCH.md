@@ -1,0 +1,68 @@
+# Phase 1: Backend Fixes — Research
+
+## Item 1: HTTP Client Hardening
+
+### Key Files
+- `lib/source_monitor/http.rb` — `DEFAULT_USER_AGENT`, `default_headers`, `client`, `configure_request`
+- `lib/source_monitor/configuration/http_settings.rb` — `HTTPSettings` with `user_agent`, `headers` accessors
+- `lib/source_monitor/fetching/feed_fetcher.rb` — `request_headers` (per-source custom_headers merge)
+- `test/lib/source_monitor/http_test.rb` — header merge/override tests
+
+### Current Behavior
+- `DEFAULT_USER_AGENT = "SourceMonitor/#{SourceMonitor::VERSION}"` (line 17 of http.rb)
+- `default_headers` builds: User-Agent, Accept (RSS-only), Accept-Encoding (line 89-97)
+- `configure_request` merges: `default_headers(settings).merge(headers)` (line 60) — passed headers override defaults
+- `FeedFetcher#request_headers` starts from `source.custom_headers`, adds If-None-Match/If-Modified-Since
+- `HTTPSettings#default_user_agent` returns same `"SourceMonitor/#{VERSION}"` string
+- `user_agent` accessor supports callables (lambda/proc) via `resolve_callable`
+
+### Change Plan
+- Change `HTTPSettings#default_user_agent` to return polite bot string: `"Mozilla/5.0 (compatible; SourceMonitor/#{VERSION})"`
+- Add `Accept-Language: en-US,en;q=0.9` and `DNT: 1` to `default_headers`
+- Add `Referer` header in `FeedFetcher#request_headers` using `source.website_url`
+- Update `default_headers` Accept to prepend `text/html`: `"text/html, application/rss+xml, ..."`
+- Update tests asserting on DEFAULT_USER_AGENT and Accept values
+
+## Item 2: Health Check Status Transition
+
+### Key Files
+- `app/jobs/source_monitor/source_health_check_job.rb` — `perform`, `broadcast_outcome`
+- `lib/source_monitor/health/source_health_check.rb` — `call`, `create_log`, `successful_status?`
+- `lib/source_monitor/health/source_health_monitor.rb` — `call`, `determine_status`, `improving_streak?`
+- `lib/source_monitor/health.rb` — `setup!`, `register_fetch_callback` (after_fetch_completed wiring)
+- `app/jobs/source_monitor/fetch_feed_job.rb` — `perform(source_id, force: true)` to enqueue full fetch
+
+### Current Behavior
+- `SourceHealthCheckJob#perform` does HTTP GET, creates `HealthCheckLog`, broadcasts toast — **never updates health_status**
+- `SourceHealthMonitor` runs via `after_fetch_completed` callback — computes rolling success rate from `fetch_logs`
+- `health_status` values: healthy, warning, critical, improving, declining, auto_paused (free string, no enum)
+- `improving_streak?` requires 2+ consecutive successes with prior failure in window
+- `FetchFeedJob.perform_later(source.id, force: true)` enqueues immediate full fetch bypassing `should_run?`
+
+### Change Plan
+- After successful health check on degraded source, enqueue `FetchFeedJob.perform_later(source.id, force: true)`
+- Degraded = health_status in %w[declining critical warning]
+- Full fetch creates real fetch_log → triggers SourceHealthMonitor → natural status transition
+- Add check in `SourceHealthCheckJob#perform` after `broadcast_outcome`
+
+## Item 3: Scrape Rate Limiting
+
+### Key Files
+- `lib/source_monitor/configuration/scraping_settings.rb` — `DEFAULT_MAX_IN_FLIGHT = 25`, `reset!`
+- `lib/source_monitor/scraping/enqueuer.rb` — `rate_limit_exhausted?` (line 108-114)
+- `lib/source_monitor/scraping/state.rb` — `IN_FLIGHT_STATUSES = %w[pending processing]`
+- `lib/source_monitor/scraping/bulk_source_scraper.rb` — loop with `break` on rate_limited (line 75-124)
+- `lib/source_monitor/scraping/bulk_result_presenter.rb` — message builder (line 42-75)
+- `test/lib/source_monitor/scraping/bulk_source_scraper_test.rb` — rate limit test
+
+### Current Behavior
+- `DEFAULT_MAX_IN_FLIGHT = 25` — counts `pending` + `processing` items
+- When limit hit: enqueuer returns `:rate_limited`, bulk scraper breaks loop, presenter shows message
+- Setting to `nil` already disables the limit
+- `normalize_numeric` ensures only positive integers or nil
+
+### Change Plan
+- Change `DEFAULT_MAX_IN_FLIGHT = nil` (was 25)
+- Config option remains: users can set their own limit
+- Rate limit check, presenter, tests all already handle nil correctly
+- Update tests that depend on default being 25

@@ -23,7 +23,7 @@ Gem::Specification.new do |spec|
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
     tracked_files = `git ls-files -z`.split("\x0")
     tracked_files.reject do |file|
-      file.start_with?(".ai/", ".github/", "coverage/", "node_modules/", "pkg/", "spec/", "test/", "tmp/", "vendor/", "examples/", "bin/")
+      file.start_with?(".ai/", ".github/", ".vbw-planning/", "coverage/", "node_modules/", "pkg/", "spec/", "test/", "tmp/", "vendor/", "examples/", "bin/")
     end
   end
   spec.files += [ "CHANGELOG.md" ].select { |path| File.exist?(File.join(__dir__, path)) }

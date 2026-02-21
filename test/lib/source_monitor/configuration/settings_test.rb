@@ -100,14 +100,14 @@ module SourceMonitor
       end
 
       test "has sensible defaults" do
-        assert_equal 25, @settings.max_in_flight_per_source
+        assert_nil @settings.max_in_flight_per_source
         assert_equal 100, @settings.max_bulk_batch_size
       end
 
       test "reset restores defaults" do
         @settings.max_in_flight_per_source = 50
         @settings.reset!
-        assert_equal 25, @settings.max_in_flight_per_source
+        assert_nil @settings.max_in_flight_per_source
       end
 
       test "rejects nil values" do

@@ -13,6 +13,69 @@
       "category": "api-policy",
       "phase": "4",
       "date": "2026-02-10"
+    },
+    {
+      "question": "Favicon discovery strategy?",
+      "answer": "Multi-strategy cascade: /favicon.ico -> HTML parsing (full GET, Nokogiri, prefer largest) -> Google Favicon API. Skip DuckDuckGo.",
+      "area": "favicon-discovery",
+      "phase": "02",
+      "date": "2026-02-20"
+    },
+    {
+      "question": "How to handle downloaded favicons before storage?",
+      "answer": "Store raw original via Active Storage, define two variants: 32x32 (standard) and 64x64 (retina). SVGs stored as-is AND rasterized to PNG.",
+      "area": "image-processing",
+      "phase": "02",
+      "date": "2026-02-20"
+    },
+    {
+      "question": "Favicon refresh and failure policy?",
+      "answer": "Piggyback on successful feed fetches (if missing, enqueue job). Cooldown-then-retry on failure, configurable retry_cooldown_days defaulting to 7.",
+      "area": "refresh-policy",
+      "phase": "02",
+      "date": "2026-02-20"
+    },
+    {
+      "question": "Active Storage requirement for favicons?",
+      "answer": "Required (no URL-only fallback). Guard with if defined?(ActiveStorage) on model and job. No AS = no favicons, no errors.",
+      "area": "active-storage-optionality",
+      "phase": "02",
+      "date": "2026-02-20"
+    },
+    {
+      "question": "Reference implementation for favicon extraction?",
+      "answer": "Adapt AlexMili/extract_favicon (Python) to Ruby. Key patterns: link/meta tag parsing, fallback paths, ICO header parsing, size preference.",
+      "area": "implementation-reference",
+      "phase": "02",
+      "date": "2026-02-20"
+    },
+    {
+      "question": "How should stacked toast overflow expand?",
+      "answer": "Click/tap the +N more badge to toggle. No hover. Slide-down animation (~200ms). Click again or outside to collapse.",
+      "area": "expand-collapse-interaction",
+      "phase": "03",
+      "date": "2026-02-20"
+    },
+    {
+      "question": "Toast priority when capped at 3?",
+      "answer": "Newest 3 shown (FIFO). Errors get longer auto-dismiss (10s vs 5s) so they naturally persist. No slot reservation.",
+      "area": "toast-priority",
+      "phase": "03",
+      "date": "2026-02-20"
+    },
+    {
+      "question": "Dismiss behavior with hidden overflow toasts?",
+      "answer": "Promote next hidden toast into view. +N more count decrements. Clear all link when overflow exists.",
+      "area": "dismiss-overflow",
+      "phase": "03",
+      "date": "2026-02-20"
+    },
+    {
+      "question": "Toast capping architecture: client-only or server-aware?",
+      "answer": "Client-only. New Stimulus controller wraps #source_monitor_notifications. Server keeps appending unchanged. Zero backend changes.",
+      "area": "toast-architecture",
+      "phase": "03",
+      "date": "2026-02-20"
     }
   ],
   "inferred": [
@@ -21,6 +84,10 @@
     "Tests should be updated to match any changes, not removed",
     "All layers: models, controllers, services, dead code",
     "Generator should be maximally helpful -- create files rather than just warn",
-    "Target Rails 8 defaults (queue.yml) rather than supporting legacy naming"
-  ]
+    "Target Rails 8 defaults (queue.yml) rather than supporting legacy naming",
+    "Favicon feature uses ImageProcessing gem with vips backend for variants",
+    "FaviconFetchJob needs last_favicon_attempt_at tracking on Source model",
+    "Content type validation and max file size cap for favicon downloads"
+  ],
+  "deferred": []
 }

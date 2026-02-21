@@ -134,6 +134,23 @@ module SourceMonitor
       refute_includes response.body, %(<script>)
     end
 
+    test "create still succeeds when favicon enqueue raises" do
+      SourceMonitor::FaviconFetchJob.stub(:perform_later, ->(*) { raise StandardError, "queue down" }) do
+        assert_difference -> { Source.count }, 1 do
+          post "/source_monitor/sources", params: {
+            source: {
+              name: "Favicon Error Source",
+              feed_url: "https://favicon-error.example.com/feed.xml",
+              website_url: "https://favicon-error.example.com",
+              fetch_interval_minutes: 60
+            }
+          }
+        end
+      end
+
+      assert_redirected_to "/source_monitor/sources/#{Source.order(:created_at).last.id}"
+    end
+
     test "index renders activity rates without N+1 queries" do
       # Create multiple sources with recent items to ensure view renders rates
       5.times do |i|

@@ -4,17 +4,17 @@
 
 ## Active Context
 
-**Milestone:** (none active)
-**Last shipped:** upgrade-assurance (2026-02-13) -- 3 phases, 14 tasks, 12 commits
-**Previous:** generator-enhancements (2026-02-12) -- v0.4.0
-**Next action:** /vbw:vibe to start a new milestone
+**Milestone:** polish-and-reliability
+**Phase:** 1 -- Backend Fixes (pending planning)
+**Last shipped:** aia-ssl-fix (2026-02-20) -- 2 phases, 7 plans, 8 commits
+**Previous:** upgrade-assurance (2026-02-13), generator-enhancements (2026-02-12)
 
 ## Key Decisions
 
 - Keep PostgreSQL-only for now
 - Keep host-app auth model
 - Ruby autoload for lib/ modules (not Zeitwerk)
-- PG parallel fork segfault when running single test files; use PARALLEL_WORKERS=1 or full suite
+- PG parallel fork segfault resolved: switched to thread-based parallelism in aia-ssl-fix milestone
 
 ## Installed Skills
 
@@ -99,6 +99,12 @@ Run /vbw:help for all commands.
 - `bin/rails test` -- all tests pass.
 - No N+1 queries (use `includes`/`preload`).
 - No hardcoded credentials (use Rails credentials or ENV).
+
+## QA and UAT Rules
+
+- **Browser-first verification:** During VBW QA (`/vbw:qa`) and UAT (`/vbw:verify`), ALWAYS start by using `agent-browser` to test UI scenarios yourself before presenting checkpoints to the user. Navigate to the dummy app (port 3002), take snapshots/screenshots, and verify visual and functional behavior with agents first.
+- **Automate what you can:** Any test that can be verified programmatically (config defaults, job enqueue behavior, controller responses) should be automated -- only present truly visual/interactive tests to the user.
+- **Dummy app port:** The SourceMonitor dummy app runs on port 3002 (`cd test/dummy && bin/rails server -p 3002`).
 
 ## Security Rules
 

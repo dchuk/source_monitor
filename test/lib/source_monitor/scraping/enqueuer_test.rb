@@ -86,6 +86,19 @@ module SourceMonitor
         assert_nil item.reload.scrape_status
       end
 
+      test "does not rate-limit when max_in_flight_per_source is nil (default)" do
+        source = create_source(scraping_enabled: true)
+        30.times { create_item(source:, scrape_status: "pending") }
+        item = create_item(source:)
+
+        # Default is nil -- no limit should apply even with 30 in-flight items
+        assert_nil SourceMonitor.config.scraping.max_in_flight_per_source
+
+        result = Enqueuer.enqueue(item: item, reason: :manual)
+
+        assert result.enqueued?, "expected enqueue to succeed with nil limit, got #{result.status}"
+      end
+
       private
 
       def create_source(scraping_enabled:, auto_scrape: false)

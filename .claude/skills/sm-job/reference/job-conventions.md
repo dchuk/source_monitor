@@ -164,6 +164,32 @@ class ScheduleFetchesJob < ApplicationJob
 end
 ```
 
+### Lightweight Fetch Job (FaviconFetchJob)
+
+Demonstrates multi-strategy cascade with guard clauses:
+
+```ruby
+class FaviconFetchJob < ApplicationJob
+  source_monitor_queue :fetch
+  discard_on ActiveJob::DeserializationError
+
+  def perform(source_id)
+    source = Source.find_by(id: source_id)
+    return unless source
+    return unless should_fetch?(source)
+
+    result = Favicons::Discoverer.new(source: source).call
+    attach_favicon(source, result) if result.success?
+  end
+end
+```
+
+Notable patterns:
+- Multiple guard clauses: source exists, Active Storage defined, no existing favicon, outside cooldown period
+- Uses `Favicons::Discoverer` service with 3-strategy cascade (direct `/favicon.ico`, HTML parsing, Google API)
+- Failed attempts tracked in source `metadata` JSONB (`favicon_last_attempted_at`) for retry cooldown
+- Graceful degradation: host apps without Active Storage never enqueue this job
+
 ### Broadcast Job (SourceHealthCheckJob)
 
 Demonstrates result broadcasting:
