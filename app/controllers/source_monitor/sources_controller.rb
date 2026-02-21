@@ -55,6 +55,7 @@ module SourceMonitor
       @source = Source.new(source_params)
 
       if @source.save
+        enqueue_favicon_fetch(@source)
         redirect_to source_monitor.source_path(@source), notice: "Source created successfully"
       else
         render :new, status: :unprocessable_entity
@@ -129,6 +130,16 @@ module SourceMonitor
 
       sanitized = SourceMonitor::Security::ParameterSanitizer.sanitize(raw_value.to_s)
       sanitized.start_with?("/") ? sanitized : nil
+    end
+
+    def enqueue_favicon_fetch(source)
+      return unless defined?(ActiveStorage)
+      return unless SourceMonitor.config.favicons.enabled?
+      return if source.website_url.blank?
+
+      SourceMonitor::FaviconFetchJob.perform_later(source.id)
+    rescue StandardError => error
+      Rails.logger.warn("[SourceMonitor] Failed to enqueue favicon fetch: #{error.message}") if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
     end
   end
 end
