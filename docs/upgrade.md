@@ -46,6 +46,28 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
+### Upgrading to next release (from 0.7.x)
+
+**What changed:**
+- Default HTTP User-Agent changed from `SourceMonitor/<version>` to a browser-like string (`Mozilla/5.0 (compatible; SourceMonitor/<version>)`) with Accept-Language, DNT, and Referer headers. This prevents bot-blocking by feed servers.
+- Default `max_in_flight_per_source` changed from `25` to `nil` (unlimited). If you relied on the previous default, add `config.scraping.max_in_flight_per_source = 25` to your initializer.
+- Successful manual health checks on degraded sources now trigger a feed fetch to allow faster recovery.
+- Automatic source favicons via Active Storage (see `config.favicons` section).
+- Toast notifications capped at 3 visible with "+N more" overflow badge and "Clear all" button.
+
+**Upgrade steps:**
+```bash
+bundle update source_monitor
+bin/rails source_monitor:upgrade
+bin/rails db:migrate
+```
+
+**Notes:**
+- No breaking changes for most users. The User-Agent and `max_in_flight_per_source` defaults changed, but both are backward-compatible.
+- If you explicitly set `config.http.user_agent` in your initializer, your custom value is preserved.
+- If your scraping workload requires per-source rate limiting, set `config.scraping.max_in_flight_per_source` explicitly.
+- Favicons require Active Storage in the host app; apps without it see placeholder initials with no errors.
+
 ### Upgrading to 0.4.0 (from 0.3.x)
 
 **Released:** 2026-02-12

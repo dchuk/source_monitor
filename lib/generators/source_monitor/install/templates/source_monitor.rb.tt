@@ -70,7 +70,7 @@ SourceMonitor.configure do |config|
   # config.http.retry_interval = 0.5
   # config.http.retry_backoff_factor = 2
   # config.http.retry_statuses = [429, 500, 502, 503, 504]
-  # Merge extra default headers (User-Agent defaults to SourceMonitor/version).
+  # Merge extra default headers (User-Agent defaults to a browser-like string).
   # config.http.headers = { "X-Request-ID" => -> { SecureRandom.uuid } }
 
   # ---- Adaptive fetch scheduling ----------------------------------------

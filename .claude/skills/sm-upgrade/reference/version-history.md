@@ -5,17 +5,24 @@ Version-specific migration notes for each major/minor version transition. Agents
 ## 0.7.x to next release
 
 **Key changes:**
+- Default HTTP User-Agent changed from `SourceMonitor/<version>` to `Mozilla/5.0 (compatible; SourceMonitor/<version>)` with browser-like headers (Accept-Language, DNT, Referer). Prevents bot-blocking by feed servers.
+- Default `max_in_flight_per_source` changed from `25` to `nil` (unlimited). If you relied on the previous default for per-source rate limiting, set it explicitly.
+- Successful manual health checks on degraded sources now trigger a feed fetch for faster recovery.
 - Automatic source favicons via Active Storage with multi-strategy discovery (direct `/favicon.ico`, HTML `<link>` parsing, Google Favicon API fallback)
 - New configuration section: `config.favicons` with `enabled`, `fetch_timeout`, `max_download_size`, `retry_cooldown_days`, and `allowed_content_types` settings
 - Colored initials placeholder shown when no favicon is available or Active Storage is not installed
 - OPML imports trigger favicon fetches for each imported source with a `website_url`
+- Toast notifications capped at 3 visible with "+N more" badge, click-to-expand, and "Clear all" button
+- Error-level toasts auto-dismiss after 10 seconds (vs 5 seconds for info/success)
 
 **Action items:**
 1. Re-run `bin/rails source_monitor:upgrade` to get updated initializer template
-2. If using Active Storage, favicons are enabled by default -- no action needed
-3. If NOT using Active Storage, favicons are silently disabled -- no action needed
-4. To customize favicon behavior, add `config.favicons.*` settings to your initializer (see configuration reference)
-5. No breaking changes -- all existing configuration remains valid
+2. If you explicitly set `config.http.user_agent`, your value is preserved. Otherwise the new browser-like default applies automatically.
+3. If you need per-source scrape rate limiting, add `config.scraping.max_in_flight_per_source = 25` (or your preferred value) to your initializer
+4. If using Active Storage, favicons are enabled by default -- no action needed
+5. If NOT using Active Storage, favicons are silently disabled -- no action needed
+6. Toast stacking is automatic -- no configuration needed
+7. No breaking changes -- all existing configuration remains valid
 
 ## 0.3.x to 0.4.0
 

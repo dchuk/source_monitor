@@ -20,6 +20,18 @@ All notable changes to this project are documented below. The format follows [Ke
   - Colored initials placeholder shown when no favicon is available (consistent HSL color derived from source name).
   - Graceful degradation: host apps without Active Storage see placeholders only, no errors.
   - OPML imports also trigger favicon fetches for each imported source with a `website_url`.
+  - Manual "Fetch Favicon" button on source detail pages; favicon fetch also triggered on 304 Not Modified responses when missing.
+  - Redirect-following in favicon discoverer for domains that redirect (e.g., `reddit.com` -> `www.reddit.com`).
+- **Toast notification stacking.** Bulk operations no longer flood the screen with overlapping toasts. At most 3 toasts are visible at a time; overflow is shown as a "+N more" badge that expands the full stack on click. "Clear all" button dismisses every toast at once.
+  - Error-level toasts persist for 10 seconds (vs 5 seconds for info/success).
+  - Hidden toasts promote into visible slots as earlier toasts auto-dismiss.
+  - Container controller tracks DOM changes via MutationObserver and properly cleans up event listeners on disconnect.
+
+### Changed
+
+- **Browser-like default User-Agent.** Default HTTP User-Agent changed from `SourceMonitor/<version>` to `Mozilla/5.0 (compatible; SourceMonitor/<version>)` with full browser-like headers (Accept, Accept-Language, DNT, Referer from source `website_url`). This prevents bot-blocking by feed servers.
+- **Smarter scrape rate limiting.** Default `max_in_flight_per_source` changed from `25` to `nil` (unlimited). The previous default unnecessarily throttled scraping for sources with many items. Set an explicit value in your initializer if you need per-source caps.
+- **Health check triggers status re-evaluation.** A successful manual health check on a degraded (declining/critical/warning) source now triggers a feed fetch, allowing the health monitor to transition the source back to "improving" status instead of requiring the source to recover on its own schedule.
 
 ## [0.7.1] - 2026-02-18
 
