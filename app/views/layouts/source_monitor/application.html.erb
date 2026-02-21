@@ -28,13 +28,13 @@
                 aria-live="polite">
           <span data-notification-container-target="badgeCount">+0 more</span>
         </button>
-        <button type="button"
-                data-action="notification-container#clearAll"
-                data-notification-container-target="clearAll"
-                class="ml-1 text-xs font-medium text-slate-400 underline transition hover:text-white">
-          Clear all
-        </button>
       </div>
+      <button type="button"
+              data-action="notification-container#clearAll"
+              data-notification-container-target="clearAll"
+              class="pointer-events-auto hidden text-xs font-medium text-slate-400 underline transition hover:text-white">
+        Clear all
+      </button>
     </div>
   </div>
   <div id="source_monitor_redirects" class="hidden" aria-hidden="true"></div>

@@ -11,12 +11,14 @@ export default class extends Controller {
   connect() {
     this.rafId = null;
     this.boundHandleClickOutside = this.handleClickOutside.bind(this);
+    this.boundScheduleRecalculate = () => this.scheduleRecalculate();
 
-    this.observer = new MutationObserver(() => this.scheduleRecalculate());
+    this.observer = new MutationObserver(this.boundScheduleRecalculate);
     this.observer.observe(this.listTarget, { childList: true });
 
-    this.listTarget.addEventListener("notification:dismissed", () =>
-      this.scheduleRecalculate()
+    this.listTarget.addEventListener(
+      "notification:dismissed",
+      this.boundScheduleRecalculate
     );
 
     this.recalculateVisibility();
@@ -33,6 +35,10 @@ export default class extends Controller {
       this.rafId = null;
     }
 
+    this.listTarget.removeEventListener(
+      "notification:dismissed",
+      this.boundScheduleRecalculate
+    );
     document.removeEventListener("click", this.boundHandleClickOutside);
   }
 
@@ -126,6 +132,6 @@ export default class extends Controller {
     event.preventDefault();
     const toasts = Array.from(this.listTarget.children);
     toasts.forEach((toast) => toast.remove());
-    this.expandedValue = false;
+    this.collapseStack();
   }
 }
