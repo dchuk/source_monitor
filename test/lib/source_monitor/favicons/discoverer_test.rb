@@ -28,6 +28,9 @@ module SourceMonitor
       # -- try_favicon_ico --
 
       test "returns Result when /favicon.ico returns 200 with valid content type" do
+        # HTML page has no icon links, so cascade falls through to /favicon.ico
+        stub_request(:get, "https://example.com")
+          .to_return(status: 200, body: "<html><head></head></html>", headers: { "Content-Type" => "text/html" })
         stub_request(:get, "https://example.com/favicon.ico")
           .to_return(status: 200, body: ICON_BODY, headers: { "Content-Type" => "image/x-icon" })
 
@@ -145,10 +148,7 @@ module SourceMonitor
 
       # -- Cascade behavior --
 
-      test "cascade: /favicon.ico 404 -> HTML has icon -> returns HTML result" do
-        stub_request(:get, "https://example.com/favicon.ico")
-          .to_return(status: 404)
-
+      test "cascade: HTML has icon -> returns HTML result without trying /favicon.ico" do
         html = '<html><head><link rel="shortcut icon" href="/my-icon.ico"></head></html>'
         stub_request(:get, "https://example.com")
           .to_return(status: 200, body: html, headers: { "Content-Type" => "text/html" })
@@ -176,10 +176,10 @@ module SourceMonitor
       # -- Validation --
 
       test "rejects non-image content types" do
-        stub_request(:get, "https://example.com/favicon.ico")
-          .to_return(status: 200, body: "not an image", headers: { "Content-Type" => "text/html" })
         stub_request(:get, "https://example.com")
           .to_return(status: 200, body: "<html><head></head></html>", headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://example.com/favicon.ico")
+          .to_return(status: 200, body: "not an image", headers: { "Content-Type" => "text/html" })
         stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
           .to_return(status: 200, body: "not an image", headers: { "Content-Type" => "text/html" })
 
@@ -192,10 +192,10 @@ module SourceMonitor
         settings.max_download_size = 10 # 10 bytes
 
         oversized_body = "x" * 20
-        stub_request(:get, "https://example.com/favicon.ico")
-          .to_return(status: 200, body: oversized_body, headers: { "Content-Type" => "image/x-icon" })
         stub_request(:get, "https://example.com")
           .to_return(status: 200, body: "<html><head></head></html>", headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://example.com/favicon.ico")
+          .to_return(status: 200, body: oversized_body, headers: { "Content-Type" => "image/x-icon" })
         stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
           .to_return(status: 200, body: oversized_body, headers: { "Content-Type" => "image/x-icon" })
 

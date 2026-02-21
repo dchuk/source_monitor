@@ -295,7 +295,8 @@ module SourceMonitor
     end
 
     def favicon_image_tag(source, size:, css:)
-      url = url_for(source.favicon)
+      blob = source.favicon.blob
+      url = Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
 
       image_tag(url,
         alt: "#{source.name} favicon",
