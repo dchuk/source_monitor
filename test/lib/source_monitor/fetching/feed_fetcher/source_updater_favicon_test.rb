@@ -102,7 +102,7 @@ module SourceMonitor
         test "update_source_for_not_modified enqueues favicon when not attached" do
           response = stub_response(304)
 
-          assert_enqueued_with(job: SourceMonitor::FaviconFetchJob, args: [@source.id]) do
+          assert_enqueued_with(job: SourceMonitor::FaviconFetchJob, args: [ @source.id ]) do
             @updater.update_source_for_not_modified(response, 50)
           end
         end

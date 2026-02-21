@@ -51,6 +51,24 @@ module SourceMonitor
       assert history.started_at.present?
     end
 
+    test "should_fetch_favicon? returns false when config raises" do
+      source = create_source!(
+        feed_url: "https://favicon-check.example.com/rss",
+        website_url: "https://favicon-check.example.com"
+      )
+
+      job = SourceMonitor::ImportOpmlJob.new
+
+      # Stub favicons config to raise an error (simulates missing ActiveStorage, etc.)
+      broken_config = Object.new
+      broken_config.define_singleton_method(:favicons) { raise StandardError, "config broken" }
+
+      SourceMonitor.stub(:config, broken_config) do
+        result = job.send(:should_fetch_favicon?, source)
+        assert_equal false, result
+      end
+    end
+
     private
 
     def configure_authentication(user)

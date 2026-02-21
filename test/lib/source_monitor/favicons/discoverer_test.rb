@@ -255,6 +255,49 @@ module SourceMonitor
 
       # -- msapplication-TileImage support --
 
+      # -- og:image support --
+
+      test "discovers og:image meta tag as last resort" do
+        html = <<~HTML
+          <html>
+          <head>
+            <meta property="og:image" content="https://example.com/og-image.png">
+          </head>
+          </html>
+        HTML
+        stub_request(:get, "https://example.com")
+          .to_return(status: 200, body: html, headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://example.com/og-image.png")
+          .to_return(status: 200, body: PNG_BODY, headers: { "Content-Type" => "image/png" })
+
+        result = Discoverer.new(@website_url).call
+
+        assert_not_nil result
+        assert_equal "og-image.png", result.filename
+        assert_equal "https://example.com/og-image.png", result.url
+      end
+
+      test "skips og:image with blank content" do
+        html = <<~HTML
+          <html>
+          <head>
+            <meta property="og:image" content="">
+          </head>
+          </html>
+        HTML
+        stub_request(:get, "https://example.com")
+          .to_return(status: 200, body: html, headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
+          .to_return(status: 404, body: "")
+        stub_request(:get, "https://example.com/favicon.ico")
+          .to_return(status: 404, body: "")
+
+        result = Discoverer.new(@website_url).call
+        assert_nil result
+      end
+
+      # -- msapplication-TileImage support --
+
       test "discovers msapplication-TileImage meta tag" do
         stub_request(:get, "https://example.com/favicon.ico")
           .to_return(status: 404)
@@ -275,6 +318,89 @@ module SourceMonitor
 
         assert_not_nil result
         assert_equal "tile.png", result.filename
+      end
+      # -- URI::InvalidURIError in try_favicon_ico --
+
+      test "try_favicon_ico returns nil for invalid URI" do
+        # A website_url that parses fine at top level but /favicon.ico path triggers URI error
+        discoverer = Discoverer.new("http://[invalid]:99999")
+
+        # HTML fetch will also fail, so cascade reaches try_favicon_ico -> URI::InvalidURIError -> nil
+        # The top-level rescue in call catches it
+        result = discoverer.call
+        assert_nil result
+      end
+
+      # -- URI::InvalidURIError in try_google_favicon_api --
+
+      test "try_google_favicon_api returns nil for invalid URI" do
+        discoverer = Discoverer.new("http://bad host with spaces")
+
+        result = discoverer.call
+        assert_nil result
+      end
+
+      # -- All candidates fail to download in try_html_link_tags --
+
+      test "returns nil when all HTML link candidates fail to download" do
+        html = <<~HTML
+          <html>
+          <head>
+            <link rel="icon" href="/icon1.png">
+            <link rel="icon" href="/icon2.png">
+          </head>
+          </html>
+        HTML
+        stub_request(:get, "https://example.com")
+          .to_return(status: 200, body: html, headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://example.com/icon1.png")
+          .to_return(status: 404, body: "")
+        stub_request(:get, "https://example.com/icon2.png")
+          .to_return(status: 404, body: "")
+        stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
+          .to_return(status: 404, body: "")
+        stub_request(:get, "https://example.com/favicon.ico")
+          .to_return(status: 404, body: "")
+
+        result = Discoverer.new(@website_url).call
+        assert_nil result
+      end
+
+      # -- resolve_url error handling --
+
+      test "resolve_url skips invalid href in HTML link tags" do
+        html = <<~HTML
+          <html>
+          <head>
+            <link rel="icon" href="ht tp://bad url[invalid">
+            <link rel="icon" href="/good-icon.png">
+          </head>
+          </html>
+        HTML
+        stub_request(:get, "https://example.com")
+          .to_return(status: 200, body: html, headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://example.com/good-icon.png")
+          .to_return(status: 200, body: PNG_BODY, headers: { "Content-Type" => "image/png" })
+
+        result = Discoverer.new(@website_url).call
+
+        assert_not_nil result
+        assert_equal "good-icon.png", result.filename
+      end
+
+      # -- derive_filename error handling --
+
+      test "derive_filename handles unparseable URLs gracefully" do
+        # Stub a response from an unusual URL that has valid scheme but bad path for URI.parse
+        stub_request(:get, "https://example.com")
+          .to_return(status: 200, body: "<html><head></head></html>", headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
+          .to_return(status: 200, body: PNG_BODY, headers: { "Content-Type" => "image/png" })
+
+        discoverer = Discoverer.new(@website_url)
+        # Test derive_filename directly with an unparseable URL
+        filename = discoverer.send(:derive_filename, "ht tp://[bad", "image/png")
+        assert_match(/\Afavicon-[0-9a-f]{16}\.png\z/, filename)
       end
     end
   end

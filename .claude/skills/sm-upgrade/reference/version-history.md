@@ -2,7 +2,7 @@
 
 Version-specific migration notes for each major/minor version transition. Agents should reference this file when guiding users through multi-version upgrades.
 
-## 0.7.x to next release
+## 0.7.x to 0.8.0
 
 **Key changes:**
 - Default HTTP User-Agent changed from `SourceMonitor/<version>` to `Mozilla/5.0 (compatible; SourceMonitor/<version>)` with browser-like headers (Accept-Language, DNT, Referer). Prevents bot-blocking by feed servers.

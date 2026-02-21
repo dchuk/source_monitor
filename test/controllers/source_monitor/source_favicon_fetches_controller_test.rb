@@ -12,7 +12,7 @@ module SourceMonitor
     end
 
     test "enqueues favicon fetch job and renders turbo stream" do
-      assert_enqueued_with(job: SourceMonitor::FaviconFetchJob, args: [@source.id]) do
+      assert_enqueued_with(job: SourceMonitor::FaviconFetchJob, args: [ @source.id ]) do
         post source_favicon_fetch_path(@source), as: :turbo_stream
       end
 

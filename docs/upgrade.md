@@ -46,7 +46,7 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
-### Upgrading to next release (from 0.7.x)
+### Upgrading to 0.8.0 (from 0.7.x)
 
 **What changed:**
 - Default HTTP User-Agent changed from `SourceMonitor/<version>` to a browser-like string (`Mozilla/5.0 (compatible; SourceMonitor/<version>)`) with Accept-Language, DNT, and Referer headers. This prevents bot-blocking by feed servers.
