@@ -1,6 +1,7 @@
 import { Application } from "@hotwired/stimulus";
 import AsyncSubmitController from "./controllers/async_submit_controller";
 import NotificationController from "./controllers/notification_controller";
+import NotificationContainerController from "./controllers/notification_container_controller";
 import DropdownController from "./controllers/dropdown_controller";
 import ModalController from "./controllers/modal_controller";
 import ConfirmNavigationController from "./controllers/confirm_navigation_controller";
@@ -15,6 +16,7 @@ if (!existingApplication) {
 }
 
 application.register("notification", NotificationController);
+application.register("notification-container", NotificationContainerController);
 application.register("async-submit", AsyncSubmitController);
 application.register("dropdown", DropdownController);
 application.register("modal", ModalController);
