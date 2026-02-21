@@ -37,6 +37,7 @@ module SourceMonitor
           attributes[:metadata] = updated_metadata(feed_signature: feed_signature, entries_digest: entries_digest)
           reset_retry_state!(attributes)
           source.update!(attributes)
+          enqueue_favicon_fetch_if_needed
         end
 
         def update_source_for_not_modified(response, duration_ms)
@@ -135,6 +136,25 @@ module SourceMonitor
           attributes[:fetch_retry_attempt] = 0
           attributes[:fetch_circuit_opened_at] = nil
           attributes[:fetch_circuit_until] = nil
+        end
+
+        def enqueue_favicon_fetch_if_needed
+          return unless defined?(ActiveStorage)
+          return unless SourceMonitor.config.favicons.enabled?
+          return if source.website_url.blank?
+          return if source.respond_to?(:favicon) && source.favicon.attached?
+
+          last_attempt = source.metadata&.dig("favicon_last_attempted_at")
+          if last_attempt.present?
+            cooldown_days = SourceMonitor.config.favicons.retry_cooldown_days
+            return if Time.parse(last_attempt) > cooldown_days.days.ago
+          end
+
+          SourceMonitor::FaviconFetchJob.perform_later(source.id)
+        rescue StandardError => error
+          Rails.logger.warn(
+            "[SourceMonitor::SourceUpdater] Failed to enqueue favicon fetch for source #{source.id}: #{error.message}"
+          ) if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
         end
 
         def apply_retry_strategy!(attributes, error, now)
