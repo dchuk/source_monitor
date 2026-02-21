@@ -9,7 +9,10 @@
 <div class="space-y-8">
   <div class="flex items-start justify-between">
     <div>
-      <h1 class="text-3xl font-semibold text-slate-900"><%= source.name %></h1>
+      <div class="flex items-center gap-4">
+        <%= source_favicon_tag(source, size: 40) %>
+        <h1 class="text-3xl font-semibold text-slate-900"><%= source.name %></h1>
+      </div>
       <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
         <span data-testid="fetch-status-badge" class="inline-flex items-center rounded-full px-3 py-1 font-semibold <%= fetch_status[:classes] %>">
           <%= loading_spinner_svg if fetch_status[:show_spinner] %>
