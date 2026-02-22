@@ -170,6 +170,7 @@
               </span>
             </th>
             <th scope="col" class="px-6 py-3">New Items / Day</th>
+            <th scope="col" class="px-6 py-3">Avg Words</th>
             <th scope="col"
                 class="px-6 py-3"
                 data-sort-column="last_fetched_at"
@@ -198,6 +199,7 @@
                 as: :source,
                 locals: {
                   item_activity_rates: @item_activity_rates,
+                  avg_word_counts: @avg_word_counts,
                   search_params: @search_params
                 } %>
 

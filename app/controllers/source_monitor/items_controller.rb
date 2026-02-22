@@ -5,7 +5,7 @@ module SourceMonitor
     include ActionView::RecordIdentifier
     include SourceMonitor::SanitizesSearchParams
 
-    searchable_with scope: -> { Item.active.includes(:source) }, default_sorts: [ "published_at desc", "created_at desc" ]
+    searchable_with scope: -> { Item.active.includes(:source, :item_content) }, default_sorts: [ "published_at desc", "created_at desc" ]
 
     PER_PAGE = 25
     SEARCH_FIELD = :title_or_summary_or_url_or_source_name_cont

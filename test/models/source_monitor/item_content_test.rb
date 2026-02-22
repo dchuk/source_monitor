@@ -63,5 +63,51 @@ module SourceMonitor
 
       assert_equal 2, content.images.count
     end
+
+    # --- Word count computation tests ---
+
+    test "computes scraped_word_count on save when scraped_content present" do
+      content = SourceMonitor::ItemContent.create!(item: @item, scraped_content: "Hello world this is a test")
+      assert_equal 6, content.scraped_word_count
+    end
+
+    test "sets scraped_word_count to nil when scraped_content is blank" do
+      content = SourceMonitor::ItemContent.create!(item: @item, scraped_content: "Hello world")
+      assert_equal 2, content.scraped_word_count
+
+      content.update!(scraped_content: "")
+      assert_nil content.scraped_word_count
+    end
+
+    test "computes feed_word_count stripping HTML from item content" do
+      @item.update!(content: "<p>Hello <strong>world</strong> this is <em>a</em> test</p>")
+      content = SourceMonitor::ItemContent.create!(item: @item)
+      assert_equal 6, content.feed_word_count
+    end
+
+    test "sets feed_word_count to nil when item content is blank" do
+      @item.update!(content: nil)
+      content = SourceMonitor::ItemContent.create!(item: @item)
+      assert_nil content.feed_word_count
+    end
+
+    test "updates scraped_word_count when scraped_content changes" do
+      content = SourceMonitor::ItemContent.create!(item: @item, scraped_content: "two words")
+      assert_equal 2, content.scraped_word_count
+
+      content.update!(scraped_content: "now there are four words")
+      assert_equal 5, content.scraped_word_count
+    end
+
+    test "total_word_count returns max of scraped and feed word counts" do
+      @item.update!(content: "<p>one two three</p>")
+      content = SourceMonitor::ItemContent.create!(item: @item, scraped_content: "one two three four five")
+      assert_equal 5, content.total_word_count
+    end
+
+    test "total_word_count returns 0 when both counts are nil" do
+      content = SourceMonitor::ItemContent.create!(item: @item)
+      assert_equal 0, content.total_word_count
+    end
   end
 end

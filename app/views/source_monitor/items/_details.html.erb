@@ -130,7 +130,9 @@
         </div>
         <div class="space-y-2 px-5 py-4 text-sm text-slate-700">
           <p><span class="font-medium text-slate-600">Comments:</span> <%= item.comments_count || 0 %></p>
-          <p><span class="font-medium text-slate-600">Feed Items in Source:</span> <%= source&.items_count || "—" %></p>
+          <p><span class="font-medium text-slate-600">Feed Items in Source:</span> <%= source&.items_count || "\u2014" %></p>
+          <p><span class="font-medium text-slate-600">Feed Word Count:</span> <%= item.item_content&.feed_word_count || "\u2014" %></p>
+          <p><span class="font-medium text-slate-600">Scraped Word Count:</span> <%= item.item_content&.scraped_word_count || "\u2014" %></p>
         </div>
       </div>
 

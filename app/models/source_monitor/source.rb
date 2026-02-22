@@ -104,6 +104,13 @@ module SourceMonitor
       update_columns(items_count: actual_count)
     end
 
+    def avg_word_count
+      items.joins(:item_content)
+           .where.not(sourcemon_item_contents: { scraped_word_count: nil })
+           .average("sourcemon_item_contents.scraped_word_count")
+           &.round
+    end
+
     private
 
     def health_auto_pause_threshold_within_bounds
