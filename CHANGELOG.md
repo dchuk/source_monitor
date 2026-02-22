@@ -15,6 +15,16 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.8.1] - 2026-02-21
+
+### Fixed
+
+- **OPML import now imports all selected feeds across pages.** Previously, only the 25 feeds visible on the current preview page were imported. Pagination links inside the preview form triggered full-page navigation (bypassing Turbo Frames), which caused a "leave site?" warning and lost selections from other pages. Hidden fields now preserve selections across pages, and pagination uses Turbo Frame navigation.
+
+### Changed
+
+- Removed deprecated `rails/tasks/statistics.rake` from Rakefile (Rails 8.2 compatibility).
+
 ## [0.8.0] - 2026-02-21
 
 ### Added

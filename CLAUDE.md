@@ -4,10 +4,10 @@
 
 ## Active Context
 
-**Milestone:** polish-and-reliability
-**Phase:** 1 -- Backend Fixes (pending planning)
-**Last shipped:** aia-ssl-fix (2026-02-20) -- 2 phases, 7 plans, 8 commits
-**Previous:** upgrade-assurance (2026-02-13), generator-enhancements (2026-02-12)
+**Milestone:** (none active)
+**Last shipped:** polish-and-reliability (2026-02-21) -- v0.8.0, 3 phases, 1134 tests
+**Previous:** aia-ssl-fix (2026-02-20), upgrade-assurance (2026-02-13)
+**Next action:** /vbw:vibe to start a new milestone
 
 ## Key Decisions
 
@@ -97,8 +97,23 @@ Run /vbw:help for all commands.
 - `bin/rubocop` -- zero offenses before commit.
 - `bin/brakeman --no-pager` -- zero warnings before merge.
 - `bin/rails test` -- all tests pass.
+- `yarn build` -- rebuild JS assets if any `.js` files changed (ESLint runs in CI).
 - No N+1 queries (use `includes`/`preload`).
 - No hardcoded credentials (use Rails credentials or ENV).
+
+### Pre-Push CI Checklist (run ALL before pushing to GitHub)
+
+Before pushing any branch (especially release branches), run the full CI equivalent locally:
+
+1. `bin/rubocop` -- catches Ruby lint issues
+2. `PARALLEL_WORKERS=1 bin/rails test` -- catches test failures AND diff coverage gaps
+3. `bin/brakeman --no-pager` -- catches security issues
+4. `yarn build` -- rebuilds JS and catches ESLint issues (CI runs ESLint separately)
+
+**Why:** CI failures cost ~5 min per round-trip. In v0.8.0, skipping ESLint and diff coverage checks locally caused 2 wasted CI cycles. Common blind spots:
+- JS files need `/* global */` declarations for browser APIs (MutationObserver, requestAnimationFrame, etc.)
+- Every `rescue` / fallback / error path in new source code needs test coverage (CI diff coverage gate rejects uncovered lines)
+- `yarn build` must run after JS changes to sync sourcemaps
 
 ## QA and UAT Rules
 
