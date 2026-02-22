@@ -155,7 +155,7 @@ Items use soft delete via `deleted_at` column (NOT default_scope):
 | `url` | presence |
 
 ### Content Delegation
-`scraped_html` and `scraped_content` delegate to `ItemContent`. Setting these values auto-creates/destroys the ItemContent association.
+`scraped_html` and `scraped_content` delegate to `ItemContent`. Setting these values auto-creates the ItemContent association. `ensure_feed_content_record` also creates ItemContent for feed word count tracking. ItemContent is only auto-destroyed when both scraped fields are blank AND the item has no feed content.
 
 ## LogEntry Delegated Type
 

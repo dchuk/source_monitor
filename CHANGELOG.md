@@ -15,6 +15,14 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.9.1] - 2026-02-22
+
+### Fixed
+
+- **Feed word counts now always computed.** Items fetched from feeds but never scraped now get an `ItemContent` record with `feed_word_count` automatically. Previously, only scraped items had `ItemContent`, so the `backfill_word_counts` rake task found nothing for feed-only items.
+- **Backfill task creates missing ItemContent records.** `source_monitor:backfill_word_counts` now has a two-phase approach: first creates `ItemContent` for items with feed content but no record, then recomputes all word counts.
+- **ItemContent preserved when item has feed content.** Clearing scraped fields no longer destroys the `ItemContent` record if the item still has feed content (which provides `feed_word_count`).
+
 ## [0.9.0] - 2026-02-22
 
 ### Added

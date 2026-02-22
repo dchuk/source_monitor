@@ -30,8 +30,8 @@
      v         v
   ItemContent  ScrapeLog
   ===========  (also belongs_to :source)
-  Scraped
-  content
+  Feed + scraped
+  word counts
 ```
 
 ## Association Details
@@ -43,10 +43,11 @@
 - Counter cache: `items_count` on Source (tracks active items)
 
 ### Item -> ItemContent
-- `has_one :item_content` -- Lazy-created when scraped content is assigned
+- `has_one :item_content` -- Created when item has feed content (via `ensure_feed_content_record`) or when scraped content is assigned
 - `dependent: :destroy, autosave: true`
 - `touch: true` on the belongs_to side
-- Content is auto-destroyed when both `scraped_html` and `scraped_content` become blank
+- Stores `feed_word_count` (from `item.content`) and `scraped_word_count` (from `scraped_content`)
+- Content is auto-destroyed only when both scraped fields are blank AND item has no feed content
 
 ### Source -> FetchLog
 - `has_many :fetch_logs, dependent: :destroy`
