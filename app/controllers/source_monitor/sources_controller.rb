@@ -43,7 +43,7 @@ module SourceMonitor
     def show
       @recent_fetch_logs = @source.fetch_logs.order(started_at: :desc).limit(5)
       @recent_scrape_logs = @source.scrape_logs.order(started_at: :desc).limit(5)
-      @items = @source.items.recent.limit(ITEMS_PREVIEW_LIMIT)
+      @items = @source.items.recent.includes(:item_content).limit(ITEMS_PREVIEW_LIMIT)
       @bulk_scrape_selection = :current
     end
 

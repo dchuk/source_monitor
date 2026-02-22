@@ -64,6 +64,7 @@
               </span>
             </th>
             <th scope="col" class="px-6 py-3">Scrape Status</th>
+            <th scope="col" class="px-6 py-3">Words</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 text-slate-700">
@@ -111,12 +112,15 @@
                      end %>
                 <span class="inline-flex items-center rounded-full px-3 py-1 font-semibold <%= status_classes %>"><%= status_label %></span>
               </td>
+              <td class="px-6 py-4 text-xs text-slate-500">
+                <%= item.item_content&.scraped_word_count || "\u2014" %>
+              </td>
             </tr>
           <% end %>
 
           <% if @items.blank? %>
             <tr>
-              <td colspan="4" class="px-6 py-6 text-center text-sm text-slate-500">
+              <td colspan="5" class="px-6 py-6 text-center text-sm text-slate-500">
                 No items found.
               </td>
             </tr>
