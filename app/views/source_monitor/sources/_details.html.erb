@@ -299,7 +299,11 @@
                     <td class="px-5 py-4 text-xs text-slate-500"><%= categories.present? ? categories.join(", ") : "—" %></td>
                     <td class="px-5 py-4 text-xs text-slate-500"><%= tags.present? ? tags.join(", ") : "—" %></td>
                     <td class="px-5 py-4 text-xs text-slate-500">
-                      <%= item.published_at ? item.published_at.strftime("%b %d, %Y %H:%M") : "Unpublished" %>
+                      <% if item.published_at %>
+                        <%= item.published_at.strftime("%b %d, %Y %H:%M") %>
+                      <% else %>
+                        <span class="text-slate-400"><%= item.created_at.strftime("%b %d, %Y %H:%M") %></span>
+                      <% end %>
                     </td>
                     <td class="px-5 py-4 text-xs">
                       <% scrape_badge = item_scrape_status_badge(item: item, source: source) %>

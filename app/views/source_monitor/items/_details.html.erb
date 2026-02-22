@@ -36,7 +36,11 @@
           <span class="text-slate-400">No source</span>
         <% end %>
         &middot;
-        <%= item.published_at ? item.published_at.strftime("%b %d, %Y %H:%M %Z") : "Unpublished" %>
+        <% if item.published_at %>
+          <%= item.published_at.strftime("%b %d, %Y %H:%M %Z") %>
+        <% else %>
+          <span class="text-slate-400"><%= item.created_at.strftime("%b %d, %Y %H:%M %Z") %></span>
+        <% end %>
       </p>
     </div>
   </div>
@@ -56,7 +60,7 @@
                "URL" => (item.url.present? ? external_link_to(item.url, item.url, class: "text-slate-900 hover:text-blue-500") : "\u2014"),
                "Canonical URL" => (item.canonical_url.present? ? external_link_to(item.canonical_url, item.canonical_url, class: "text-slate-900 hover:text-blue-500") : "\u2014"),
                "Author" => item.author || "—",
-               "Published At" => (item.published_at&.strftime("%b %d, %Y %H:%M %Z") || "—"),
+               "Published At" => (item.published_at&.strftime("%b %d, %Y %H:%M %Z") || item.created_at.strftime("%b %d, %Y %H:%M %Z")),
                "Updated At (Source)" => (item.updated_at_source&.strftime("%b %d, %Y %H:%M %Z") || "—"),
                "Language" => item.language || "—",
                "Categories" => categories_list.present? ? categories_list.join(", ") : "—",
