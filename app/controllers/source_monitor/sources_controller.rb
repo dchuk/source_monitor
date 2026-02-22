@@ -50,14 +50,17 @@ module SourceMonitor
       @item_activity_rates = metrics.item_activity_rates
 
       source_ids = @sources.map(&:id)
-      @avg_word_counts = if source_ids.any?
-        ItemContent.joins(:item)
-                   .where(sourcemon_items: { source_id: source_ids })
-                   .where.not(scraped_word_count: nil)
-                   .group("sourcemon_items.source_id")
-                   .average(:scraped_word_count)
+      if source_ids.any?
+        base = ItemContent.joins(:item).where(sourcemon_items: { source_id: source_ids })
+        @avg_feed_word_counts = base.where.not(feed_word_count: nil)
+                                    .group("sourcemon_items.source_id")
+                                    .average(:feed_word_count)
+        @avg_scraped_word_counts = base.where.not(scraped_word_count: nil)
+                                      .group("sourcemon_items.source_id")
+                                      .average(:scraped_word_count)
       else
-        {}
+        @avg_feed_word_counts = {}
+        @avg_scraped_word_counts = {}
       end
     end
 

@@ -281,7 +281,8 @@
                   <th scope="col" class="px-5 py-3">Tags</th>
                   <th scope="col" class="px-5 py-3">Published</th>
                   <th scope="col" class="px-5 py-3">Scrape Status</th>
-                  <th scope="col" class="px-5 py-3">Words</th>
+                  <th scope="col" class="px-5 py-3">Feed Words</th>
+                  <th scope="col" class="px-5 py-3">Scraped Words</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 text-slate-700">
@@ -316,6 +317,9 @@
                         <%= loading_spinner_svg(css_class: "h-3.5 w-3.5 animate-spin text-blue-500") if scrape_badge[:show_spinner] %>
                         <%= scrape_badge[:label] %>
                       </span>
+                    </td>
+                    <td class="px-5 py-4 text-xs text-slate-500">
+                      <%= item.item_content&.feed_word_count || "\u2014" %>
                     </td>
                     <td class="px-5 py-4 text-xs text-slate-500">
                       <%= item.item_content&.scraped_word_count || "\u2014" %>
