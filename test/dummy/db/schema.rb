@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_12_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_22_194201) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -251,9 +251,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_000000) do
 
   create_table "sourcemon_item_contents", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.integer "feed_word_count"
     t.bigint "item_id", null: false
     t.text "scraped_content"
     t.text "scraped_html"
+    t.integer "scraped_word_count"
     t.datetime "updated_at", null: false
     t.index ["item_id"], name: "index_sourcemon_item_contents_on_item_id", unique: true
   end
@@ -384,6 +386,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_000000) do
     t.datetime "last_modified"
     t.integer "max_items"
     t.jsonb "metadata", default: {}, null: false
+    t.decimal "min_scrape_interval", precision: 10, scale: 2
     t.string "name", null: false
     t.datetime "next_fetch_at"
     t.boolean "requires_javascript", default: false, null: false

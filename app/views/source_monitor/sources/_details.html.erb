@@ -2,7 +2,7 @@
 <% recent_fetch_logs = source.fetch_logs.order(started_at: :desc).limit(5) %>
 <% recent_scrape_logs = source.scrape_logs.order(started_at: :desc).limit(5) %>
 <% preview_limit = SourceMonitor::Scraping::BulkSourceScraper::DEFAULT_PREVIEW_LIMIT %>
-<% items = source.items.recent.limit(preview_limit) %>
+<% items = source.items.recent.includes(:item_content).limit(preview_limit) %>
 <% fetch_status = async_status_badge(source.fetch_status) %>
 <% health_status_override = local_assigns[:health_status_override] %>
 
@@ -281,6 +281,8 @@
                   <th scope="col" class="px-5 py-3">Tags</th>
                   <th scope="col" class="px-5 py-3">Published</th>
                   <th scope="col" class="px-5 py-3">Scrape Status</th>
+                  <th scope="col" class="px-5 py-3">Feed Words</th>
+                  <th scope="col" class="px-5 py-3">Scraped Words</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 text-slate-700">
@@ -299,7 +301,11 @@
                     <td class="px-5 py-4 text-xs text-slate-500"><%= categories.present? ? categories.join(", ") : "—" %></td>
                     <td class="px-5 py-4 text-xs text-slate-500"><%= tags.present? ? tags.join(", ") : "—" %></td>
                     <td class="px-5 py-4 text-xs text-slate-500">
-                      <%= item.published_at ? item.published_at.strftime("%b %d, %Y %H:%M") : "Unpublished" %>
+                      <% if item.published_at %>
+                        <%= item.published_at.strftime("%b %d, %Y %H:%M") %>
+                      <% else %>
+                        <span class="text-slate-400"><%= item.created_at.strftime("%b %d, %Y %H:%M") %></span>
+                      <% end %>
                     </td>
                     <td class="px-5 py-4 text-xs">
                       <% scrape_badge = item_scrape_status_badge(item: item, source: source) %>
@@ -311,6 +317,12 @@
                         <%= loading_spinner_svg(css_class: "h-3.5 w-3.5 animate-spin text-blue-500") if scrape_badge[:show_spinner] %>
                         <%= scrape_badge[:label] %>
                       </span>
+                    </td>
+                    <td class="px-5 py-4 text-xs text-slate-500">
+                      <%= item.item_content&.feed_word_count || "\u2014" %>
+                    </td>
+                    <td class="px-5 py-4 text-xs text-slate-500">
+                      <%= item.item_content&.scraped_word_count || "\u2014" %>
                     </td>
                   </tr>
                 <% end %>

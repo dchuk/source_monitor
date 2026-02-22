@@ -99,6 +99,107 @@ module SourceMonitor
         assert result.enqueued?, "expected enqueue to succeed with nil limit, got #{result.status}"
       end
 
+      # -- Time-based rate limiting tests --
+
+      test "allows scrape when no prior scrape exists" do
+        source = create_source(scraping_enabled: true)
+        item = create_item(source:)
+
+        SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 60.0 }
+
+        result = Enqueuer.enqueue(item: item, reason: :manual)
+
+        assert result.enqueued?, "expected enqueue when no prior scrape, got #{result.status}"
+      end
+
+      test "allows scrape when elapsed time exceeds interval" do
+        source = create_source(scraping_enabled: true)
+        item = create_item(source:)
+
+        SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 5.0 }
+
+        # Create a scrape log from 10 seconds ago
+        create_scrape_log(source:, item:, started_at: 10.seconds.ago)
+
+        result = Enqueuer.enqueue(item: item, reason: :manual)
+
+        assert result.enqueued?, "expected enqueue when elapsed > interval, got #{result.status}"
+      end
+
+      test "returns deferred status when elapsed time is less than interval" do
+        source = create_source(scraping_enabled: true)
+        item = create_item(source:)
+
+        SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 60.0 }
+
+        # Create a scrape log from 5 seconds ago
+        create_scrape_log(source:, item:, started_at: 5.seconds.ago)
+
+        result = Enqueuer.enqueue(item: item, reason: :manual)
+
+        assert result.deferred?, "expected deferred result, got #{result.status}"
+        assert_match(/deferred/i, result.message)
+      end
+
+      test "per-source min_scrape_interval overrides global setting" do
+        source = create_source(scraping_enabled: true)
+        source.update_columns(min_scrape_interval: 120.0)
+        item = create_item(source:)
+
+        # Global is 5 seconds, but source overrides to 120 seconds
+        SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 5.0 }
+
+        # Scrape log from 10 seconds ago -- past global but within source override
+        create_scrape_log(source:, item:, started_at: 10.seconds.ago)
+
+        result = Enqueuer.enqueue(item: item, reason: :manual)
+
+        assert result.deferred?, "expected per-source override to defer, got #{result.status}"
+      end
+
+      test "nil or zero interval disables time rate limiting" do
+        source = create_source(scraping_enabled: true)
+        item = create_item(source:)
+
+        # Set global interval to nil
+        SourceMonitor.configure { |c| c.scraping.min_scrape_interval = nil }
+
+        # Scrape log from just now
+        create_scrape_log(source:, item:, started_at: Time.current)
+
+        result = Enqueuer.enqueue(item: item, reason: :manual)
+
+        assert result.enqueued?, "expected nil interval to disable limiting, got #{result.status}"
+
+        # Also test zero
+        SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 0 }
+
+        item2 = create_item(source:)
+        result2 = Enqueuer.enqueue(item: item2, reason: :manual)
+
+        assert result2.enqueued?, "expected zero interval to disable limiting, got #{result2.status}"
+      end
+
+      test "deferred result re-enqueues job with delay" do
+        source = create_source(scraping_enabled: true)
+        item = create_item(source:)
+
+        SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 60.0 }
+
+        # Scrape log from 5 seconds ago -- 55 seconds remaining
+        create_scrape_log(source:, item:, started_at: 5.seconds.ago)
+
+        assert_enqueued_jobs 0
+
+        result = Enqueuer.enqueue(item: item, reason: :manual)
+
+        assert result.deferred?
+        assert_enqueued_jobs 1
+
+        enqueued = queue_adapter.enqueued_jobs.last
+        assert enqueued[:at].present?, "expected job to be scheduled with delay"
+      end
+
       private
 
       def create_source(scraping_enabled:, auto_scrape: false)
@@ -115,6 +216,15 @@ module SourceMonitor
           url: "https://example.com/#{SecureRandom.hex}",
           title: "Example Item",
           scrape_status: scrape_status
+        )
+      end
+
+      def create_scrape_log(source:, item:, started_at:)
+        SourceMonitor::ScrapeLog.create!(
+          source: source,
+          item: item,
+          started_at: started_at,
+          scraper_adapter: "readability"
         )
       end
     end

@@ -4,10 +4,10 @@
 
 ## Active Context
 
-**Milestone:** (none active)
-**Last shipped:** polish-and-reliability (2026-02-21) -- v0.8.0, 3 phases, 1134 tests
-**Previous:** aia-ssl-fix (2026-02-20), upgrade-assurance (2026-02-13)
-**Next action:** /vbw:vibe to start a new milestone
+**Milestone:** polish-and-reliability (extended)
+**Phase:** 4 of 5 -- Bug Fixes & Polish (pending planning)
+**Previous phases:** Backend Fixes, Favicon Support, Toast Stacking (all complete)
+**Next action:** /vbw:vibe to plan and execute Phase 4
 
 ## Key Decisions
 

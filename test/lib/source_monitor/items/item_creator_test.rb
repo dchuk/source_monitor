@@ -1155,6 +1155,35 @@ module SourceMonitor
         assert_equal true, creator.send(:deep_copy, true)
       end
 
+      # ─── Published_at persistence ───
+
+      test "persists published_at from feed entry with pubDate" do
+        entry = parse_entry("feeds/rss_sample.xml")
+
+        result = ItemCreator.call(source: @source, entry:)
+        assert result.created?
+
+        item = result.item.reload
+        assert_not_nil item.published_at, "expected published_at to be set from feed pubDate"
+        assert_kind_of Time, item.published_at
+      end
+
+      test "persists nil published_at when feed entry has no date" do
+        entry = OpenStruct.new(
+          title: "No Date Entry",
+          url: "https://example.com/no-date",
+          entry_id: "no-date-guid",
+          summary: "No date summary",
+          to_h: { title: "No Date Entry" }
+        )
+
+        result = ItemCreator.call(source: @source, entry:)
+        assert result.created?
+
+        item = result.item.reload
+        assert_nil item.published_at, "expected published_at to be nil when feed entry has no date"
+      end
+
       test "html_fragment? returns true for HTML and false for plain text" do
         creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
         assert creator.send(:html_fragment?, "<p>text</p>")

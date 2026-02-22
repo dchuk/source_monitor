@@ -5,21 +5,41 @@
       <h1 class="text-3xl font-semibold text-slate-900">Sources</h1>
       <p class="mt-1 text-sm text-slate-500">Manage feed endpoints and scraping settings.</p>
     </div>
-    <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
-      <%= search_form_for @q, url: source_monitor.sources_path, method: :get, html: { class: "w-full sm:w-auto", data: { turbo_frame: "source_monitor_sources_table" } } do |form| %>
-        <%= form.label @search_field, "Search sources", class: "sr-only" %>
-        <div class="flex rounded-md shadow-sm">
-          <%= form.search_field @search_field, placeholder: "Search name or URL…", class: "w-full rounded-l-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:min-w-[16rem]" %>
-          <%= form.submit "Search", class: "rounded-r-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500" %>
-        </div>
-      <% end %>
-      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <%= link_to "New Source", source_monitor.new_source_path, class: "inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-500" %>
-        <%= link_to "Import OPML", source_monitor.new_import_session_path,
-              class: "inline-flex items-center justify-center rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50" %>
-      </div>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <%= link_to "New Source", source_monitor.new_source_path, class: "inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-500" %>
+      <%= link_to "Import OPML", source_monitor.new_import_session_path,
+            class: "inline-flex items-center justify-center rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50" %>
     </div>
   </div>
+
+  <%= search_form_for @q, url: source_monitor.sources_path, method: :get, html: { class: "flex flex-wrap items-end gap-3", data: { turbo_frame: "source_monitor_sources_table" } } do |form| %>
+    <div class="flex-1 min-w-[12rem]">
+      <%= form.label @search_field, "Search sources", class: "sr-only" %>
+      <div class="flex rounded-md shadow-sm">
+        <%= form.search_field @search_field, placeholder: "Search name or URL…", class: "w-full rounded-l-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" %>
+        <%= form.submit "Search", class: "rounded-r-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500" %>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-end gap-2">
+      <div>
+        <%= form.label :active_eq, "Status", class: "block text-xs font-medium text-slate-500 mb-1" %>
+        <%= form.select :active_eq, options_for_select([["All Statuses", ""], ["Active", "true"], ["Paused", "false"]], @search_params["active_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
+      </div>
+      <div>
+        <%= form.label :health_status_eq, "Health", class: "block text-xs font-medium text-slate-500 mb-1" %>
+        <%= form.select :health_status_eq, options_for_select([["All Health", ""], ["Healthy", "healthy"], ["Warning", "warning"], ["Declining", "declining"], ["Critical", "critical"]], @search_params["health_status_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
+      </div>
+      <div>
+        <%= form.label :feed_format_eq, "Format", class: "block text-xs font-medium text-slate-500 mb-1" %>
+        <%= form.select :feed_format_eq, options_for_select([["All Formats", ""], ["RSS", "rss"], ["Atom", "atom"], ["JSON", "json"]], @search_params["feed_format_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
+      </div>
+      <div>
+        <% adapter_options = SourceMonitor::Source.distinct.where.not(scraper_adapter: [nil, ""]).order(:scraper_adapter).pluck(:scraper_adapter) %>
+        <%= form.label :scraper_adapter_eq, "Adapter", class: "block text-xs font-medium text-slate-500 mb-1" %>
+        <%= form.select :scraper_adapter_eq, options_for_select([["All Adapters", ""]] + adapter_options.map { |a| [a.titleize, a] }, @search_params["scraper_adapter_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
+      </div>
+    </div>
+  <% end %>
 
   <%= render "source_monitor/sources/import_history_panel", import_histories: @recent_import_histories %>
 
@@ -30,7 +50,10 @@
 
   <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
     <%= turbo_frame_tag "source_monitor_sources_table" do %>
-      <% if @search_term.present? || @fetch_interval_filter.present? %>
+      <% dropdown_filter_keys = %w[active_eq health_status_eq feed_format_eq scraper_adapter_eq] %>
+      <% active_dropdown_filters = dropdown_filter_keys.select { |k| @search_params[k].present? } %>
+      <% has_any_filter = @search_term.present? || @fetch_interval_filter.present? || active_dropdown_filters.any? %>
+      <% if has_any_filter %>
         <div class="rounded-t-lg border-b border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-700">
           <% if @search_term.present? %>
             <% clear_search_query = @search_params.dup %>
@@ -54,6 +77,32 @@
               <%= link_to "Clear interval filter",
                     fetch_interval_bucket_path(@selected_fetch_interval_bucket, @search_params, selected: true),
                     class: "font-medium text-blue-600 hover:text-blue-500" %>
+            </div>
+          <% end %>
+
+          <% if active_dropdown_filters.any? %>
+            <div class="mt-1 flex flex-wrap items-center gap-2">
+              <span>Filtered by</span>
+              <% filter_labels = {
+                "active_eq" => @search_params["active_eq"] == "true" ? "Status: Active" : "Status: Paused",
+                "health_status_eq" => "Health: #{@search_params['health_status_eq']&.titleize}",
+                "feed_format_eq" => "Format: #{@search_params['feed_format_eq']&.upcase}",
+                "scraper_adapter_eq" => "Adapter: #{@search_params['scraper_adapter_eq']&.titleize}"
+              } %>
+              <% active_dropdown_filters.each do |filter_key| %>
+                <% clear_query = @search_params.dup %>
+                <% clear_query.delete(filter_key) %>
+                <% clear_query = if clear_query.respond_to?(:compact_blank)
+                  clear_query.compact_blank
+                else
+                  clear_query.reject { |_k, v| v.respond_to?(:blank?) ? v.blank? : v.nil? }
+                end %>
+                <% clear_path = clear_query.empty? ? source_monitor.sources_path : source_monitor.sources_path(q: clear_query) %>
+                <span class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                  <%= filter_labels[filter_key] %>
+                  <%= link_to "×", clear_path, class: "ml-0.5 font-bold text-blue-500 hover:text-blue-700", data: { turbo_frame: "source_monitor_sources_table" } %>
+                </span>
+              <% end %>
             </div>
           <% end %>
         </div>
@@ -120,6 +169,8 @@
               </span>
             </th>
             <th scope="col" class="px-6 py-3">New Items / Day</th>
+            <th scope="col" class="px-6 py-3">Avg Feed Words</th>
+            <th scope="col" class="px-6 py-3">Avg Scraped Words</th>
             <th scope="col"
                 class="px-6 py-3"
                 data-sort-column="last_fetched_at"
@@ -148,12 +199,39 @@
                 as: :source,
                 locals: {
                   item_activity_rates: @item_activity_rates,
+                  avg_feed_word_counts: @avg_feed_word_counts,
+                  avg_scraped_word_counts: @avg_scraped_word_counts,
                   search_params: @search_params
                 } %>
 
           <%= render("source_monitor/sources/empty_state_row") if @sources.blank? %>
         </tbody>
       </table>
+      <div class="flex flex-col items-center gap-3 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-between">
+        <div class="text-xs text-slate-500">
+          Page <%= @page %>
+        </div>
+        <div class="flex gap-2">
+          <% prev_params = { page: @page - 1 } %>
+          <% prev_params[:q] = @search_params if @search_params.present? %>
+          <% prev_params[:per_page] = params[:per_page] if params[:per_page].present? %>
+          <% next_params = { page: @page + 1 } %>
+          <% next_params[:q] = @search_params if @search_params.present? %>
+          <% next_params[:per_page] = params[:per_page] if params[:per_page].present? %>
+
+          <% if @has_previous_page %>
+            <%= link_to "Previous", source_monitor.sources_path(prev_params), class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50", data: { turbo_frame: "source_monitor_sources_table" } %>
+          <% else %>
+            <span class="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-300">Previous</span>
+          <% end %>
+
+          <% if @has_next_page %>
+            <%= link_to "Next", source_monitor.sources_path(next_params), class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50", data: { turbo_frame: "source_monitor_sources_table" } %>
+          <% else %>
+            <span class="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-300">Next</span>
+          <% end %>
+        </div>
+      </div>
     <% end %>
   </div>
 </div>

@@ -1,4 +1,6 @@
 <% rate_map = local_assigns[:item_activity_rates] || {} %>
+<% avg_feed_words_map = local_assigns[:avg_feed_word_counts] || {} %>
+<% avg_scraped_words_map = local_assigns[:avg_scraped_word_counts] || {} %>
 <% activity_rate = rate_map.fetch(source.id, 0.0) %>
 <% health_status_override = local_assigns[:health_status_override] %>
 <% health_status = if !source.active?
@@ -65,6 +67,12 @@
   <td class="px-6 py-4 text-sm">
     <%= number_with_precision(activity_rate, precision: 2) %>
     <span class="text-xs text-slate-500">/ day</span>
+  </td>
+  <td class="px-6 py-4 text-sm text-slate-500">
+    <%= avg_feed_words_map[source.id]&.round || "\u2014" %>
+  </td>
+  <td class="px-6 py-4 text-sm text-slate-500">
+    <%= avg_scraped_words_map[source.id]&.round || "\u2014" %>
   </td>
   <td class="px-6 py-4 text-xs text-slate-500">
     <%= source.last_fetched_at ? source.last_fetched_at.strftime("%b %d, %H:%M") : "Never" %>

@@ -132,6 +132,44 @@ module SourceMonitor
         @settings.max_in_flight_per_source = "10"
         assert_equal 10, @settings.max_in_flight_per_source
       end
+
+      test "min_scrape_interval defaults to 1.0" do
+        assert_equal 1.0, @settings.min_scrape_interval
+      end
+
+      test "min_scrape_interval accepts float values" do
+        @settings.min_scrape_interval = 2.5
+        assert_equal 2.5, @settings.min_scrape_interval
+      end
+
+      test "min_scrape_interval accepts string float values" do
+        @settings.min_scrape_interval = "3.5"
+        assert_equal 3.5, @settings.min_scrape_interval
+      end
+
+      test "min_scrape_interval rejects nil" do
+        @settings.min_scrape_interval = nil
+        assert_nil @settings.min_scrape_interval
+      end
+
+      test "min_scrape_interval rejects empty string" do
+        @settings.min_scrape_interval = ""
+        assert_nil @settings.min_scrape_interval
+      end
+
+      test "min_scrape_interval rejects zero and negative" do
+        @settings.min_scrape_interval = 0
+        assert_nil @settings.min_scrape_interval
+
+        @settings.min_scrape_interval = -1.0
+        assert_nil @settings.min_scrape_interval
+      end
+
+      test "min_scrape_interval resets to default" do
+        @settings.min_scrape_interval = 30.0
+        @settings.reset!
+        assert_equal 1.0, @settings.min_scrape_interval
+      end
     end
 
     class ValidationDefinitionTest < ActiveSupport::TestCase

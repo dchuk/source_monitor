@@ -12,6 +12,7 @@ module SourceMonitor
     searchable_with scope: -> { Source.all }, default_sorts: [ "created_at desc" ]
 
     ITEMS_PREVIEW_LIMIT = SourceMonitor::Scraping::BulkSourceScraper::DEFAULT_PREVIEW_LIMIT
+    PER_PAGE = 25
 
     before_action :set_source, only: %i[show edit update destroy]
 
@@ -21,14 +22,23 @@ module SourceMonitor
       @search_params = sanitized_search_params
       @q = build_search_query
 
-      @sources = @q.result
+      paginator = SourceMonitor::Pagination::Paginator.new(
+        scope: @q.result,
+        page: params[:page],
+        per_page: params[:per_page] || PER_PAGE
+      ).paginate
+
+      @sources = paginator.records
+      @page = paginator.page
+      @has_next_page = paginator.has_next_page
+      @has_previous_page = paginator.has_previous_page
 
       @search_term = @search_params[SEARCH_FIELD.to_s].to_s.strip
       @search_field = SEARCH_FIELD
 
       metrics = SourceMonitor::Analytics::SourcesIndexMetrics.new(
         base_scope: Source.all,
-        result_scope: @sources,
+        result_scope: paginator.records,
         search_params: @search_params
       )
 
@@ -38,12 +48,26 @@ module SourceMonitor
       @fetch_interval_filter = metrics.fetch_interval_filter
       @selected_fetch_interval_bucket = metrics.selected_fetch_interval_bucket
       @item_activity_rates = metrics.item_activity_rates
+
+      source_ids = @sources.map(&:id)
+      if source_ids.any?
+        base = ItemContent.joins(:item).where(sourcemon_items: { source_id: source_ids })
+        @avg_feed_word_counts = base.where.not(feed_word_count: nil)
+                                    .group("sourcemon_items.source_id")
+                                    .average(:feed_word_count)
+        @avg_scraped_word_counts = base.where.not(scraped_word_count: nil)
+                                      .group("sourcemon_items.source_id")
+                                      .average(:scraped_word_count)
+      else
+        @avg_feed_word_counts = {}
+        @avg_scraped_word_counts = {}
+      end
     end
 
     def show
       @recent_fetch_logs = @source.fetch_logs.order(started_at: :desc).limit(5)
       @recent_scrape_logs = @source.scrape_logs.order(started_at: :desc).limit(5)
-      @items = @source.items.recent.limit(ITEMS_PREVIEW_LIMIT)
+      @items = @source.items.recent.includes(:item_content).limit(ITEMS_PREVIEW_LIMIT)
       @bulk_scrape_selection = :current
     end
 
@@ -75,7 +99,17 @@ module SourceMonitor
 
     def destroy
       search_params = sanitized_search_params
-      @source.destroy
+
+      begin
+        unless @source.destroy
+          handle_destroy_failure(search_params, "Could not delete source: #{@source.errors.full_messages.join(', ')}")
+          return
+        end
+      rescue ActiveRecord::InvalidForeignKey
+        handle_destroy_failure(search_params, "Cannot delete source: other records still reference it. Remove dependent records first.")
+        return
+      end
+
       message = "Source deleted"
 
       respond_to do |format|
@@ -130,6 +164,20 @@ module SourceMonitor
 
       sanitized = SourceMonitor::Security::ParameterSanitizer.sanitize(raw_value.to_s)
       sanitized.start_with?("/") ? sanitized : nil
+    end
+
+    def handle_destroy_failure(search_params, error_message)
+      respond_to do |format|
+        format.turbo_stream do
+          responder = SourceMonitor::TurboStreams::StreamResponder.new
+          responder.toast(message: error_message, level: :error)
+          render turbo_stream: responder.render(view_context), status: :unprocessable_entity
+        end
+
+        format.html do
+          redirect_to source_monitor.sources_path(q: search_params), alert: error_message
+        end
+      end
     end
 
     def enqueue_favicon_fetch(source)

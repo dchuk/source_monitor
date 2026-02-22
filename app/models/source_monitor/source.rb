@@ -62,7 +62,8 @@ module SourceMonitor
       end
 
       def ransackable_attributes(_auth_object = nil)
-        %w[name feed_url website_url created_at fetch_interval_minutes items_count last_fetched_at]
+        %w[name feed_url website_url created_at fetch_interval_minutes items_count last_fetched_at
+           active health_status feed_format scraper_adapter]
       end
 
       def ransackable_associations(_auth_object = nil)
@@ -101,6 +102,13 @@ module SourceMonitor
       # Recalculate items_count from actual active (non-deleted) items
       actual_count = items.count
       update_columns(items_count: actual_count)
+    end
+
+    def avg_word_count
+      items.joins(:item_content)
+           .where.not(sourcemon_item_contents: { scraped_word_count: nil })
+           .average("sourcemon_item_contents.scraped_word_count")
+           &.round
     end
 
     private

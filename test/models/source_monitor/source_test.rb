@@ -243,5 +243,26 @@ module SourceMonitor
 
       assert_match(/check_fetch_status_values/i, error.message)
     end
+
+    test "avg_word_count returns average of scraped word counts" do
+      source = create_source!
+      item1 = SourceMonitor::Item.create!(
+        source: source, guid: SecureRandom.uuid,
+        url: "https://example.com/a-#{SecureRandom.hex(4)}", title: "A"
+      )
+      item2 = SourceMonitor::Item.create!(
+        source: source, guid: SecureRandom.uuid,
+        url: "https://example.com/b-#{SecureRandom.hex(4)}", title: "B"
+      )
+      SourceMonitor::ItemContent.create!(item: item1, scraped_content: "one two three four") # 4 words
+      SourceMonitor::ItemContent.create!(item: item2, scraped_content: "one two three four five six") # 6 words
+
+      assert_equal 5, source.avg_word_count # (4 + 6) / 2 = 5
+    end
+
+    test "avg_word_count returns nil when no item_contents have word counts" do
+      source = create_source!
+      assert_nil source.avg_word_count
+    end
   end
 end

@@ -15,6 +15,26 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.9.0] - 2026-02-22
+
+### Added
+
+- **Sources pagination and filtering.** Sources index now paginates (25 per page, configurable) with Previous/Next controls. Dropdown filters for Status, Health, Format, and Scraper Adapter auto-submit on change. Active filters shown as dismissible badges. Text search and dropdown filters compose as intersection and persist across pagination.
+- **Per-source scrape rate limiting.** New `min_scrape_interval` column on sources allows time-based throttling between scrapes. Global default (1.0s) configurable via `config.scraping.min_scrape_interval`. Per-source overrides via the column value. ScrapeItemJob and Enqueuer check last scrape time from `scrape_logs` and re-enqueue with delay when rate-limited.
+- **Word count metrics.** New `feed_word_count` and `scraped_word_count` columns on `item_contents`. Feed content is HTML-stripped before counting; scraped content counted as-is (readability-cleaned). Separate "Avg Feed Words" and "Avg Scraped Words" columns on sources index. Separate "Feed Words" and "Scraped Words" columns on items index and source detail items table. Backfill rake task: `source_monitor:backfill_word_counts`.
+
+### Fixed
+
+- Show `created_at` fallback when `published_at` is nil in items table.
+- Handle source destroy failures with proper error responses instead of silent failures.
+- UI fixes: navigation warning indicator positioning, toast container placement, dashboard table alignment.
+- N+1 query fix: source detail items table now uses `includes(:item_content)`.
+
+### Testing
+
+- 1,175 tests, 3,683 assertions, 0 failures.
+- RuboCop: 0 offenses (423 files).
+
 ## [0.8.1] - 2026-02-21
 
 ### Fixed
