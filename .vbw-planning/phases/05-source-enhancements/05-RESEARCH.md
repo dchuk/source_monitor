@@ -1,0 +1,42 @@
+# Phase 5 Research: Source Enhancements
+
+## Issue 1: Sources Pagination and Column Filtering
+
+**Files:** `app/controllers/source_monitor/sources_controller.rb` (lines 20-41), `app/views/source_monitor/sources/index.html.erb`
+
+**Problem:** No pagination — `@sources = @q.result` returns all sources. No page/limit applied. Paginator class already exists at `SourceMonitor::Pagination::Paginator` (used in ItemsController).
+
+**Fix:** Add `PER_PAGE` constant and paginator call (same pattern as ItemsController). Add prev/next page controls to the view (same pattern as items/index.html.erb lines 122-144). Add column filtering controls (status, health status, etc.).
+
+**Existing pagination pattern (ItemsController):**
+- `PER_PAGE = 50`
+- `@paginator = SourceMonitor::Pagination::Paginator.new(scope: @q.result, page: params[:page], per_page: PER_PAGE)`
+- View uses `@paginator.records`, `@paginator.prev_page`, `@paginator.next_page`
+
+## Issue 2: Scraping Rate Limit Per Source
+
+**Files:** `lib/source_monitor/scraping/enqueuer.rb`, `lib/source_monitor/configuration/scraping_settings.rb`, `app/jobs/source_monitor/scrape_item_job.rb`
+
+**Problem:** Per-source in-flight limit exists but is disabled by default (`DEFAULT_MAX_IN_FLIGHT = nil`). No time-based rate limiting exists (e.g., max 1 request per second per source).
+
+**Current mechanism:**
+- `ScrapingSettings.max_in_flight_per_source` — counts in-flight scrape jobs per source
+- `Enqueuer#rate_limit_exhausted?` — checks count vs limit
+- Default is nil (no limit)
+
+**Fix:** Add time-based rate limiting: track last scrape timestamp per source (via `Source#last_scraped_at` or scrape_logs), enforce minimum interval between scrapes (default 1 second). Add `min_scrape_interval` config setting to ScrapingSettings.
+
+## Issue 3: Word Count Metrics
+
+**Files:** `app/models/source_monitor/item_content.rb`, `app/models/source_monitor/item.rb`, `app/models/source_monitor/source.rb`, `app/views/source_monitor/items/index.html.erb`, `app/views/source_monitor/sources/index.html.erb`, `app/views/source_monitor/sources/_row.html.erb`
+
+**Problem:** No `word_count` column exists anywhere in the schema. Items have `scraped_content` in `item_contents` but no word count stored.
+
+**Fix (multi-step):**
+1. **Migration:** Add `word_count integer` to `sourcemon_item_contents` table
+2. **Model callback:** Compute `word_count` in ItemContent when `scraped_content` is assigned: `self.word_count = scraped_content.to_s.split.size`
+3. **Backfill:** Populate for existing records
+4. **Source average:** Add `average_word_count` method on Source via joins query
+5. **Items index view:** Add "Words" column showing `item.item_content&.word_count`
+6. **Sources index view:** Add "Avg Words" column
+7. **Source show items table:** Add "Words" column

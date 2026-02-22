@@ -3,10 +3,10 @@
 ## Current Position
 
 - **Milestone:** polish-and-reliability
-- **Phase:** 3 -- Toast Stacking
+- **Phase:** 4 -- Bug Fixes & Polish
 - **Status:** Complete
-- **Progress:** 100%
-- **Plans:** 1 (1/1 complete)
+- **Progress:** 80%
+- **Plans:** 3 (3/3 complete)
 
 ## Decisions
 
@@ -25,7 +25,7 @@
 ## Metrics
 
 - **Started:** 2026-02-20
-- **Phases:** 3
+- **Phases:** 5
 - **Tests at start:** 1033
 
 ## Blockers

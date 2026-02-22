@@ -675,6 +675,10 @@ video {
   top: 1rem;
 }
 
+.fm-admin .top-16 {
+  top: 4rem;
+}
+
 .fm-admin .z-10 {
   z-index: 10;
 }
@@ -851,6 +855,22 @@ video {
 
 .fm-admin .w-full {
   width: 100%;
+}
+
+.fm-admin .w-\[15\%\] {
+  width: 15%;
+}
+
+.fm-admin .w-\[18\%\] {
+  width: 18%;
+}
+
+.fm-admin .w-\[22\%\] {
+  width: 22%;
+}
+
+.fm-admin .w-\[45\%\] {
+  width: 45%;
 }
 
 .fm-admin .min-w-full {
