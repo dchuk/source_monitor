@@ -112,7 +112,8 @@
 
       <%= form_with model: import_session,
             url: source_monitor.step_import_session_path(import_session, step: "confirm"),
-            method: :patch do |form| %>
+            method: :patch,
+            data: { action: "submit->confirm-navigation#disable" } do |form| %>
         <%= hidden_field_tag :next_step, "confirm", name: "import_session[next_step]" %>
         <%= form.submit "Start import", class: "inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-500" %>
       <% end %>
