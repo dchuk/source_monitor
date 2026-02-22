@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_12_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_22_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -384,6 +384,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_000000) do
     t.datetime "last_modified"
     t.integer "max_items"
     t.jsonb "metadata", default: {}, null: false
+    t.decimal "min_scrape_interval", precision: 10, scale: 2
     t.string "name", null: false
     t.datetime "next_fetch_at"
     t.boolean "requires_javascript", default: false, null: false
