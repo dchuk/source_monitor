@@ -134,6 +134,78 @@ module SourceMonitor
       refute_includes response.body, %(<script>)
     end
 
+    test "destroy removes source via html format" do
+      source = create_source!(name: "HTML Delete", feed_url: "https://html-delete.example.com/feed.xml")
+
+      assert_difference -> { Source.count }, -1 do
+        delete source_monitor.source_path(source)
+      end
+
+      assert_redirected_to source_monitor.sources_path
+      assert_equal "Source deleted", flash[:notice]
+    end
+
+    test "destroy turbo stream shows error toast when destroy returns false" do
+      source = create_source!(name: "Stubbed Fail", feed_url: "https://stubbed-fail.example.com/feed.xml")
+
+      source.stub(:destroy, false) do
+        Source.stub(:find, source) do
+          assert_no_difference -> { Source.count } do
+            delete source_monitor.source_path(source), as: :turbo_stream
+          end
+        end
+      end
+
+      assert_response :unprocessable_entity
+      assert_equal "text/vnd.turbo-stream.html", response.media_type
+      assert_includes response.body, "Could not delete source"
+    end
+
+    test "destroy html shows alert when destroy returns false" do
+      source = create_source!(name: "HTML Fail", feed_url: "https://html-fail.example.com/feed.xml")
+
+      source.stub(:destroy, false) do
+        Source.stub(:find, source) do
+          assert_no_difference -> { Source.count } do
+            delete source_monitor.source_path(source)
+          end
+        end
+      end
+
+      assert_redirected_to source_monitor.sources_path(q: {})
+      assert_includes flash[:alert], "Could not delete source"
+    end
+
+    test "destroy turbo stream shows error toast on foreign key violation" do
+      source = create_source!(name: "FK Violation", feed_url: "https://fk-violation.example.com/feed.xml")
+
+      source.stub(:destroy, -> { raise ActiveRecord::InvalidForeignKey, "FK constraint" }) do
+        Source.stub(:find, source) do
+          assert_no_difference -> { Source.count } do
+            delete source_monitor.source_path(source), as: :turbo_stream
+          end
+        end
+      end
+
+      assert_response :unprocessable_entity
+      assert_equal "text/vnd.turbo-stream.html", response.media_type
+      assert_includes response.body, "Cannot delete source"
+      assert_includes response.body, "other records still reference it"
+    end
+
+    test "destroy html redirects with alert on foreign key violation" do
+      source = create_source!(name: "HTML FK", feed_url: "https://html-fk.example.com/feed.xml")
+
+      source.stub(:destroy, -> { raise ActiveRecord::InvalidForeignKey, "FK constraint" }) do
+        Source.stub(:find, source) do
+          delete source_monitor.source_path(source)
+        end
+      end
+
+      assert_redirected_to source_monitor.sources_path(q: {})
+      assert_includes flash[:alert], "Cannot delete source"
+    end
+
     test "create still succeeds when favicon enqueue raises" do
       SourceMonitor::FaviconFetchJob.stub(:perform_later, ->(*) { raise StandardError, "queue down" }) do
         assert_difference -> { Source.count }, 1 do

@@ -75,7 +75,17 @@ module SourceMonitor
 
     def destroy
       search_params = sanitized_search_params
-      @source.destroy
+
+      begin
+        unless @source.destroy
+          handle_destroy_failure(search_params, "Could not delete source: #{@source.errors.full_messages.join(', ')}")
+          return
+        end
+      rescue ActiveRecord::InvalidForeignKey
+        handle_destroy_failure(search_params, "Cannot delete source: other records still reference it. Remove dependent records first.")
+        return
+      end
+
       message = "Source deleted"
 
       respond_to do |format|
@@ -130,6 +140,20 @@ module SourceMonitor
 
       sanitized = SourceMonitor::Security::ParameterSanitizer.sanitize(raw_value.to_s)
       sanitized.start_with?("/") ? sanitized : nil
+    end
+
+    def handle_destroy_failure(search_params, error_message)
+      respond_to do |format|
+        format.turbo_stream do
+          responder = SourceMonitor::TurboStreams::StreamResponder.new
+          responder.toast(message: error_message, level: :error)
+          render turbo_stream: responder.render(view_context), status: :unprocessable_entity
+        end
+
+        format.html do
+          redirect_to source_monitor.sources_path(q: search_params), alert: error_message
+        end
+      end
     end
 
     def enqueue_favicon_fetch(source)
