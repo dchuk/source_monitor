@@ -12,6 +12,7 @@ module SourceMonitor
     searchable_with scope: -> { Source.all }, default_sorts: [ "created_at desc" ]
 
     ITEMS_PREVIEW_LIMIT = SourceMonitor::Scraping::BulkSourceScraper::DEFAULT_PREVIEW_LIMIT
+    PER_PAGE = 25
 
     before_action :set_source, only: %i[show edit update destroy]
 
@@ -21,14 +22,23 @@ module SourceMonitor
       @search_params = sanitized_search_params
       @q = build_search_query
 
-      @sources = @q.result
+      paginator = SourceMonitor::Pagination::Paginator.new(
+        scope: @q.result,
+        page: params[:page],
+        per_page: params[:per_page] || PER_PAGE
+      ).paginate
+
+      @sources = paginator.records
+      @page = paginator.page
+      @has_next_page = paginator.has_next_page
+      @has_previous_page = paginator.has_previous_page
 
       @search_term = @search_params[SEARCH_FIELD.to_s].to_s.strip
       @search_field = SEARCH_FIELD
 
       metrics = SourceMonitor::Analytics::SourcesIndexMetrics.new(
         base_scope: Source.all,
-        result_scope: @sources,
+        result_scope: paginator.records,
         search_params: @search_params
       )
 
