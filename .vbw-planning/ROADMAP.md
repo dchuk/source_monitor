@@ -8,7 +8,7 @@
 2. [x] **Favicon Support** -- Automatically save source favicons via Active Storage with background fetch job
 3. [x] **Toast Stacking** -- Cap visible toast notifications with click-to-expand for bulk operation UX
 4. [x] **Bug Fixes & Polish** -- Fix OPML import warning, toast positioning, dashboard alignment, source deletion, and published column
-5. [ ] **Source Enhancements** -- Add pagination/filtering for sources, per-source scrape rate limiting, and word count metrics
+5. [x] **Source Enhancements** -- Add pagination/filtering for sources, per-source scrape rate limiting, and word count metrics
 
 ### Phase Details
 
@@ -90,20 +90,21 @@
 **Goal:** Add pagination and column filtering to sources index, per-source scraping rate limit with time-based throttling, and word count metrics for items and sources.
 
 **Requirements:**
-- REQ-SE-01: Add pagination to sources index using existing Paginator class (same pattern as ItemsController)
-- REQ-SE-02: Add column filtering for sources (status, health status, etc.) via Ransack or similar
-- REQ-SE-03: Add time-based per-source scrape rate limiting (default: min 1 second between scrapes per source) via new min_scrape_interval config setting
-- REQ-SE-04: Add word_count column to item_contents table, computed on scraped_content assignment
-- REQ-SE-05: Display word count on items index and source show items table
-- REQ-SE-06: Display average word count on sources index
+- REQ-SE-01: Add pagination to sources index (default 25/page, configurable via per_page param) using existing Paginator class
+- REQ-SE-02: Add full column filtering: text search on name/URL + dropdown filters for status, health_status, feed_type, scraper_adapter via Ransack q[] URL params
+- REQ-SE-03: Add time-based per-source scrape rate limiting. Derive last-scrape from scrape_logs MAX(started_at). Re-enqueue with delay when rate-limited. Default 1s interval
+- REQ-SE-04: Add per-source configurable min_scrape_interval column (overrides global default from ScrapingSettings)
+- REQ-SE-05: Add scraped_word_count and feed_word_count columns to item_contents. Scraped content counted as-is (readability-cleaned). Feed content stripped of HTML before counting
+- REQ-SE-06: Display word counts on items index, source detail items table, item detail page, and avg word count on sources index
 
 **Success Criteria:**
-- [ ] Sources index is paginated (default 25 per page) with prev/next controls
-- [ ] Sources can be filtered by status/health columns
-- [ ] Per-source scrape rate limiting enforces minimum interval (default 1s) between scrapes
-- [ ] Items show word count in index and source detail views
-- [ ] Sources index shows average item word count
-- [ ] Migration adds word_count to item_contents with backfill task
+- [ ] Sources index paginated (default 25/page) with per_page URL param and prev/next controls
+- [ ] Sources filterable by text search + status/health_status/feed_type/scraper_adapter dropdowns via Ransack
+- [ ] Per-source scrape rate limiting derives last-scrape from scrape_logs, re-enqueues with delay
+- [ ] Source model has min_scrape_interval column overriding global ScrapingSettings default (1s)
+- [ ] item_contents has scraped_word_count and feed_word_count columns with appropriate callbacks
+- [ ] Word counts displayed in items index, source items table, item detail, sources index (avg)
+- [ ] Backfill task populates word counts for existing records
 - [ ] All existing tests pass, new tests cover all new behavior
 - [ ] RuboCop zero offenses, Brakeman zero warnings
 
@@ -115,4 +116,4 @@
 | 2. Favicon Support | Complete | 3 | 3 |
 | 3. Toast Stacking | Complete | 1 | 1 |
 | 4. Bug Fixes & Polish | Complete | 3 | 3 |
-| 5. Source Enhancements | Pending | 0 | 0 |
+| 5. Source Enhancements | Complete | 3 | 3 |

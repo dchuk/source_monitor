@@ -249,6 +249,7 @@ module SourceMonitor
     # --- Pagination tests ---
 
     test "index returns paginated results with 25 per page default" do
+      Source.destroy_all
       30.times { |i| create_source!(name: "Paginated #{i}") }
 
       get source_monitor.sources_path
@@ -260,6 +261,7 @@ module SourceMonitor
     end
 
     test "index page 2 returns remaining sources" do
+      Source.destroy_all
       30.times { |i| create_source!(name: "Page2 #{i}") }
 
       get source_monitor.sources_path, params: { page: 2 }
@@ -271,6 +273,7 @@ module SourceMonitor
     end
 
     test "index respects per_page param" do
+      Source.destroy_all
       15.times { |i| create_source!(name: "PerPage #{i}") }
 
       get source_monitor.sources_path, params: { per_page: 10 }
@@ -280,6 +283,7 @@ module SourceMonitor
     end
 
     test "index caps per_page at 100" do
+      Source.destroy_all
       3.times { |i| create_source!(name: "Capped #{i}") }
 
       get source_monitor.sources_path, params: { per_page: 200 }

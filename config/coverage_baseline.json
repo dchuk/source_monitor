@@ -240,6 +240,13 @@
     59,
     63
   ],
+  "lib/source_monitor/configuration/scraping_settings.rb": [
+    31,
+    45,
+    46,
+    48,
+    49
+  ],
   "lib/source_monitor/configuration/validation_definition.rb": [
     15,
     17,
