@@ -2,7 +2,7 @@
 <% recent_fetch_logs = source.fetch_logs.order(started_at: :desc).limit(5) %>
 <% recent_scrape_logs = source.scrape_logs.order(started_at: :desc).limit(5) %>
 <% preview_limit = SourceMonitor::Scraping::BulkSourceScraper::DEFAULT_PREVIEW_LIMIT %>
-<% items = source.items.recent.limit(preview_limit) %>
+<% items = source.items.recent.includes(:item_content).limit(preview_limit) %>
 <% fetch_status = async_status_badge(source.fetch_status) %>
 <% health_status_override = local_assigns[:health_status_override] %>
 
