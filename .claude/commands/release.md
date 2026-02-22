@@ -17,8 +17,15 @@ These are real issues encountered in previous releases. Each step below accounts
 5. **Single squashed commit**: Always create ONE commit on the release branch with ALL changes (version bump, changelog, Gemfile.lock, any fixes). Multiple commits cause pre-push hook issues.
 6. **Diff coverage CI gate**: The `test` CI job enforces diff coverage. Any changed lines in source code (not just test files) must have test coverage. **This applies to ALL changes in the PR diff vs main, including unpushed commits made before the release started.** If the release includes source code changes (bug fixes, features), every changed source line must be covered.
 7. **Local main divergence after merge**: After the PR merges, `gh pr merge --merge --delete-branch` will attempt to fast-forward local main. This usually succeeds automatically. If it doesn't (divergent history), you must `git reset --hard origin/main` to sync -- this requires user approval since the sandbox blocks it.
-8. **Run local checks BEFORE pushing**: Always run `bin/rubocop` and `PARALLEL_WORKERS=1 bin/rails test` locally before the first push to the release branch. Each CI roundtrip (fail → fix → amend → force-push → re-run) costs ~5 minutes. In v0.7.0, skipping local checks caused two wasted CI cycles: first for uncovered diff lines, then for a RuboCop violation in the fix.
-9. **Zsh glob nomatch**: Commands like `rm -f *.gem` fail in zsh when no files match. Always use `rm -f *.gem 2>/dev/null || true` or check existence first with `ls`.
+8. **Run FULL local CI suite BEFORE pushing**: Always run ALL of these locally before the first push to the release branch:
+   - `bin/rubocop` -- Ruby lint
+   - `PARALLEL_WORKERS=1 bin/rails test` -- tests + diff coverage readiness
+   - `bin/brakeman --no-pager` -- security scan
+   - `yarn build` -- rebuild JS assets (catches ESLint issues; CI runs ESLint separately on JS files)
+   Each CI roundtrip (fail → fix → amend → force-push → re-run) costs ~5 minutes. In v0.7.0, skipping local checks caused two wasted CI cycles. In v0.8.0, skipping ESLint (`yarn build`) and diff coverage pre-checks caused another two wasted cycles: first for ESLint `no-undef` on browser globals (MutationObserver, requestAnimationFrame), then for 13 uncovered rescue/error path lines across 3 files.
+9. **ESLint browser globals**: Any JS file using browser APIs (MutationObserver, requestAnimationFrame, cancelAnimationFrame, IntersectionObserver, etc.) MUST declare them with a `/* global ... */` comment at the top. ESLint's `no-undef` rule in CI will reject them otherwise.
+10. **Diff coverage rescue paths**: Every `rescue`/fallback/error handling branch in changed source code needs test coverage. Common blind spots: `rescue StandardError => e` logging, `rescue URI::InvalidURIError` returning nil, fallback `false` returns. Write targeted tests for these BEFORE creating the release commit.
+11. **Zsh glob nomatch**: Commands like `rm -f *.gem` fail in zsh when no files match. Always use `rm -f *.gem 2>/dev/null || true` or check existence first with `ls`.
 
 ## Step 1: Git Hygiene
 
@@ -116,21 +123,26 @@ The changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 
 ## Step 5: Local Pre-flight Checks
 
-**CRITICAL**: Run these checks BEFORE creating the release branch and pushing. Each CI failure → fix → amend → force-push cycle wastes ~5 minutes. In v0.7.0, skipping this step caused two wasted CI roundtrips.
+**CRITICAL**: Run the FULL local CI equivalent BEFORE creating the release branch and pushing. Each CI failure → fix → amend → force-push cycle wastes ~5 minutes. In v0.7.0, skipping this step caused two wasted CI roundtrips. In v0.8.0, skipping ESLint and diff coverage pre-checks caused another two wasted cycles.
 
 1. **RuboCop**: Run `bin/rubocop` and fix any violations. Auto-fix with `bin/rubocop -a` if needed. This catches lint issues (like `SpaceInsideArrayLiteralBrackets`) that would fail the CI lint job.
 
 2. **Tests**: Run `PARALLEL_WORKERS=1 bin/rails test` and ensure all tests pass.
 
 3. **Diff coverage pre-check**: If the release includes source code changes beyond version/changelog/lockfile (check with `git diff --name-only origin/main`), review those files for uncovered branches. The CI diff coverage gate will reject any changed source lines without test coverage. Common blind spots:
+   - `rescue StandardError` logging/fallback paths
+   - `rescue URI::InvalidURIError` nil returns
+   - Guard clauses returning early (e.g., `return if blank?`)
    - Fallback/else branches in new methods
-   - Error handling paths
-   - Guard clauses
    If you find uncovered source lines, write tests for them NOW before creating the release commit — it's far cheaper than a CI roundtrip.
 
 4. **Brakeman**: Run `bin/brakeman --no-pager` and ensure zero warnings.
 
-Only proceed to Step 6 when all local checks pass.
+5. **ESLint / JS build**: If any `.js` files were changed, run `yarn build` to rebuild assets. CI runs ESLint separately on JS files and will catch issues RuboCop doesn't:
+   - Browser globals (MutationObserver, requestAnimationFrame, cancelAnimationFrame, IntersectionObserver, etc.) must be declared with `/* global ... */` comments at the top of the file.
+   - Missing `/* global */` declarations cause ESLint `no-undef` failures.
+
+Only proceed to Step 6 when ALL five checks pass.
 
 ## Step 6: Create Release Branch with Single Squashed Commit
 

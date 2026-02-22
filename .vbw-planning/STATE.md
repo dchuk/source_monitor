@@ -20,6 +20,8 @@
 
 ## Todos
 
+- [x] Fix deprecation: `rails/tasks/statistics.rake` removed from Rakefile (2026-02-21)
+
 ## Metrics
 
 - **Started:** 2026-02-20
