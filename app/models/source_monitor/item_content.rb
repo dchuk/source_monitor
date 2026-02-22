@@ -24,7 +24,7 @@ module SourceMonitor
     end
 
     def compute_scraped_word_count
-      return unless scraped_content_changed? || new_record?
+      return unless scraped_content_changed? || new_record? || (scraped_word_count.nil? && scraped_content.present?)
 
       self.scraped_word_count = scraped_content.present? ? scraped_content.split.size : nil
     end

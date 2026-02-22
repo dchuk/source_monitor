@@ -100,5 +100,46 @@ module SourceMonitor
       refute_includes response.body, "Unpublished"
       assert_includes response.body, item.created_at.strftime("%b %d, %Y %H:%M")
     end
+
+    test "index renders Words column header" do
+      get "/source_monitor/items"
+      assert_response :success
+      assert_includes response.body, "Words"
+    end
+
+    test "index renders word count for items with scraped content" do
+      source = create_source!
+      item = SourceMonitor::Item.create!(
+        source: source,
+        guid: SecureRandom.uuid,
+        url: "https://example.com/word-count-item",
+        title: "Word Count Item"
+      )
+      SourceMonitor::ItemContent.create!(item: item, scraped_content: "one two three")
+
+      get "/source_monitor/items"
+
+      assert_response :success
+      assert_includes response.body, "3"
+    end
+
+    test "show renders word counts in Counts & Metrics section" do
+      source = create_source!
+      item = SourceMonitor::Item.create!(
+        source: source,
+        guid: SecureRandom.uuid,
+        url: "https://example.com/word-count-detail",
+        title: "Word Count Detail",
+        content: "<p>Hello world test</p>"
+      )
+      SourceMonitor::ItemContent.create!(item: item, scraped_content: "one two three four five")
+
+      get "/source_monitor/items/#{item.id}"
+
+      assert_response :success
+      assert_includes response.body, "Feed Word Count"
+      assert_includes response.body, "Scraped Word Count"
+      assert_includes response.body, "5"
+    end
   end
 end

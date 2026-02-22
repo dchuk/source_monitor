@@ -1,6 +1,20 @@
 # frozen_string_literal: true
 
 namespace :source_monitor do
+  desc "Backfill word counts for existing item_content records."
+  task backfill_word_counts: :environment do
+    total = SourceMonitor::ItemContent.count
+    processed = 0
+
+    SourceMonitor::ItemContent.find_each do |content|
+      content.save!
+      processed += 1
+      puts "Processed #{processed}/#{total} records..." if (processed % 100).zero?
+    end
+
+    puts "Done. Backfilled word counts for #{processed} records."
+  end
+
   namespace :cleanup do
     desc "Run retention pruning across sources. Accepts SOURCE_IDS and SOFT_DELETE env vars."
     task items: :environment do
