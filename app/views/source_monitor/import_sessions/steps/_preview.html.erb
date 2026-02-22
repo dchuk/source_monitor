@@ -60,6 +60,11 @@
             data: { turbo: false, action: "confirm-navigation#disable" },
             html: { class: "block" } do |form| %>
         <%= hidden_field_tag :filter, @filter %>
+        <%# Preserve selections from other pages so form submission includes ALL selected IDs %>
+        <% visible_ids = @paginated_entries.map { |e| e[:id] } %>
+        <% @preview_entries.select { |e| e[:selected] && !visible_ids.include?(e[:id]) }.each do |entry| %>
+          <%= hidden_field_tag "import_session[selected_source_ids][]", entry[:id] %>
+        <% end %>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-slate-200 text-left text-sm" data-controller="select-all">
             <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -131,7 +136,7 @@
               <%= link_to "Previous",
                     source_monitor.step_import_session_path(import_session, step: "preview", **prev_params),
                     class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50",
-                    data: { turbo_frame: "import_session_step" } %>
+                    data: { turbo: true, turbo_frame: "import_session_step" } %>
             <% else %>
               <span class="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-300">Previous</span>
             <% end %>
@@ -140,7 +145,7 @@
               <%= link_to "Next",
                     source_monitor.step_import_session_path(import_session, step: "preview", **next_params),
                     class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50",
-                    data: { turbo_frame: "import_session_step" } %>
+                    data: { turbo: true, turbo_frame: "import_session_step" } %>
             <% else %>
               <span class="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-300">Next</span>
             <% end %>
