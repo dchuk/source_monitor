@@ -38,6 +38,17 @@ module SourceMonitor
       @fetch_interval_filter = metrics.fetch_interval_filter
       @selected_fetch_interval_bucket = metrics.selected_fetch_interval_bucket
       @item_activity_rates = metrics.item_activity_rates
+
+      source_ids = @sources.map(&:id)
+      @avg_word_counts = if source_ids.any?
+        ItemContent.joins(:item)
+                   .where(sourcemon_items: { source_id: source_ids })
+                   .where.not(scraped_word_count: nil)
+                   .group("sourcemon_items.source_id")
+                   .average(:scraped_word_count)
+      else
+        {}
+      end
     end
 
     def show
