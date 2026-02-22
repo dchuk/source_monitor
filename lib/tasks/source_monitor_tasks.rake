@@ -3,6 +3,20 @@
 namespace :source_monitor do
   desc "Backfill word counts for existing item_content records."
   task backfill_word_counts: :environment do
+    # Phase 1: Create ItemContent for items with feed content but no ItemContent
+    items_needing_content = SourceMonitor::Item
+      .where.not(content: [ nil, "" ])
+      .where.missing(:item_content)
+
+    created = 0
+    items_needing_content.find_each do |item|
+      item.ensure_feed_content_record
+      created += 1
+      puts "Created #{created} missing ItemContent records..." if (created % 100).zero?
+    end
+    puts "Created #{created} ItemContent records for feed-only items." if created > 0
+
+    # Phase 2: Recompute word counts for all existing ItemContent
     total = SourceMonitor::ItemContent.count
     processed = 0
 
@@ -12,7 +26,7 @@ namespace :source_monitor do
       puts "Processed #{processed}/#{total} records..." if (processed % 100).zero?
     end
 
-    puts "Done. Backfilled word counts for #{processed} records."
+    puts "Done. Backfilled word counts for #{processed} records (#{created} newly created)."
   end
 
   namespace :cleanup do

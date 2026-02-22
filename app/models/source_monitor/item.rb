@@ -33,6 +33,15 @@ module SourceMonitor
 
     SourceMonitor::ModelExtensions.register(self, :item)
 
+    # Creates an ItemContent record for feed word count computation when one doesn't exist.
+    # The before_save callback on ItemContent will compute feed_word_count from item.content.
+    def ensure_feed_content_record
+      return if item_content.present?
+      return if content.blank?
+
+      create_item_content!
+    end
+
     class << self
       def ransackable_attributes(_auth_object = nil)
         %w[title summary url published_at created_at scrape_status]
@@ -91,6 +100,7 @@ module SourceMonitor
     def cleanup_item_content_if_blank
       return unless item_content
       return if item_content.scraped_html.present? || item_content.scraped_content.present?
+      return if content.present?
 
       if item_content.persisted?
         item_content.mark_for_destruction

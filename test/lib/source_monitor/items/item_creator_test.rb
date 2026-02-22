@@ -1155,6 +1155,44 @@ module SourceMonitor
         assert_equal true, creator.send(:deep_copy, true)
       end
 
+      # ─── Feed content record creation ───
+
+      test "new item creation with content also creates ItemContent with feed_word_count" do
+        entry = OpenStruct.new(
+          title: "Feed Word Count Entry",
+          url: "https://example.com/feed-wc",
+          entry_id: "feed-wc-guid",
+          content: "<p>Five words in this sentence</p>",
+          summary: "Summary",
+          published: Time.utc(2025, 10, 1),
+          to_h: { title: "Feed Word Count Entry" }
+        )
+
+        result = ItemCreator.call(source: @source, entry: entry)
+        assert result.created?
+
+        item = result.item.reload
+        assert item.item_content.present?, "expected ItemContent to be created for item with feed content"
+        assert_equal 5, item.item_content.feed_word_count
+      end
+
+      test "new item creation without content does not create ItemContent" do
+        entry = OpenStruct.new(
+          title: "No Content Entry",
+          url: "https://example.com/no-content",
+          entry_id: "no-content-guid",
+          summary: nil,
+          published: Time.utc(2025, 10, 1),
+          to_h: { title: "No Content Entry" }
+        )
+
+        result = ItemCreator.call(source: @source, entry: entry)
+        assert result.created?
+
+        item = result.item.reload
+        assert_nil item.item_content
+      end
+
       # ─── Published_at persistence ───
 
       test "persists published_at from feed entry with pubDate" do

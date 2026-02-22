@@ -29,13 +29,36 @@ module SourceMonitor
 
       # Run the rake task
       Rake::Task["source_monitor:backfill_word_counts"].reenable
-      assert_output(/Done\. Backfilled word counts for \d+ records\./) do
+      assert_output(/Done\. Backfilled word counts for \d+ records/) do
         Rake::Task["source_monitor:backfill_word_counts"].invoke
       end
 
       content.reload
       assert_equal 4, content.scraped_word_count
       assert_equal 4, content.feed_word_count
+    end
+
+    test "backfill_word_counts creates ItemContent for items with content but no ItemContent" do
+      source = create_source!
+      item = SourceMonitor::Item.create!(
+        source: source,
+        guid: SecureRandom.uuid,
+        url: "https://example.com/feed-only-#{SecureRandom.hex(4)}",
+        title: "Feed Only Item",
+        content: "<p>Three word sentence</p>"
+      )
+
+      # Item has content but no ItemContent (simulates pre-v0.9.0 items)
+      assert_nil item.item_content
+
+      Rake::Task["source_monitor:backfill_word_counts"].reenable
+      assert_output(/Created 1 ItemContent records.*Done\. Backfilled word counts for \d+ records/m) do
+        Rake::Task["source_monitor:backfill_word_counts"].invoke
+      end
+
+      item.reload
+      assert item.item_content.present?, "expected ItemContent to be created by backfill"
+      assert_equal 3, item.item_content.feed_word_count
     end
   end
 end

@@ -135,6 +135,61 @@ module SourceMonitor
       assert_equal initial_count - 1, @source.reload.items_count
     end
 
+    # ─── ensure_feed_content_record ───
+
+    test "ensure_feed_content_record creates ItemContent when content present" do
+      item = Item.create!(source: @source, guid: "feed-content", url: "https://example.com/feed-content", content: "<p>Some feed content</p>")
+
+      assert_nil item.item_content
+
+      assert_difference("SourceMonitor::ItemContent.count", 1) do
+        item.ensure_feed_content_record
+      end
+
+      item.reload
+      assert item.item_content.present?
+      assert item.item_content.feed_word_count.present?
+      assert_equal 3, item.item_content.feed_word_count
+    end
+
+    test "ensure_feed_content_record no-ops when ItemContent already exists" do
+      item = Item.create!(source: @source, guid: "has-content", url: "https://example.com/has-content", content: "<p>Feed text</p>")
+      item.ensure_feed_content_record
+
+      assert_no_difference("SourceMonitor::ItemContent.count") do
+        item.ensure_feed_content_record
+      end
+    end
+
+    test "ensure_feed_content_record no-ops when content is blank" do
+      item = Item.create!(source: @source, guid: "no-content", url: "https://example.com/no-content")
+
+      assert_no_difference("SourceMonitor::ItemContent.count") do
+        item.ensure_feed_content_record
+      end
+    end
+
+    test "cleanup_item_content_if_blank preserves ItemContent when item has feed content" do
+      item = Item.create!(
+        source: @source,
+        guid: "preserve-content",
+        url: "https://example.com/preserve-content",
+        content: "<p>Feed content here</p>",
+        scraped_html: "<div>scraped</div>",
+        scraped_content: "scraped"
+      )
+
+      assert item.item_content.persisted?
+
+      # Clear scraped fields - ItemContent should be preserved because item has feed content
+      assert_no_difference("SourceMonitor::ItemContent.count") do
+        item.update!(scraped_html: nil, scraped_content: nil)
+      end
+
+      item.reload
+      assert item.item_content.present?
+    end
+
     test "soft_delete! does not double-delete" do
       item = Item.create!(source: @source, guid: "double", url: "https://example.com/double")
       @source.reload
