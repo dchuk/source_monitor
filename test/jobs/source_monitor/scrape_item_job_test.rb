@@ -61,6 +61,68 @@ module SourceMonitor
       assert item.scraped_at.present?
     end
 
+    # -- Time-based rate limiting tests --
+
+    test "performs scrape when not rate-limited by time" do
+      source = create_source(scraping_enabled: true)
+      item = create_item(source:)
+
+      SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 5.0 }
+
+      # Scrape log from 10 seconds ago -- past interval
+      create_scrape_log(source:, item:, started_at: 10.seconds.ago)
+
+      result = SourceMonitor::Scrapers::Base::Result.new(
+        status: :success,
+        html: "<p>Content</p>",
+        content: "Content",
+        metadata: { http_status: 200, extraction_strategy: "readability" }
+      )
+
+      SourceMonitor::Scrapers::Readability.stub(:call, result) do
+        assert_difference("SourceMonitor::ScrapeLog.count", 1) do
+          SourceMonitor::ScrapeItemJob.perform_now(item.id)
+        end
+      end
+
+      assert_equal "success", item.reload.scrape_status
+    end
+
+    test "re-enqueues with delay when rate-limited by time" do
+      source = create_source(scraping_enabled: true)
+      item = create_item(source:)
+
+      SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 60.0 }
+
+      # Scrape log from 5 seconds ago -- well within interval
+      create_scrape_log(source:, item:, started_at: 5.seconds.ago)
+
+      assert_no_changes -> { SourceMonitor::ScrapeLog.count } do
+        SourceMonitor::ScrapeItemJob.perform_now(item.id)
+      end
+
+      # Should have re-enqueued itself with a delay
+      assert_enqueued_jobs 1
+      enqueued = queue_adapter.enqueued_jobs.last
+      assert enqueued[:at].present?, "expected job to be scheduled with delay"
+    end
+
+    test "clears in-flight state on time-based deferral" do
+      source = create_source(scraping_enabled: true)
+      item = create_item(source:)
+      item.update_columns(scrape_status: "pending")
+
+      SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 60.0 }
+
+      # Scrape log from just now
+      create_scrape_log(source:, item:, started_at: Time.current)
+
+      SourceMonitor::ScrapeItemJob.perform_now(item.id)
+
+      # In-flight state should be cleared
+      assert_nil item.reload.scrape_status
+    end
+
     private
 
     def create_source(scraping_enabled:)
@@ -76,6 +138,15 @@ module SourceMonitor
         guid: SecureRandom.uuid,
         url: "https://example.com/#{SecureRandom.hex}",
         title: "Example Item"
+      )
+    end
+
+    def create_scrape_log(source:, item:, started_at:)
+      SourceMonitor::ScrapeLog.create!(
+        source: source,
+        item: item,
+        started_at: started_at,
+        scraper_adapter: "readability"
       )
     end
   end

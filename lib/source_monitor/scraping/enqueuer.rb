@@ -14,8 +14,12 @@ module SourceMonitor
           status == :already_enqueued
         end
 
+        def deferred?
+          status == :deferred
+        end
+
         def failure?
-          !enqueued? && !already_enqueued?
+          !enqueued? && !already_enqueued? && !deferred?
         end
       end
 
@@ -44,6 +48,8 @@ module SourceMonitor
         already_queued = false
         rate_limited = false
         rate_limit_info = nil
+        time_limited = false
+        time_limit_info = nil
 
         item.with_lock do
           item.reload
@@ -61,6 +67,13 @@ module SourceMonitor
             next
           end
 
+          limited, t_info = time_rate_limited?
+          if limited
+            time_limited = true
+            time_limit_info = t_info
+            next
+          end
+
           SourceMonitor::Scraping::State.mark_pending!(item, broadcast: false, lock: false)
         end
 
@@ -73,6 +86,14 @@ module SourceMonitor
           message = rate_limit_message(rate_limit_info)
           log("enqueue:rate_limited", item:, limit: rate_limit_info&.fetch(:limit, nil), in_flight: rate_limit_info&.fetch(:in_flight, nil))
           return Result.new(status: :rate_limited, message:, item: item)
+        end
+
+        if time_limited
+          wait_seconds = time_limit_info[:wait_seconds]
+          job_class.set(wait: wait_seconds.seconds).perform_later(item.id)
+          message = "Scrape deferred: source was scraped #{time_limit_info[:interval]}s ago, re-enqueued with #{wait_seconds}s delay."
+          log("enqueue:deferred", item:, wait_seconds:, interval: time_limit_info[:interval])
+          return Result.new(status: :deferred, message:, item: item)
         end
 
         job_class.perform_later(item.id)
@@ -103,6 +124,22 @@ module SourceMonitor
         Rails.logger.info("[SourceMonitor::ManualScrape] #{payload.to_json}")
       rescue StandardError
         nil
+      end
+
+      def time_rate_limited?
+        interval = source.min_scrape_interval || SourceMonitor.config.scraping.min_scrape_interval
+        return [ false, nil ] if interval.nil? || interval <= 0
+
+        last_scrape_at = source.scrape_logs.maximum(:started_at)
+        return [ false, nil ] unless last_scrape_at
+
+        elapsed = Time.current - last_scrape_at
+        if elapsed < interval
+          wait_seconds = (interval - elapsed).ceil
+          [ true, { wait_seconds:, interval:, last_scrape_at: } ]
+        else
+          [ false, nil ]
+        end
       end
 
       def rate_limit_exhausted?
