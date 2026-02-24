@@ -7,7 +7,7 @@ require "source_monitor/sources/params"
 
 module SourceMonitor
   class ImportOpmlJob < ApplicationJob
-    source_monitor_queue :fetch
+    source_monitor_queue :maintenance
 
     discard_on ActiveJob::DeserializationError
 

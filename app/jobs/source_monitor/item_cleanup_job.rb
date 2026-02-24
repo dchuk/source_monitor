@@ -4,7 +4,7 @@ module SourceMonitor
   class ItemCleanupJob < ApplicationJob
     DEFAULT_BATCH_SIZE = 100
 
-    source_monitor_queue :fetch
+    source_monitor_queue :maintenance
 
     def perform(options = nil)
       options = SourceMonitor::Jobs::CleanupOptions.normalize(options)

@@ -1,9 +1,14 @@
 default: &default
   queues:
+    # Fetch queue: FetchFeedJob + ScheduleFetchesJob (time-sensitive feed polling)
     source_monitor_fetch:
       concurrency: <%= ENV.fetch("SOURCE_MONITOR_FETCH_CONCURRENCY", 2) %>
+    # Scrape queue: ScrapeItemJob (content extraction)
     source_monitor_scrape:
       concurrency: <%= ENV.fetch("SOURCE_MONITOR_SCRAPE_CONCURRENCY", 2) %>
+    # Maintenance queue: health checks, cleanup, favicon, images, OPML import
+    source_monitor_maintenance:
+      concurrency: <%= ENV.fetch("SOURCE_MONITOR_MAINTENANCE_CONCURRENCY", 1) %>
     default:
       concurrency: <%= ENV.fetch("RAILS_QUEUE_CONCURRENCY", 2) %>
 
