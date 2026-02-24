@@ -2,7 +2,7 @@
 
 module SourceMonitor
   class FaviconFetchJob < ApplicationJob
-    source_monitor_queue :fetch
+    source_monitor_queue :maintenance
 
     discard_on ActiveJob::DeserializationError
 

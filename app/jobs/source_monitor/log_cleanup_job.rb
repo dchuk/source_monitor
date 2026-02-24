@@ -5,7 +5,7 @@ module SourceMonitor
     DEFAULT_FETCH_LOG_RETENTION_DAYS = 90
     DEFAULT_SCRAPE_LOG_RETENTION_DAYS = 45
 
-    source_monitor_queue :fetch
+    source_monitor_queue :maintenance
 
     def perform(options = nil)
       options = SourceMonitor::Jobs::CleanupOptions.normalize(options)

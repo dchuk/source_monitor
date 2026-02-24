@@ -2,7 +2,7 @@
 
 module SourceMonitor
   class ImportSessionHealthCheckJob < ApplicationJob
-    source_monitor_queue :fetch
+    source_monitor_queue :maintenance
 
     require "source_monitor/health/import_source_health_check"
     require "source_monitor/import_sessions/entry_normalizer"
