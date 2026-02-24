@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "securerandom"
+require "source_monitor/fetching/completion/follow_up_handler"
 
 module SourceMonitor
   module Fetching
