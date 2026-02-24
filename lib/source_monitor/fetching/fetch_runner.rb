@@ -69,6 +69,13 @@ module SourceMonitor
         mark_failed!(error)
         event_publisher.call(source:, result: nil)
         raise
+      ensure
+        begin
+          source.reload
+          source.update!(fetch_status: "failed") if source.fetch_status == "fetching"
+        rescue StandardError # :nocov:
+          nil
+        end
       end
 
       private
@@ -82,11 +89,13 @@ module SourceMonitor
 
       def self.update_source_state!(source, attrs)
         source.update!(attrs)
-        SourceMonitor::Realtime.broadcast_source(source)
-      rescue StandardError => error
-        Rails.logger.error(
-          "[SourceMonitor] Failed to update fetch state for source #{source.id}: #{error.class}: #{error.message}"
-        ) if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+        begin
+          SourceMonitor::Realtime.broadcast_source(source)
+        rescue StandardError => error
+          Rails.logger.error(
+            "[SourceMonitor] Failed to broadcast source #{source.id}: #{error.class}: #{error.message}"
+          ) if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+        end
       end
       private_class_method :update_source_state!
 

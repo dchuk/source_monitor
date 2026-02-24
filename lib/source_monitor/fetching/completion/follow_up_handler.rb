@@ -16,7 +16,13 @@ module SourceMonitor
           Array(result.item_processing&.created_items).each do |item|
             next unless item.present? && item.scraped_at.nil?
 
-            enqueuer_class.enqueue(item:, source:, job_class:, reason: :auto)
+            begin
+              enqueuer_class.enqueue(item:, source:, job_class:, reason: :auto)
+            rescue StandardError => error
+              Rails.logger.error(
+                "[SourceMonitor] FollowUpHandler: failed to enqueue scrape for item #{item.id}: #{error.class}: #{error.message}"
+              ) if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+            end
           end
         end
 

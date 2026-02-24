@@ -330,6 +330,68 @@ module SourceMonitor
         assert_nil source.fetch_circuit_until
       end
 
+      test "DB update failure in update_source_state! propagates" do
+        source = create_source
+
+        stub_fetcher = Class.new do
+          define_method(:initialize) { |**_kwargs| }
+          define_method(:call) do
+            SourceMonitor::Fetching::FeedFetcher::Result.new(status: :fetched)
+          end
+        end
+
+        # Stub update! to raise on the mark_complete! call (second update! call)
+        call_count = 0
+        original_update = source.method(:update!)
+        source.define_singleton_method(:update!) do |attrs|
+          call_count += 1
+          raise ActiveRecord::ConnectionNotEstablished, "connection lost" if call_count >= 2
+          original_update.call(attrs)
+        end
+
+        assert_raises(ActiveRecord::ConnectionNotEstablished) do
+          FetchRunner.new(source:, fetcher_class: stub_fetcher).run
+        end
+      end
+
+      test "broadcast failure is swallowed and source still updates" do
+        source = create_source
+
+        stub_fetcher = Class.new do
+          define_method(:initialize) { |**_kwargs| }
+          define_method(:call) do
+            SourceMonitor::Fetching::FeedFetcher::Result.new(status: :fetched)
+          end
+        end
+
+        SourceMonitor::Realtime.stub :broadcast_source, ->(_) { raise StandardError, "broadcast boom" } do
+          FetchRunner.new(source:, fetcher_class: stub_fetcher).run
+        end
+
+        source.reload
+        assert_equal "idle", source.fetch_status
+        assert_not_nil source.last_fetch_started_at
+      end
+
+      test "ensure block resets fetch_status from fetching on unexpected error" do
+        source = create_source
+
+        # Fetcher that raises after mark_fetching! has already run
+        failing_fetcher = Class.new do
+          define_method(:initialize) { |**_kwargs| }
+          define_method(:call) { raise StandardError, "unexpected" }
+        end
+
+        SourceMonitor::Realtime.stub :broadcast_source, nil do
+          assert_raises(StandardError) do
+            FetchRunner.new(source:, fetcher_class: failing_fetcher).run
+          end
+        end
+
+        # The ensure block should have caught the "fetching" status and reset to "failed"
+        assert_equal "failed", source.reload.fetch_status
+      end
+
       test "force run bypasses open circuit" do
         source = create_source
         source.update!(
