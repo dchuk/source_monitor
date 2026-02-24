@@ -161,8 +161,8 @@ module SourceMonitor
       assert_not discoverer_called
     end
 
-    test "uses source_monitor_queue :fetch" do
-      assert_equal SourceMonitor.config.queue_name_for(:fetch), FaviconFetchJob.new.queue_name
+    test "uses source_monitor_queue :maintenance" do
+      assert_equal SourceMonitor.config.queue_name_for(:maintenance), FaviconFetchJob.new.queue_name
     end
   end
 end

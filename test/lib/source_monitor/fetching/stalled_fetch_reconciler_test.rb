@@ -79,18 +79,22 @@ module SourceMonitor
       assert_empty result.recovered_source_ids
     end
 
-    test "default stale_after uses scheduler timeout when not provided" do
-      assert_equal STALE_THRESHOLD, SourceMonitor::Fetching::StalledFetchReconciler.send(:default_stale_after)
+    test "default stale_after uses configured stale timeout" do
+      assert_equal SourceMonitor.config.fetching.stale_timeout_minutes.minutes,
+        SourceMonitor::Fetching::StalledFetchReconciler.send(:default_stale_after)
     end
 
-    test "default stale_after falls back to ten minutes when scheduler timeout missing" do
-      scheduler = SourceMonitor::Scheduler
-      original = SourceMonitor::Scheduler::STALE_QUEUE_TIMEOUT
-      scheduler.send(:remove_const, :STALE_QUEUE_TIMEOUT)
+    test "default stale_after falls back to ten minutes when config unavailable" do
+      broken_fetching = Object.new
+      def broken_fetching.stale_timeout_minutes
+        raise NoMethodError, "undefined method"
+      end
+      broken_config = Object.new
+      broken_config.define_singleton_method(:fetching) { broken_fetching }
 
-      assert_equal 10.minutes, SourceMonitor::Fetching::StalledFetchReconciler.send(:default_stale_after)
-    ensure
-      scheduler.const_set(:STALE_QUEUE_TIMEOUT, original)
+      SourceMonitor.stub(:config, broken_config) do
+        assert_equal 10.minutes, SourceMonitor::Fetching::StalledFetchReconciler.send(:default_stale_after)
+      end
     end
 
     test "recover_source logs and swallows unexpected errors" do
