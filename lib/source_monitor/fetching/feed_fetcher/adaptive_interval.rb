@@ -29,7 +29,8 @@ module SourceMonitor
             attributes[:backoff_until] = failure ? scheduled_time : nil
           else
             fixed_minutes = [ source.fetch_interval_minutes.to_i, 1 ].max
-            attributes[:next_fetch_at] = Time.current + fixed_minutes.minutes
+            fixed_seconds = fixed_minutes * 60.0
+            attributes[:next_fetch_at] = Time.current + adjusted_interval_with_jitter(fixed_seconds)
             attributes[:backoff_until] = nil
           end
         end
