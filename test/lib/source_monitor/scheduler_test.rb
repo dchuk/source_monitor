@@ -74,7 +74,7 @@ module SourceMonitor
       SourceMonitor::Fetching::StalledFetchReconciler.stub(:call, ->(**args) do
         called = true
         assert_equal now, args[:now]
-        assert_equal SourceMonitor::Scheduler::STALE_QUEUE_TIMEOUT, args[:stale_after]
+        assert_equal SourceMonitor.config.fetching.stale_timeout_minutes.minutes, args[:stale_after]
         stubbed_result
       end) do
         travel_to(now) do
@@ -100,7 +100,7 @@ module SourceMonitor
     test "re-enqueues sources stuck in queued state beyond timeout" do
       now = Time.current
       source = create_source(next_fetch_at: now - 1.hour, fetch_status: "queued")
-      stale_time = now - (SourceMonitor::Scheduler::STALE_QUEUE_TIMEOUT + 5.minutes)
+      stale_time = now - (SourceMonitor.config.fetching.stale_timeout_minutes.minutes + 5.minutes)
       source.update_columns(updated_at: stale_time)
 
       travel_to(now) do
@@ -131,7 +131,7 @@ module SourceMonitor
       idle_source = create_source(next_fetch_at: now - 5.minutes, fetch_status: "idle")
       failed_source = create_source(next_fetch_at: now - 5.minutes, fetch_status: "failed")
       stale_queued_source = create_source(next_fetch_at: now - 1.hour, fetch_status: "queued")
-      stale_time = now - (SourceMonitor::Scheduler::STALE_QUEUE_TIMEOUT + 5.minutes)
+      stale_time = now - (SourceMonitor.config.fetching.stale_timeout_minutes.minutes + 5.minutes)
       stale_queued_source.update_columns(updated_at: stale_time)
 
       travel_to(now) do
@@ -163,7 +163,7 @@ module SourceMonitor
       queued_stale = create_source(fetch_status: "queued", next_fetch_at: now - 5.minutes)
 
       queued_recent.update_columns(updated_at: now)
-      queued_stale.update_columns(updated_at: now - (SourceMonitor::Scheduler::STALE_QUEUE_TIMEOUT + 2.minutes))
+      queued_stale.update_columns(updated_at: now - (SourceMonitor.config.fetching.stale_timeout_minutes.minutes + 2.minutes))
 
       # Apply the predicate and verify results
       ids = SourceMonitor::Source.where(predicate).pluck(:id)
@@ -182,7 +182,7 @@ module SourceMonitor
       queued_stale = create_source(next_fetch_at: now - 5.minutes, fetch_status: "queued")
 
       queued_recent.update_columns(updated_at: now)
-      queued_stale.update_columns(updated_at: now - (SourceMonitor::Scheduler::STALE_QUEUE_TIMEOUT + 2.minutes))
+      queued_stale.update_columns(updated_at: now - (SourceMonitor.config.fetching.stale_timeout_minutes.minutes + 2.minutes))
 
       travel_to(now) do
         assert_difference -> { enqueued_jobs.size }, 3 do
@@ -202,7 +202,7 @@ module SourceMonitor
       stale_fetching = create_source(
         next_fetch_at: now - 10.minutes,
         fetch_status: "fetching",
-        last_fetch_started_at: now - (SourceMonitor::Scheduler::STALE_QUEUE_TIMEOUT + 5.minutes)
+        last_fetch_started_at: now - (SourceMonitor.config.fetching.stale_timeout_minutes.minutes + 5.minutes)
       )
       fresh_fetching = create_source(
         next_fetch_at: now - 10.minutes,
@@ -249,6 +249,50 @@ module SourceMonitor
     ensure
       ActiveSupport::Notifications.unsubscribe(subscription) if subscription
       SourceMonitor::Metrics.reset!
+    end
+
+    test "default batch size is 25" do
+      SourceMonitor.reset_configuration!
+      assert_equal 25, SourceMonitor.config.fetching.scheduler_batch_size
+    end
+
+    test "default stale timeout is 5 minutes" do
+      SourceMonitor.reset_configuration!
+      assert_equal 5, SourceMonitor.config.fetching.stale_timeout_minutes
+    end
+
+    test "scheduler uses configured batch size" do
+      now = Time.current
+      5.times { create_source(next_fetch_at: now - 5.minutes) }
+
+      SourceMonitor.config.fetching.scheduler_batch_size = 2
+
+      travel_to(now) do
+        assert_difference -> { enqueued_jobs.size }, 2 do
+          SourceMonitor::Scheduler.run(now: now)
+        end
+      end
+    ensure
+      SourceMonitor.reset_configuration!
+    end
+
+    test "scheduler uses configured stale timeout" do
+      now = Time.current
+      source = create_source(next_fetch_at: now - 1.hour, fetch_status: "queued")
+      source.update_columns(updated_at: now - 4.minutes)
+
+      SourceMonitor.config.fetching.stale_timeout_minutes = 3
+
+      travel_to(now) do
+        assert_difference -> { enqueued_jobs.size }, 1 do
+          SourceMonitor::Scheduler.run(limit: nil, now: now)
+        end
+      end
+
+      job_args = enqueued_jobs.map { |job| job[:args].first }
+      assert_includes job_args, source.id
+    ensure
+      SourceMonitor.reset_configuration!
     end
 
   private

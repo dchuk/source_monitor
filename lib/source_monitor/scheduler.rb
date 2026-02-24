@@ -5,11 +5,11 @@ require "source_monitor/fetching/stalled_fetch_reconciler"
 
 module SourceMonitor
   class Scheduler
-    DEFAULT_BATCH_SIZE = 100
-    STALE_QUEUE_TIMEOUT = 10.minutes
+    DEFAULT_BATCH_SIZE = 100 # legacy fallback
+    STALE_QUEUE_TIMEOUT = 10.minutes # legacy fallback
     ELIGIBLE_FETCH_STATUSES = %w[idle failed].freeze
 
-    def self.run(limit: DEFAULT_BATCH_SIZE, now: Time.current)
+    def self.run(limit: SourceMonitor.config.fetching.scheduler_batch_size, now: Time.current)
       new(limit:, now:).run
     end
 
@@ -20,7 +20,7 @@ module SourceMonitor
 
     def run
       payload = { limit: limit }
-      recovery = SourceMonitor::Fetching::StalledFetchReconciler.call(now:, stale_after: STALE_QUEUE_TIMEOUT)
+      recovery = SourceMonitor::Fetching::StalledFetchReconciler.call(now:, stale_after: stale_timeout)
       payload[:stalled_recoveries] = recovery.recovered_source_ids.size
       payload[:stalled_jobs_removed] = recovery.jobs_removed.size
 
@@ -42,6 +42,10 @@ module SourceMonitor
     private
 
     attr_reader :limit, :now
+
+    def stale_timeout
+      SourceMonitor.config.fetching.stale_timeout_minutes.minutes
+    end
 
     def lock_due_source_ids
       ids = []
@@ -72,7 +76,7 @@ module SourceMonitor
       table = SourceMonitor::Source.arel_table
 
       eligible = table[:fetch_status].in(ELIGIBLE_FETCH_STATUSES)
-      stale_cutoff = now - STALE_QUEUE_TIMEOUT
+      stale_cutoff = now - stale_timeout
       stale_queued = table[:fetch_status].eq("queued").and(table[:updated_at].lteq(stale_cutoff))
       stale_fetching = table[:fetch_status].eq("fetching").and(table[:last_fetch_started_at].lteq(stale_cutoff))
 

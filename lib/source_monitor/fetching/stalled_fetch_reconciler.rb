@@ -43,11 +43,9 @@ module SourceMonitor
       attr_reader :now, :stale_after
 
       def self.default_stale_after
-        if defined?(SourceMonitor::Scheduler::STALE_QUEUE_TIMEOUT)
-          SourceMonitor::Scheduler::STALE_QUEUE_TIMEOUT
-        else
-          10.minutes
-        end
+        SourceMonitor.config.fetching.stale_timeout_minutes.minutes
+      rescue NoMethodError
+        10.minutes
       end
 
       def stale_sources
