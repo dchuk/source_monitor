@@ -8,7 +8,9 @@ module SourceMonitor
         :increase_factor,
         :decrease_factor,
         :failure_increase_factor,
-        :jitter_percent
+        :jitter_percent,
+        :scheduler_batch_size,
+        :stale_timeout_minutes
 
       def initialize
         reset!
@@ -21,6 +23,8 @@ module SourceMonitor
         @decrease_factor = 0.75
         @failure_increase_factor = 1.5
         @jitter_percent = 0.1
+        @scheduler_batch_size = 25
+        @stale_timeout_minutes = 5
       end
     end
   end
