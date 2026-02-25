@@ -13,6 +13,10 @@ All notable changes to this project are documented below. The format follows [Ke
 
 ## [Unreleased]
 
+- No unreleased changes yet.
+
+## [0.10.0] - 2026-02-24
+
 ### Added
 
 - **Maintenance queue for non-fetch jobs.** New third queue (`source_monitor_maintenance`) separates non-time-sensitive jobs from the fetch pipeline. Health checks, cleanup, favicon fetching, image downloading, and OPML import jobs now run on the maintenance queue, keeping the fetch queue dedicated to `FetchFeedJob` and `ScheduleFetchesJob`. Configure via `config.maintenance_queue_name` and `config.maintenance_queue_concurrency`.

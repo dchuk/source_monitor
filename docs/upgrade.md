@@ -46,7 +46,7 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
-### Upgrading to next release (from 0.9.x)
+### Upgrading to 0.10.0 (from 0.9.x)
 
 **What changed:**
 - New third queue: `source_monitor_maintenance` separates non-fetch jobs from the fetch pipeline. Health checks, cleanup, favicon, image download, and OPML import jobs now use the maintenance queue.

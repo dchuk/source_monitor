@@ -9,8 +9,8 @@ SourceMonitor is a production-ready Rails 8 mountable engine for ingesting, norm
 In your host Rails app:
 
 ```bash
-bundle add source_monitor --version "~> 0.9.1"
-# or add `gem "source_monitor", "~> 0.9.1"` manually, then run:
+bundle add source_monitor --version "~> 0.10.0"
+# or add `gem "source_monitor", "~> 0.10.0"` manually, then run:
 bundle install
 ```
 
@@ -43,7 +43,7 @@ This exposes `bin/source_monitor` (via Bundler binstubs) so you can run the guid
 Before running any SourceMonitor commands inside your host app, add the gem and install dependencies:
 
 ```bash
-bundle add source_monitor --version "~> 0.9.1"
+bundle add source_monitor --version "~> 0.10.0"
 # or edit your Gemfile, then run
 bundle install
 ```
