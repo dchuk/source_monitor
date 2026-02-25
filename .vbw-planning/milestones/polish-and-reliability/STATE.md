@@ -1,6 +1,12 @@
 # State
 
-**Project:** SourceMonitor
+## Current Position
+
+- **Milestone:** polish-and-reliability
+- **Phase:** 6 -- Fetch Throughput & Small Server Defaults
+- **Status:** Built
+- **Progress:** 100%
+- **Plans:** 4 (4/4 complete)
 
 ## Decisions
 
@@ -16,6 +22,11 @@
 
 - [x] Fix deprecation: `rails/tasks/statistics.rake` removed from Rakefile (2026-02-21)
 
+## Metrics
+
+- **Started:** 2026-02-20
+- **Phases:** 6
+- **Tests at start:** 1033
+
 ## Blockers
 None
-

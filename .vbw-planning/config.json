@@ -40,5 +40,7 @@
   "event_recovery": false,
   "monorepo_routing": false,
   "rolling_summary": false,
+  "require_phase_discussion": false,
+  "auto_uat": false,
   "compaction_trigger": 130000
 }
