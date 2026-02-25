@@ -18,9 +18,12 @@ All configuration sections with their attributes, defaults, and types.
 | `mission_control_enabled` | Boolean | `false` | Enable Mission Control integration |
 | `mission_control_dashboard_path` | String/Proc/nil | `nil` | Path or callable for Mission Control |
 
+| `maintenance_queue_name` | String | `"source_monitor_maintenance"` | Queue name for maintenance jobs |
+| `maintenance_queue_concurrency` | Integer | `1` | Max concurrent maintenance workers |
+
 **Methods:**
-- `queue_name_for(:fetch)` / `queue_name_for(:scrape)` -- Returns prefixed queue name
-- `concurrency_for(:fetch)` / `concurrency_for(:scrape)` -- Returns concurrency limit
+- `queue_name_for(:fetch)` / `queue_name_for(:scrape)` / `queue_name_for(:maintenance)` -- Returns prefixed queue name
+- `concurrency_for(:fetch)` / `concurrency_for(:scrape)` / `concurrency_for(:maintenance)` -- Returns concurrency limit
 
 ---
 
@@ -58,6 +61,8 @@ Has `reset!` method.
 | `decrease_factor` | Float | `0.75` | Multiplier when content changed |
 | `failure_increase_factor` | Float | `1.5` | Multiplier on fetch failure |
 | `jitter_percent` | Float | `0.1` | Random jitter (10%) |
+| `scheduler_batch_size` | Integer | `25` | Max sources per scheduler run |
+| `stale_timeout_minutes` | Integer | `5` | Minutes before stuck "fetching" source is reset |
 
 Has `reset!` method. All attributes are plain `attr_accessor`.
 

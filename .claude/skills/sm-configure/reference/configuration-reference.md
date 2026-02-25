@@ -20,12 +20,15 @@ Defined on `SourceMonitor::Configuration`:
 | `mission_control_enabled` | Boolean | `false` | Show Mission Control link on dashboard |
 | `mission_control_dashboard_path` | String/Proc/nil | `nil` | Path or callable returning MC URL |
 
+| `maintenance_queue_name` | String | `"source_monitor_maintenance"` | Queue name for maintenance jobs |
+| `maintenance_queue_concurrency` | Integer | `1` | Advisory concurrency for maintenance queue |
+
 ### Methods
 
 | Method | Signature | Description |
 |---|---|---|
-| `queue_name_for` | `(role) -> String` | Returns resolved queue name with host prefix |
-| `concurrency_for` | `(role) -> Integer` | Returns concurrency for `:fetch` or `:scrape` |
+| `queue_name_for` | `(role) -> String` | Returns resolved queue name with host prefix (`:fetch`, `:scrape`, or `:maintenance`) |
+| `concurrency_for` | `(role) -> Integer` | Returns concurrency for `:fetch`, `:scrape`, or `:maintenance` |
 
 ---
 
@@ -70,11 +73,15 @@ Controls adaptive fetch scheduling.
 | `decrease_factor` | Float | `0.75` | Multiplier when new items arrive |
 | `failure_increase_factor` | Float | `1.5` | Multiplier on consecutive failures |
 | `jitter_percent` | Float | `0.1` | Random jitter (+/-10%, 0 disables) |
+| `scheduler_batch_size` | Integer | `25` | Max sources per scheduler run |
+| `stale_timeout_minutes` | Integer | `5` | Minutes before stuck "fetching" source is reset |
 
 ```ruby
 config.fetching.min_interval_minutes = 10
 config.fetching.max_interval_minutes = 720  # 12 hours
 config.fetching.jitter_percent = 0.15       # +/-15%
+config.fetching.scheduler_batch_size = 50   # Increase for larger servers
+config.fetching.stale_timeout_minutes = 3   # Faster recovery
 ```
 
 ---
@@ -395,4 +402,8 @@ Failed attempts are tracked in the source's `metadata` JSONB column (`favicon_la
 | `SOFT_DELETE` | Override retention strategy in rake tasks |
 | `SOURCE_IDS` / `SOURCE_ID` | Scope cleanup rake tasks to specific sources |
 | `FETCH_LOG_DAYS` / `SCRAPE_LOG_DAYS` | Retention windows for log cleanup |
+| `WINDOW_MINUTES` | Time window for `stagger_fetch_times` rake task (default `10`) |
+| `SOURCE_MONITOR_FETCH_CONCURRENCY` | Override fetch queue concurrency in `solid_queue.yml` |
+| `SOURCE_MONITOR_SCRAPE_CONCURRENCY` | Override scrape queue concurrency in `solid_queue.yml` |
+| `SOURCE_MONITOR_MAINTENANCE_CONCURRENCY` | Override maintenance queue concurrency in `solid_queue.yml` |
 | `SOURCE_MONITOR_SETUP_TELEMETRY` | Enable setup verification telemetry logging |

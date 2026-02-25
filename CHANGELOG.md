@@ -13,7 +13,30 @@ All notable changes to this project are documented below. The format follows [Ke
 
 ## [Unreleased]
 
-- No unreleased changes yet.
+### Added
+
+- **Maintenance queue for non-fetch jobs.** New third queue (`source_monitor_maintenance`) separates non-time-sensitive jobs from the fetch pipeline. Health checks, cleanup, favicon fetching, image downloading, and OPML import jobs now run on the maintenance queue, keeping the fetch queue dedicated to `FetchFeedJob` and `ScheduleFetchesJob`. Configure via `config.maintenance_queue_name` and `config.maintenance_queue_concurrency`.
+- **Configurable scheduler batch size.** `config.fetching.scheduler_batch_size` (default `25`, was hardcoded at `100`) controls how many sources are picked up per scheduler run. Optimized for 1-CPU/2GB servers.
+- **Configurable stale fetch timeout.** `config.fetching.stale_timeout_minutes` (default `5`, was hardcoded at `10`) controls how long a source can remain in "fetching" status before the stalled fetch reconciler resets it.
+- **Stagger fetch times rake task.** `source_monitor:maintenance:stagger_fetch_times` distributes all currently-due sources across a configurable time window (`WINDOW_MINUTES` env var, default 10 minutes), breaking thundering herd patterns after deploys, queue stalls, or large OPML imports.
+
+### Fixed
+
+- **Fetch pipeline error handling safety net.** DB update failures in `update_source_state!` now propagate instead of being silently swallowed. Broadcast failures are still rescued (non-critical). An `ensure` block in `FetchRunner#run` guarantees fetch_status resets from "fetching" to "failed" on any unexpected exit path. `FollowUpHandler` now rescues per-item scrape enqueue failures so one bad item doesn't block remaining enqueues.
+- **Fixed-interval sources now get scheduling jitter.** Sources using fixed fetch intervals (not adaptive) now receive ±10% jitter on `next_fetch_at`, preventing thundering herd effects when many sources share the same interval.
+- **ScheduleFetchesJob uses configured batch size.** The job's fallback limit now reads `config.fetching.scheduler_batch_size` (25) instead of the legacy `DEFAULT_BATCH_SIZE` constant (100).
+
+### Changed
+
+- Default scheduler batch size reduced from 100 to 25 (configurable via `config.fetching.scheduler_batch_size`).
+- Default stale fetch timeout reduced from 10 to 5 minutes (configurable via `config.fetching.stale_timeout_minutes`).
+- 7 jobs moved from fetch queue to maintenance queue: `SourceHealthCheckJob`, `ImportSessionHealthCheckJob`, `ImportOpmlJob`, `LogCleanupJob`, `ItemCleanupJob`, `FaviconFetchJob`, `DownloadContentImagesJob`.
+
+### Testing
+
+- 1,214 tests, 3,765 assertions, 0 failures.
+- RuboCop: 0 offenses (424 files).
+- Brakeman: 0 warnings.
 
 ## [0.9.1] - 2026-02-22
 

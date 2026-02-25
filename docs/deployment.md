@@ -16,7 +16,7 @@ This guide captures the production considerations for running SourceMonitor insi
 SourceMonitor assumes the standard Rails 8 process split:
 
 - **Web** – your application server (Puma) serving the mounted engine and Action Cable. When using Solid Cable, no separate Redis process is required.
-- **Worker** – at least one Solid Queue worker (`bin/rails solid_queue:start`). Scale horizontally to match feed volume and retention pruning needs. Use queue selectors if you dedicate workers to `source_monitor_fetch` or `source_monitor_scrape`.
+- **Worker** – at least one Solid Queue worker (`bin/rails solid_queue:start`). Scale horizontally to match feed volume and retention pruning needs. The engine uses three queues: `source_monitor_fetch` (time-sensitive feed polling), `source_monitor_scrape` (content extraction), and `source_monitor_maintenance` (health checks, cleanup, favicon, images, OPML import). Use queue selectors if you dedicate workers to specific queues.
 - **Scheduler/Recurring** – optional process invoking `bin/jobs --recurring_schedule_file=config/recurring.yml` so the bundled recurring tasks enqueue fetch/scrape/cleanup jobs. Disable with `SOLID_QUEUE_SKIP_RECURRING=true` when another scheduler handles cron-style jobs.
 
 ## Database & Storage
@@ -41,6 +41,10 @@ SourceMonitor assumes the standard Rails 8 process split:
 
 - Increase `config.fetch_queue_concurrency` and the number of Solid Queue workers as source volume grows.
 - Adjust `config.fetching` multipliers to smooth out noisy feeds; raising `failure_increase_factor` slows retries for consistently failing sources.
+- Tune `config.fetching.scheduler_batch_size` (default 25) to control how many sources are picked up per scheduler run. On larger servers, increase this to 50-100.
+- The `config.fetching.stale_timeout_minutes` (default 5) controls how quickly stuck "fetching" sources are recovered. Lower values mean faster recovery but more aggressive reconciliation.
+- After deploys or queue stalls where many sources become overdue simultaneously, run `bin/rails source_monitor:maintenance:stagger_fetch_times` to distribute them across a time window and prevent thundering herd.
+- The maintenance queue (concurrency 1 by default) handles non-time-sensitive work. Scale independently of fetch/scrape via `config.maintenance_queue_concurrency` or `SOURCE_MONITOR_MAINTENANCE_CONCURRENCY` env var.
 - Use `config.retention` to cap database growth; nightly cleanup jobs can run on separate workers if pruning becomes heavy.
 
 ## Rolling Upgrades

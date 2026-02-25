@@ -27,10 +27,12 @@ SourceMonitor.configure do |config|
   # Dedicated queue names. Must match entries in config/solid_queue.yml.
   config.fetch_queue_name = "source_monitor_fetch"
   config.scrape_queue_name = "source_monitor_scrape"
+  config.maintenance_queue_name = "source_monitor_maintenance"
 
   # Worker concurrency per queue (advisory for Solid Queue).
   config.fetch_queue_concurrency = 2
   config.scrape_queue_concurrency = 2
+  config.maintenance_queue_concurrency = 1
 
   # Override the job class Solid Queue uses for recurring "command" tasks.
   # config.recurring_command_job_class = "MyRecurringCommandJob"
@@ -98,6 +100,8 @@ SourceMonitor.configure do |config|
   # config.fetching.decrease_factor = 0.75         # Multiplier when items arrive
   # config.fetching.failure_increase_factor = 1.5  # Multiplier on errors
   # config.fetching.jitter_percent = 0.1           # Random jitter (+/-10%)
+  # config.fetching.scheduler_batch_size = 25      # Max sources per scheduler run
+  # config.fetching.stale_timeout_minutes = 5      # Minutes before stuck fetch is reset
 
   # ===========================================================================
   # Source Health Monitoring

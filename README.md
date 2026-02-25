@@ -9,8 +9,8 @@ SourceMonitor is a production-ready Rails 8 mountable engine for ingesting, norm
 In your host Rails app:
 
 ```bash
-bundle add source_monitor --version "~> 0.7.1"
-# or add `gem "source_monitor", "~> 0.7.1"` manually, then run:
+bundle add source_monitor --version "~> 0.9.1"
+# or add `gem "source_monitor", "~> 0.9.1"` manually, then run:
 bundle install
 ```
 
@@ -43,7 +43,7 @@ This exposes `bin/source_monitor` (via Bundler binstubs) so you can run the guid
 Before running any SourceMonitor commands inside your host app, add the gem and install dependencies:
 
 ```bash
-bundle add source_monitor --version "~> 0.7.1"
+bundle add source_monitor --version "~> 0.9.1"
 # or edit your Gemfile, then run
 bundle install
 ```
@@ -93,14 +93,14 @@ See [examples/README.md](examples/README.md) for usage instructions.
 - Fetch/scrape log viewers with HTTP status, duration, backtrace, and Solid Queue job references
 
 ## Background Jobs & Scheduling
-- Solid Queue becomes the Active Job adapter when the host app still uses the inline `:async` adapter; queue names default to `source_monitor_fetch` and `source_monitor_scrape` and honour `ActiveJob.queue_name_prefix`.
+- Solid Queue becomes the Active Job adapter when the host app still uses the inline `:async` adapter. Three queues are used: `source_monitor_fetch` (FetchFeedJob, ScheduleFetchesJob), `source_monitor_scrape` (ScrapeItemJob), and `source_monitor_maintenance` (health checks, cleanup, favicon, images, OPML import). All honour `ActiveJob.queue_name_prefix`.
 - `config/recurring.yml` schedules minute-level fetches and scrapes. Run `bin/jobs --recurring_schedule_file=config/recurring.yml` (or set `SOLID_QUEUE_RECURRING_SCHEDULE_FILE`) to load recurring tasks. Disable with `SOLID_QUEUE_SKIP_RECURRING=true`.
-- Retry/backoff behaviour is driven by `SourceMonitor.configure.fetching`. Fetch completion events and item processors allow you to chain downstream workflows (indexing, notifications, etc.).
+- Retry/backoff behaviour is driven by `SourceMonitor.configure.fetching`. Scheduler batch size (default 25) and stale fetch timeout (default 5 minutes) are configurable for small-server deployments. Fetch completion events and item processors allow you to chain downstream workflows (indexing, notifications, etc.).
 
 ## Configuration & API Surface
 The generated initializer documents every setting. Key areas:
 
-- Queue namespace/concurrency helpers (`SourceMonitor.queue_name(:fetch)`)
+- Queue namespace/concurrency helpers (`SourceMonitor.queue_name(:fetch)`, `:scrape`, `:maintenance`)
 - HTTP, retry, and proxy settings (Faraday-backed)
 - Scraper registry (`config.scrapers.register(:my_adapter, "MyApp::Scrapers::Custom")`)
 - Retention defaults (`config.retention.items_retention_days`, `config.retention.strategy`)
