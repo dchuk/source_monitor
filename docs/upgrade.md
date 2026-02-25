@@ -46,6 +46,33 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
+### Upgrading to 0.10.0 (from 0.9.x)
+
+**What changed:**
+- New third queue: `source_monitor_maintenance` separates non-fetch jobs from the fetch pipeline. Health checks, cleanup, favicon, image download, and OPML import jobs now use the maintenance queue.
+- Scheduler batch size configurable via `config.fetching.scheduler_batch_size` (default reduced from 100 to 25).
+- Stale fetch timeout configurable via `config.fetching.stale_timeout_minutes` (default reduced from 10 to 5).
+- Fixed-interval sources now receive ±10% jitter on `next_fetch_at`.
+- Fetch pipeline error handling hardened: DB errors propagate, broadcast errors are still rescued, `ensure` block guarantees status reset.
+- New rake task: `source_monitor:maintenance:stagger_fetch_times` distributes overdue sources across a time window.
+
+**Upgrade steps:**
+```bash
+bundle update source_monitor
+bin/rails source_monitor:upgrade
+bin/rails db:migrate
+```
+
+**Notes:**
+- **Action required:** Update your `solid_queue.yml` to include the new maintenance queue. Add:
+  ```yaml
+  source_monitor_maintenance:
+    concurrency: <%= ENV.fetch("SOURCE_MONITOR_MAINTENANCE_CONCURRENCY", 1) %>
+  ```
+- If you have many sources that are overdue after upgrading, run `bin/rails source_monitor:maintenance:stagger_fetch_times` to break the thundering herd.
+- The default batch size (25) and stale timeout (5 min) are tuned for 1-CPU/2GB servers. Scale up via `config.fetching.scheduler_batch_size` and `config.fetching.stale_timeout_minutes` for larger deployments.
+- No breaking changes to public API. All existing initializer configuration remains valid.
+
 ### Upgrading to 0.8.0 (from 0.7.x)
 
 **What changed:**

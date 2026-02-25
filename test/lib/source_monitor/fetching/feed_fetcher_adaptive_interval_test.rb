@@ -194,6 +194,83 @@ module SourceMonitor
       ensure
         travel_back
       end
+
+      test "fixed-interval sources get jitter when jitter_percent is non-zero" do
+        SourceMonitor.reset_configuration!
+
+        travel_to Time.zone.parse("2024-03-01 10:00:00 UTC")
+
+        body = File.read(file_fixture("feeds/rss_sample.xml"))
+        url = "https://example.com/fixed-jitter.xml"
+
+        source = build_source(name: "FixedJitter", feed_url: url, fetch_interval_minutes: 60, adaptive_fetching_enabled: false)
+
+        stub_request(:get, url)
+          .to_return(status: 200, body:, headers: { "Content-Type" => "application/rss+xml" })
+
+        FeedFetcher.new(source: source).call
+
+        source.reload
+        expected_base = Time.current + 60.minutes
+        max_jitter = 60.minutes.to_f * 0.1
+
+        assert_in_delta expected_base.to_f, source.next_fetch_at.to_f, max_jitter,
+          "next_fetch_at should be within ±10% jitter of 60 minutes"
+        assert_equal 60, source.fetch_interval_minutes, "fixed interval should not change"
+      ensure
+        SourceMonitor.reset_configuration!
+        travel_back
+      end
+
+      test "fixed-interval jitter respects jitter_proc override" do
+        travel_to Time.zone.parse("2024-03-01 11:00:00 UTC")
+
+        body = File.read(file_fixture("feeds/rss_sample.xml"))
+        url = "https://example.com/fixed-jitter-proc.xml"
+
+        source = build_source(name: "FixedJitterProc", feed_url: url, fetch_interval_minutes: 60, adaptive_fetching_enabled: false)
+
+        stub_request(:get, url)
+          .to_return(status: 200, body:, headers: { "Content-Type" => "application/rss+xml" })
+
+        FeedFetcher.new(source: source, jitter: ->(interval) { interval * 0.05 }).call
+
+        source.reload
+        expected_seconds = 3600 + (3600 * 0.05)
+        assert_equal Time.current + expected_seconds, source.next_fetch_at,
+          "next_fetch_at should reflect the 5% jitter_proc offset"
+        assert_equal 60, source.fetch_interval_minutes
+      ensure
+        travel_back
+      end
+
+      test "fixed-interval with zero jitter_percent has no jitter" do
+        SourceMonitor.reset_configuration!
+
+        SourceMonitor.configure do |config|
+          config.fetching.jitter_percent = 0
+        end
+
+        travel_to Time.zone.parse("2024-03-01 12:00:00 UTC")
+
+        body = File.read(file_fixture("feeds/rss_sample.xml"))
+        url = "https://example.com/fixed-no-jitter.xml"
+
+        source = build_source(name: "FixedNoJitter", feed_url: url, fetch_interval_minutes: 60, adaptive_fetching_enabled: false)
+
+        stub_request(:get, url)
+          .to_return(status: 200, body:, headers: { "Content-Type" => "application/rss+xml" })
+
+        FeedFetcher.new(source: source).call
+
+        source.reload
+        assert_equal Time.current + 60.minutes, source.next_fetch_at,
+          "next_fetch_at should be exactly 60 minutes with zero jitter"
+        assert_equal 60, source.fetch_interval_minutes
+      ensure
+        SourceMonitor.reset_configuration!
+        travel_back
+      end
     end
   end
 end

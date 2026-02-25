@@ -22,8 +22,10 @@ module SourceMonitor
     attr_accessor :queue_namespace,
       :fetch_queue_name,
       :scrape_queue_name,
+      :maintenance_queue_name,
       :fetch_queue_concurrency,
       :scrape_queue_concurrency,
+      :maintenance_queue_concurrency,
       :recurring_command_job_class,
       :job_metrics_enabled,
       :mission_control_enabled,
@@ -37,8 +39,10 @@ module SourceMonitor
       @queue_namespace = DEFAULT_QUEUE_NAMESPACE
       @fetch_queue_name = "#{DEFAULT_QUEUE_NAMESPACE}_fetch"
       @scrape_queue_name = "#{DEFAULT_QUEUE_NAMESPACE}_scrape"
+      @maintenance_queue_name = "#{DEFAULT_QUEUE_NAMESPACE}_maintenance"
       @fetch_queue_concurrency = 2
       @scrape_queue_concurrency = 2
+      @maintenance_queue_concurrency = 1
       @recurring_command_job_class = nil
       @job_metrics_enabled = true
       @mission_control_enabled = false
@@ -64,6 +68,8 @@ module SourceMonitor
           fetch_queue_name
         when :scrape
           scrape_queue_name
+        when :maintenance
+          maintenance_queue_name
         else
           raise ArgumentError, "unknown queue role #{role.inspect}"
         end
@@ -84,6 +90,8 @@ module SourceMonitor
         fetch_queue_concurrency
       when :scrape
         scrape_queue_concurrency
+      when :maintenance
+        maintenance_queue_concurrency
       else
         raise ArgumentError, "unknown queue role #{role.inspect}"
       end

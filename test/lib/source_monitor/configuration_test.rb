@@ -858,6 +858,77 @@ module SourceMonitor
     end
 
     # =========================================================================
+    # Queue separation -- maintenance queue (Plan 06-04)
+    # =========================================================================
+
+    test "maintenance_queue_name defaults to source_monitor_maintenance" do
+      assert_equal "source_monitor_maintenance", SourceMonitor.config.maintenance_queue_name
+    end
+
+    test "maintenance_queue_concurrency defaults to 1" do
+      assert_equal 1, SourceMonitor.config.maintenance_queue_concurrency
+    end
+
+    test "queue_name_for maintenance returns maintenance queue name" do
+      assert_equal "source_monitor_maintenance", SourceMonitor.config.queue_name_for(:maintenance)
+    end
+
+    test "concurrency_for maintenance returns maintenance queue concurrency" do
+      assert_equal 1, SourceMonitor.config.concurrency_for(:maintenance)
+    end
+
+    test "maintenance_queue_name is configurable" do
+      SourceMonitor.configure do |config|
+        config.maintenance_queue_name = "custom_maintenance"
+        config.maintenance_queue_concurrency = 3
+      end
+
+      assert_equal "custom_maintenance", SourceMonitor.config.maintenance_queue_name
+      assert_equal "custom_maintenance", SourceMonitor.config.queue_name_for(:maintenance)
+      assert_equal 3, SourceMonitor.config.concurrency_for(:maintenance)
+    end
+
+    test "queue_name_for raises for unknown role" do
+      assert_raises(ArgumentError, /unknown queue role/) do
+        SourceMonitor.config.queue_name_for(:nonexistent)
+      end
+    end
+
+    test "concurrency_for raises for unknown role" do
+      assert_raises(ArgumentError, /unknown queue role/) do
+        SourceMonitor.config.concurrency_for(:nonexistent)
+      end
+    end
+
+    test "fetch jobs use fetch queue" do
+      fetch_queue = SourceMonitor.config.queue_name_for(:fetch)
+      assert_equal fetch_queue, SourceMonitor::FetchFeedJob.queue_name
+      assert_equal fetch_queue, SourceMonitor::ScheduleFetchesJob.queue_name
+    end
+
+    test "scrape jobs use scrape queue" do
+      scrape_queue = SourceMonitor.config.queue_name_for(:scrape)
+      assert_equal scrape_queue, SourceMonitor::ScrapeItemJob.queue_name
+    end
+
+    test "maintenance jobs use maintenance queue" do
+      maintenance_queue = SourceMonitor.config.queue_name_for(:maintenance)
+
+      [
+        SourceMonitor::SourceHealthCheckJob,
+        SourceMonitor::ImportSessionHealthCheckJob,
+        SourceMonitor::ImportOpmlJob,
+        SourceMonitor::LogCleanupJob,
+        SourceMonitor::ItemCleanupJob,
+        SourceMonitor::FaviconFetchJob,
+        SourceMonitor::DownloadContentImagesJob
+      ].each do |job_class|
+        assert_equal maintenance_queue, job_class.queue_name,
+          "Expected #{job_class.name} to use maintenance queue"
+      end
+    end
+
+    # =========================================================================
     # Images settings (Plan 05-01)
     # =========================================================================
 

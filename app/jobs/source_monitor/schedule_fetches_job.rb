@@ -23,7 +23,7 @@ module SourceMonitor
         options_hash = options_hash.symbolize_keys
       end
 
-      options_hash[:limit] || SourceMonitor::Scheduler::DEFAULT_BATCH_SIZE
+      options_hash[:limit] || SourceMonitor.config.fetching.scheduler_batch_size
     end
   end
 end

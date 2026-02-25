@@ -37,16 +37,18 @@ SourceMonitor.queue_name(:fetch)
 
 ### Default Names
 
-| Role | Queue Name |
-|------|-----------|
-| `:fetch` | `source_monitor_fetch` |
-| `:scrape` | `source_monitor_scrape` |
+| Role | Queue Name | Jobs |
+|------|-----------|------|
+| `:fetch` | `source_monitor_fetch` | FetchFeedJob, ScheduleFetchesJob |
+| `:scrape` | `source_monitor_scrape` | ScrapeItemJob |
+| `:maintenance` | `source_monitor_maintenance` | SourceHealthCheckJob, ImportSessionHealthCheckJob, ImportOpmlJob, LogCleanupJob, ItemCleanupJob, FaviconFetchJob, DownloadContentImagesJob |
 
 ### With Host App Prefix
 
 If the host app sets `ActiveJob::Base.queue_name_prefix = "myapp"`:
 - Fetch queue becomes `myapp_source_monitor_fetch`
 - Scrape queue becomes `myapp_source_monitor_scrape`
+- Maintenance queue becomes `myapp_source_monitor_maintenance`
 
 ## Job Patterns by Type
 
@@ -88,7 +90,7 @@ Demonstrates options normalization pattern:
 ```ruby
 class ItemCleanupJob < ApplicationJob
   DEFAULT_BATCH_SIZE = 100
-  source_monitor_queue :fetch
+  source_monitor_queue :maintenance
 
   def perform(options = nil)
     options = Jobs::CleanupOptions.normalize(options)
@@ -170,7 +172,7 @@ Demonstrates multi-strategy cascade with guard clauses:
 
 ```ruby
 class FaviconFetchJob < ApplicationJob
-  source_monitor_queue :fetch
+  source_monitor_queue :maintenance
   discard_on ActiveJob::DeserializationError
 
   def perform(source_id)
@@ -196,7 +198,7 @@ Demonstrates result broadcasting:
 
 ```ruby
 class SourceHealthCheckJob < ApplicationJob
-  source_monitor_queue :fetch
+  source_monitor_queue :maintenance
   discard_on ActiveJob::DeserializationError
 
   def perform(source_id)

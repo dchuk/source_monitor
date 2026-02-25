@@ -6,6 +6,7 @@ AllCops:
     - "test/dummy/db/schema.rb"
     - "test/tmp/**/*"
     - "test/lib/tmp/**/*"
+    - "examples/**/*.yml"
 
 # Overwrite or add rules to create your own house style
 #

@@ -1,12 +1,6 @@
 # State
 
-## Current Position
-
-- **Milestone:** polish-and-reliability
-- **Phase:** 5 -- Source Enhancements
-- **Status:** Complete
-- **Progress:** 100%
-- **Plans:** 3 (3/3 complete)
+**Project:** SourceMonitor
 
 ## Decisions
 
@@ -22,11 +16,6 @@
 
 - [x] Fix deprecation: `rails/tasks/statistics.rake` removed from Rakefile (2026-02-21)
 
-## Metrics
-
-- **Started:** 2026-02-20
-- **Phases:** 5
-- **Tests at start:** 1033
-
 ## Blockers
 None
+

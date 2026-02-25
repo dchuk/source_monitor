@@ -5,14 +5,14 @@ require "minitest/mock"
 
 module SourceMonitor
   class ScheduleFetchesJobTest < ActiveJob::TestCase
-    test "invokes scheduler with the default limit when no options passed" do
+    test "invokes scheduler with the configured batch size when no options passed" do
       captured_limit = nil
 
       SourceMonitor::Scheduler.stub(:run, ->(limit:) { captured_limit = limit }) do
         SourceMonitor::ScheduleFetchesJob.perform_now
       end
 
-      assert_equal SourceMonitor::Scheduler::DEFAULT_BATCH_SIZE, captured_limit
+      assert_equal SourceMonitor.config.fetching.scheduler_batch_size, captured_limit
     end
 
     test "passes through an explicit limit when provided" do

@@ -76,6 +76,41 @@
       "area": "toast-architecture",
       "phase": "03",
       "date": "2026-02-20"
+    },
+    {
+      "question": "Batch size strategy for scheduler on small servers?",
+      "answer": "Small fixed default (25), configurable by host app via SourceMonitor.configure DSL. Batch controls steady-state throughput, not just import.",
+      "area": "batch-size-tradeoff",
+      "phase": "06",
+      "date": "2026-02-24"
+    },
+    {
+      "question": "OPML import stagger strategy?",
+      "answer": "Keep current all-immediate behavior. Scheduler batch limit naturally throttles. Real fix is queue separation.",
+      "area": "import-stagger",
+      "phase": "06",
+      "date": "2026-02-24"
+    },
+    {
+      "question": "Queue separation for fetch pipeline?",
+      "answer": "Three queues: fetch (FetchFeedJob + ScheduleFetchesJob), maintenance (cleanup, favicon, images, health, import), scrape (already separate). Dedicated fetch workers.",
+      "area": "queue-separation",
+      "phase": "06",
+      "date": "2026-02-24"
+    },
+    {
+      "question": "Error handling for fetch status transitions?",
+      "answer": "Split rescue + ensure. DB errors propagate, broadcast errors rescued. Ensure block resets fetch_status if still fetching on any exit.",
+      "area": "error-handling-strictness",
+      "phase": "06",
+      "date": "2026-02-24"
+    },
+    {
+      "question": "Configuration surface area for new settings?",
+      "answer": "Full config exposure: scheduler_batch_size, stale_timeout, maintenance_queue_name all configurable. Fix fixed-interval path to use existing jitter_percent.",
+      "area": "config-surface",
+      "phase": "06",
+      "date": "2026-02-24"
     }
   ],
   "inferred": [

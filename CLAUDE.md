@@ -4,10 +4,8 @@
 
 ## Active Context
 
-**Milestone:** polish-and-reliability (extended)
-**Phase:** 4 of 5 -- Bug Fixes & Polish (pending planning)
-**Previous phases:** Backend Fixes, Favicon Support, Toast Stacking (all complete)
-**Next action:** /vbw:vibe to plan and execute Phase 4
+**Last shipped:** polish-and-reliability (6 phases, 17 plans, 35 commits)
+**Next action:** /vbw:vibe to start new work
 
 ## Key Decisions
 

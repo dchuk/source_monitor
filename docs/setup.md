@@ -18,8 +18,8 @@ This guide consolidates the new guided installer, verification commands, and rol
 Run these commands inside your host Rails application before invoking the guided workflow:
 
 ```bash
-bundle add source_monitor --version "~> 0.3.1"
-# or add gem "source_monitor", "~> 0.3.1" to Gemfile manually
+bundle add source_monitor --version "~> 0.10.0"
+# or add gem "source_monitor", "~> 0.10.0" to Gemfile manually
 bundle install
 ```
 

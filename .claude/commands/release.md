@@ -1,6 +1,6 @@
 # Release: PR, CI, Merge, and Gem Build
 
-Orchestrate a full release cycle for the source_monitor gem. This command handles changelog generation, version bumping, PR creation, CI monitoring, auto-merge on success, release tagging, and gem build with push instructions.
+Orchestrate a full release cycle for the source_monitor gem. This command handles changelog generation, documentation audit, version bumping, PR creation, CI monitoring, auto-merge on success, release tagging, and gem build with push instructions.
 
 ## Inputs
 
@@ -26,6 +26,7 @@ These are real issues encountered in previous releases. Each step below accounts
 9. **ESLint browser globals**: Any JS file using browser APIs (MutationObserver, requestAnimationFrame, cancelAnimationFrame, IntersectionObserver, etc.) MUST declare them with a `/* global ... */` comment at the top. ESLint's `no-undef` rule in CI will reject them otherwise.
 10. **Diff coverage rescue paths**: Every `rescue`/fallback/error handling branch in changed source code needs test coverage. Common blind spots: `rescue StandardError => e` logging, `rescue URI::InvalidURIError` returning nil, fallback `false` returns. Write targeted tests for these BEFORE creating the release commit.
 11. **Zsh glob nomatch**: Commands like `rm -f *.gem` fail in zsh when no files match. Always use `rm -f *.gem 2>/dev/null || true` or check existence first with `ls`.
+12. **Documentation drift**: Features, config options, and behavioral changes often land across milestone work without corresponding doc updates. The Documentation Audit step (Step 4) catches this -- check `docs/`, `README.md`, skill reference files (`sm-*/reference/`), and the initializer template against the actual source code. In v0.9.x, 14 files needed updates that would have been missed without this step.
 
 ## Step 1: Git Hygiene
 
@@ -113,7 +114,58 @@ The changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
    - Insert the new versioned entry immediately after the `## [Unreleased]` block and before the previous release entry.
    - Preserve all existing entries below.
 
-## Step 4: Sync Gemfile.lock
+## Step 4: Documentation Audit
+
+Verify that all project documentation reflects the current state of the codebase. Changes made since the last release (or during milestone work) may have introduced features, configuration options, bug fixes, or behavioral changes that need to be documented.
+
+1. **Gather what changed** since the last release tag:
+   ```
+   git diff vPREVIOUS..HEAD --name-only -- lib/ app/ config/
+   ```
+   This shows which source files changed. Use this to identify features/fixes that may need documentation.
+
+2. **Check these documentation files against the changes:**
+
+   | File | What to verify |
+   |------|---------------|
+   | `CHANGELOG.md` | Has an `[Unreleased]` or versioned entry covering all user-facing changes |
+   | `README.md` | Version references match, feature descriptions current, gem version in install instructions |
+   | `docs/configuration.md` | All config options documented, new settings included, env vars listed |
+   | `docs/deployment.md` | Worker/queue descriptions match current queues and job assignments |
+   | `docs/troubleshooting.md` | Covers known failure modes from recent changes |
+   | `docs/upgrade.md` | Has upgrade section for this version with action items |
+   | `docs/setup.md` | Setup steps still accurate |
+
+3. **Check skills reference files** (engine-specific documentation for Claude Code):
+
+   | Skill Reference | What to verify |
+   |----------------|---------------|
+   | `sm-configure/reference/configuration-reference.md` | All config settings and their defaults |
+   | `sm-configuration-setting/reference/settings-catalog.md` | Settings catalog with types, defaults, descriptions |
+   | `sm-job/reference/job-conventions.md` | Queue names, job assignments, concurrency defaults |
+   | `sm-pipeline-stage/reference/completion-handlers.md` | Pipeline handler code matches actual implementation |
+   | `sm-upgrade/reference/version-history.md` | Version transition notes for the new release |
+   | `sm-host-setup/reference/initializer-template.md` | Initializer template shows all configurable options |
+
+4. **For each file that is stale or missing coverage**:
+   - Update it to reflect the current codebase behavior.
+   - For config docs: read the actual settings classes in `lib/source_monitor/configuration/` to verify defaults.
+   - For job docs: read `app/jobs/source_monitor/` to verify queue assignments.
+   - For upgrade notes: summarize breaking changes, new config, and action items.
+
+5. **If all documentation is already up to date**, report:
+   ```
+   Documentation Audit: All files current. No updates needed.
+   ```
+   If updates were made, report:
+   ```
+   Documentation Audit: Updated N files.
+     - <file>: <what was updated>
+   ```
+
+Do NOT commit documentation updates separately -- they will be included in the single release commit in Step 7.
+
+## Step 5: Sync Gemfile.lock
 
 **CRITICAL**: After updating `version.rb`, the gemspec version changes and `Gemfile.lock` becomes stale.
 
@@ -121,7 +173,7 @@ The changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 2. Verify the output shows the new version: `Using source_monitor X.Y.Z (was X.Y.Z-1)`.
 3. If `bundle install` fails, resolve the issue before proceeding.
 
-## Step 5: Local Pre-flight Checks
+## Step 6: Local Pre-flight Checks
 
 **CRITICAL**: Run the FULL local CI equivalent BEFORE creating the release branch and pushing. Each CI failure → fix → amend → force-push cycle wastes ~5 minutes. In v0.7.0, skipping this step caused two wasted CI roundtrips. In v0.8.0, skipping ESLint and diff coverage pre-checks caused another two wasted cycles.
 
@@ -142,9 +194,9 @@ The changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
    - Browser globals (MutationObserver, requestAnimationFrame, cancelAnimationFrame, IntersectionObserver, etc.) must be declared with `/* global ... */` comments at the top of the file.
    - Missing `/* global */` declarations cause ESLint `no-undef` failures.
 
-Only proceed to Step 6 when ALL five checks pass.
+Only proceed to Step 7 when ALL five checks pass.
 
-## Step 6: Create Release Branch with Single Squashed Commit
+## Step 7: Create Release Branch with Single Squashed Commit
 
 **IMPORTANT**: All release changes MUST be in a single commit on the release branch. This avoids pre-push hook issues where individual commits are checked for VERSION changes.
 
@@ -162,7 +214,7 @@ Only proceed to Step 6 when ALL five checks pass.
    - If the pre-push hook blocks with a false positive (e.g., VBW files dirty in working tree despite being gitignored), use `git push -u --no-verify origin release/vX.Y.Z`. This is safe because we've verified VERSION is in the commit.
 5. If the push fails for other reasons, diagnose and fix before proceeding.
 
-## Step 7: Create PR
+## Step 8: Create PR
 
 1. Create the PR using `gh pr create`:
    - Title: `Release vX.Y.Z`
@@ -175,6 +227,7 @@ Only proceed to Step 6 when ALL five checks pass.
      ### Release Checklist
      - [x] Version bumped in `lib/source_monitor/version.rb` and `VERSION`
      - [x] CHANGELOG.md updated
+     - [x] Documentation audited and updated
      - [x] Gemfile.lock synced
      - [ ] CI passes (lint, security, test, release_verification)
 
@@ -184,7 +237,7 @@ Only proceed to Step 6 when ALL five checks pass.
    - Base: `main`
 2. Report the PR URL to the user.
 
-## Step 8: Monitor CI Pipeline
+## Step 9: Monitor CI Pipeline
 
 Poll the CI status using repeated `gh pr checks <PR_NUMBER>` calls. The CI has 4 required jobs: `lint`, `security`, `test`, `release_verification` (release_verification only runs after test passes).
 
@@ -195,7 +248,7 @@ Poll the CI status using repeated `gh pr checks <PR_NUMBER>` calls. The CI has 4
 
 ### If CI PASSES (all checks green):
 
-Continue to Step 9. If Step 5 (local pre-flight) was done properly, CI should pass on the first attempt.
+Continue to Step 10. If Step 6 (local pre-flight) was done properly, CI should pass on the first attempt.
 
 ### If CI FAILS:
 
@@ -205,8 +258,8 @@ Continue to Step 9. If Step 5 (local pre-flight) was done properly, CI should pa
    gh run view <RUN_ID> --log-failed | tail -80
    ```
 3. **Common failure: diff coverage** -- If the `test` job fails on "Enforce diff coverage", it means changed source lines lack test coverage. Read the error to identify uncovered files/lines, write tests, and add them to the release commit.
-4. **Common failure: Gemfile.lock frozen** -- If `bundle install` fails in CI with "frozen mode", you forgot to run `bundle install` locally (Step 4). Amend the commit with the updated lockfile.
-5. **Common failure: RuboCop lint** -- If the `lint` job fails, a RuboCop violation slipped through. This should have been caught in Step 5.
+4. **Common failure: Gemfile.lock frozen** -- If `bundle install` fails in CI with "frozen mode", you forgot to run `bundle install` locally (Step 5). Amend the commit with the updated lockfile.
+5. **Common failure: RuboCop lint** -- If the `lint` job fails, a RuboCop violation slipped through. This should have been caught in Step 6.
 6. **IMPORTANT: When fixing CI failures, run ALL local checks again before re-pushing.** Don't just fix the one failure — run `bin/rubocop` AND `PARALLEL_WORKERS=1 bin/rails test` to catch cascading issues. In v0.7.0, fixing a diff coverage failure introduced a RuboCop violation, requiring a third CI cycle.
 7. Present failure details to the user and ask what to do:
    - "Fix the issues and re-push" -- Fix issues, run ALL local checks (rubocop + tests), amend the commit (`git commit --amend --no-edit`), force push (`git push --force-with-lease --no-verify origin release/vX.Y.Z`), and restart CI monitoring.
@@ -215,7 +268,7 @@ Continue to Step 9. If Step 5 (local pre-flight) was done properly, CI should pa
 
 **Note on force pushes**: When force-pushing the release branch after amending, always use `--no-verify` because the pre-push hook will see the diff between old and new branch tips, and `VERSION` won't appear as changed (it's the same in both). This is expected and safe.
 
-## Step 9: Auto-Merge PR
+## Step 10: Auto-Merge PR
 
 Once CI is green:
 
@@ -230,7 +283,7 @@ Once CI is green:
 
 3. Report: "PR #N merged successfully."
 
-## Step 10: Tag the Release
+## Step 11: Tag the Release
 
 1. Verify you're on main and synced with origin.
 2. Create an annotated tag:
@@ -244,7 +297,7 @@ Once CI is green:
    ```
 5. Report the release URL.
 
-## Step 11: Build the Gem
+## Step 12: Build the Gem
 
 1. Clean any old gem files. **Note**: zsh fails on `rm -f *.gem` when no files match due to `nomatch`. Use:
    ```
@@ -254,7 +307,7 @@ Once CI is green:
 3. Verify the gem was built: check for `source_monitor-X.Y.Z.gem` in the project root.
 4. Show the file size: `ls -la source_monitor-X.Y.Z.gem`
 
-## Step 12: Gem Push Instructions
+## Step 13: Gem Push Instructions
 
 Present the final instructions to the user:
 

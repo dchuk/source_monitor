@@ -22,12 +22,15 @@ Restart your application whenever you change these settings. The engine reloads 
 - `config.queue_namespace` – prefix applied to queue names (`"source_monitor"` by default)
 - `config.fetch_queue_name` / `config.scrape_queue_name` – base queue names before the host's `ActiveJob.queue_name_prefix` is applied
 - `config.fetch_queue_concurrency` / `config.scrape_queue_concurrency` – advisory values Solid Queue uses for per-queue limits
-- `config.queue_name_for(:fetch | :scrape)` – helper that respects the host's queue prefix
+- `config.maintenance_queue_name` – queue name for maintenance jobs (`"source_monitor_maintenance"` by default)
+- `config.maintenance_queue_concurrency` – advisory concurrency for the maintenance queue (default `1`)
+- `config.queue_name_for(:fetch | :scrape | :maintenance)` – helper that respects the host's queue prefix
 
 Use the helpers exposed on `SourceMonitor`:
 
 ```ruby
-SourceMonitor.queue_name(:fetch)    # => "source_monitor_fetch"
+SourceMonitor.queue_name(:fetch)         # => "source_monitor_fetch"
+SourceMonitor.queue_name(:maintenance)   # => "source_monitor_maintenance"
 SourceMonitor.queue_concurrency(:scrape) # => 2
 ```
 
@@ -59,6 +62,8 @@ The helper `SourceMonitor.mission_control_dashboard_path` performs a routing che
 - `increase_factor` / `decrease_factor` – multipliers when a source trends slow/fast
 - `failure_increase_factor` – multiplier applied on consecutive failures
 - `jitter_percent` – random jitter applied to next fetch time (0.1 = ±10%)
+- `scheduler_batch_size` – max sources picked up per scheduler run (default `25`, was `100`)
+- `stale_timeout_minutes` – minutes before a source stuck in "fetching" is reset (default `5`, was `10`)
 
 ## Retention Defaults
 
@@ -162,6 +167,10 @@ The engine honours several environment variables out of the box:
 - `SOLID_QUEUE_RECURRING_SCHEDULE_FILE` – alternative schedule file path
 - `SOFT_DELETE` / `SOURCE_IDS` / `SOURCE_ID` – overrides for item cleanup rake tasks
 - `FETCH_LOG_DAYS` / `SCRAPE_LOG_DAYS` – retention windows for log cleanup
+- `WINDOW_MINUTES` – time window (minutes) for `stagger_fetch_times` rake task (default `10`)
+- `SOURCE_MONITOR_FETCH_CONCURRENCY` – override fetch queue concurrency in `solid_queue.yml`
+- `SOURCE_MONITOR_SCRAPE_CONCURRENCY` – override scrape queue concurrency in `solid_queue.yml`
+- `SOURCE_MONITOR_MAINTENANCE_CONCURRENCY` – override maintenance queue concurrency in `solid_queue.yml`
 
 ## After Changing Configuration
 
