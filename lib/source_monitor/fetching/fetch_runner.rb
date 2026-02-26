@@ -42,7 +42,7 @@ module SourceMonitor
         return unless source
 
         # Don't broadcast here - controller handles immediate UI update
-        source.update!(fetch_status: "queued")
+        source.update_columns(fetch_status: "queued")
         SourceMonitor::FetchFeedJob.perform_later(source.id, force: force)
       end
 
@@ -72,7 +72,7 @@ module SourceMonitor
       ensure
         begin
           source.reload
-          source.update!(fetch_status: "failed") if source.fetch_status == "fetching"
+          source.update_columns(fetch_status: "failed") if source.fetch_status == "fetching"
         rescue StandardError # :nocov:
           nil
         end
@@ -88,7 +88,8 @@ module SourceMonitor
       private_class_method :resolve_source
 
       def self.update_source_state!(source, attrs)
-        source.update!(attrs)
+        source.update_columns(attrs)
+        source.reload
         begin
           SourceMonitor::Realtime.broadcast_source(source)
         rescue StandardError => error

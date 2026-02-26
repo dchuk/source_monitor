@@ -340,13 +340,13 @@ module SourceMonitor
           end
         end
 
-        # Stub update! to raise on the mark_complete! call (second update! call)
+        # Stub update_columns to raise on the mark_complete! call (second update_columns call)
         call_count = 0
-        original_update = source.method(:update!)
-        source.define_singleton_method(:update!) do |attrs|
+        original_update_columns = source.method(:update_columns)
+        source.define_singleton_method(:update_columns) do |attrs|
           call_count += 1
           raise ActiveRecord::ConnectionNotEstablished, "connection lost" if call_count >= 2
-          original_update.call(attrs)
+          original_update_columns.call(attrs)
         end
 
         assert_raises(ActiveRecord::ConnectionNotEstablished) do
@@ -389,6 +389,69 @@ module SourceMonitor
         end
 
         # The ensure block should have caught the "fetching" status and reset to "failed"
+        assert_equal "failed", source.reload.fetch_status
+      end
+
+      test "update_source_state! uses update_columns to avoid has_many auto-save" do
+        source = create_source
+
+        # Pollute the source's items association cache with an unsaved invalid item
+        source.items.load
+        invalid_item = source.items.new(guid: nil, url: nil, title: nil)
+        assert_not invalid_item.persisted?, "setup: invalid item should not be persisted"
+        assert source.items.any? { |i| !i.persisted? }, "setup: cache should contain unsaved item"
+
+        # With update_columns, this should succeed even with polluted cache
+        # because update_columns bypasses ActiveRecord callbacks and auto-save
+        SourceMonitor::Realtime.stub :broadcast_source, nil do
+          assert_nothing_raised do
+            FetchRunner.send(:update_source_state!, source, { fetch_status: "idle" })
+          end
+        end
+
+        # Verify the DB was updated
+        assert_equal "idle", source.reload.fetch_status
+      end
+
+      test "enqueue uses update_columns to avoid has_many auto-save" do
+        source = create_source
+
+        # Pollute the source's items association cache
+        source.items.load
+        source.items.new(guid: nil, url: nil, title: nil)
+
+        SourceMonitor::FetchFeedJob.stub :perform_later, nil do
+          assert_nothing_raised do
+            FetchRunner.enqueue(source)
+          end
+        end
+
+        assert_equal "queued", source.reload.fetch_status
+      end
+
+      test "ensure block uses update_columns to avoid has_many auto-save on failure recovery" do
+        source = create_source
+
+        # Fetcher that loads items association cache, pollutes it, then raises
+        failing_fetcher = Class.new do
+          define_method(:initialize) do |source:, **|
+            @source = source
+          end
+          define_method(:call) do
+            # Simulate what EntryProcessor does: load items, have some fail
+            @source.items.load
+            @source.items.new(guid: nil, url: nil, title: nil)
+            raise StandardError, "simulated failure"
+          end
+        end
+
+        SourceMonitor::Realtime.stub :broadcast_source, nil do
+          assert_raises(StandardError, "simulated failure") do
+            FetchRunner.new(source:, fetcher_class: failing_fetcher).run
+          end
+        end
+
+        # The ensure block should have recovered using update_columns
         assert_equal "failed", source.reload.fetch_status
       end
 
