@@ -15,6 +15,16 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.10.1] - 2026-02-25
+
+### Fixed
+
+- **Backfill word counts rake task optimized for large datasets.** Replaced row-by-row saves with `insert_all` (Phase 1) and `upsert_all` (Phase 2), eliminating N+1 queries and `touch` cascades. ~1000x query reduction for large datasets.
+- **ActiveRecord::Deadlocked no longer silently swallowed in jobs.** `DownloadContentImagesJob` and `FaviconFetchJob` previously caught all `StandardError` including database deadlocks, causing Active Storage operations to fail silently during concurrent access. Deadlocks now propagate so the job framework can retry.
+- **Thread-safe configuration access.** `SourceMonitor.configure`, `.config`, and `.reset_configuration!` now synchronize via `Monitor` to prevent race conditions during parallel test execution.
+- **Flaky seed-dependent test failures resolved.** Added `clean_source_monitor_tables!` to `StaggerFetchTimesTaskTest` to prevent cross-test database contamination from `setup_once` records leaking via test-prof with thread-based parallelism.
+- **Suppressed spurious DeprecationRegistry warning in test output.** The "http.timeout already exists" warning from the deprecation skip-path test no longer leaks to stderr.
+
 ## [0.10.0] - 2026-02-24
 
 ### Added

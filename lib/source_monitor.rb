@@ -24,6 +24,7 @@ rescue LoadError
   # Ransack powers search forms when available.
 end
 
+require "monitor"
 require "source_monitor/version"
 require "active_support/core_ext/module/redefine_method"
 
@@ -198,15 +199,20 @@ module SourceMonitor
     autoload :StreamResponder, "source_monitor/turbo_streams/stream_responder"
   end
 
+  CONFIG_MONITOR = Monitor.new
+  private_constant :CONFIG_MONITOR
+
   class << self
     def configure
-      yield config
-      config.check_deprecations!
-      SourceMonitor::ModelExtensions.reload!
+      CONFIG_MONITOR.synchronize do
+        yield config
+        config.check_deprecations!
+        SourceMonitor::ModelExtensions.reload!
+      end
     end
 
     def config
-      @config ||= Configuration.new
+      @config ||= CONFIG_MONITOR.synchronize { @config ||= Configuration.new }
     end
 
     def events
@@ -214,11 +220,13 @@ module SourceMonitor
     end
 
     def reset_configuration!
-      @config = Configuration.new
-      SourceMonitor::ModelExtensions.reload!
-      SourceMonitor::Health.setup!
-      SourceMonitor::Realtime.setup!
-      SourceMonitor::Dashboard::TurboBroadcaster.setup!
+      CONFIG_MONITOR.synchronize do
+        @config = Configuration.new
+        SourceMonitor::ModelExtensions.reload!
+        SourceMonitor::Health.setup!
+        SourceMonitor::Realtime.setup!
+        SourceMonitor::Dashboard::TurboBroadcaster.setup!
+      end
     end
 
     def queue_name(role)

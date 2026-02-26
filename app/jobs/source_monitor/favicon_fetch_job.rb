@@ -23,6 +23,8 @@ module SourceMonitor
       else
         record_failed_attempt(source)
       end
+    rescue ActiveRecord::Deadlocked
+      raise # let job framework retry on database deadlock
     rescue StandardError => error
       record_failed_attempt(source) if source
       log_error(source, error)

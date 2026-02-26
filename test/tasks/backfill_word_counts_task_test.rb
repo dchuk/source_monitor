@@ -29,7 +29,7 @@ module SourceMonitor
 
       # Run the rake task
       Rake::Task["source_monitor:backfill_word_counts"].reenable
-      assert_output(/Done\. Backfilled word counts for \d+ records/) do
+      assert_output(/Done\. Phase 1: \d+ created\. Phase 2: \d+\/\d+ updated\./) do
         Rake::Task["source_monitor:backfill_word_counts"].invoke
       end
 
@@ -52,7 +52,7 @@ module SourceMonitor
       assert_nil item.item_content
 
       Rake::Task["source_monitor:backfill_word_counts"].reenable
-      assert_output(/Created 1 ItemContent records.*Done\. Backfilled word counts for \d+ records/m) do
+      assert_output(/Phase 1.*1 records created.*Done\. Phase 1: 1 created\./m) do
         Rake::Task["source_monitor:backfill_word_counts"].invoke
       end
 

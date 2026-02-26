@@ -5,6 +5,7 @@ require "rake"
 
 class StaggerFetchTimesTaskTest < ActiveSupport::TestCase
   setup do
+    clean_source_monitor_tables!
     Rails.application.load_tasks unless Rake::Task.task_defined?("source_monitor:maintenance:stagger_fetch_times")
   end
 
