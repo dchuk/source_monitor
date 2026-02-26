@@ -208,12 +208,16 @@ module SourceMonitor
       end
 
       test "skips trap when method already exists on target class" do
-        DeprecationRegistry.register(
-          "http.timeout",
-          removed_in: "0.5.0",
-          replacement: "http.proxy",
-          severity: :warning
-        )
+        _out, err = capture_io do
+          DeprecationRegistry.register(
+            "http.timeout",
+            removed_in: "0.5.0",
+            replacement: "http.proxy",
+            severity: :warning
+          )
+        end
+
+        assert_match(/DeprecationRegistry.*http\.timeout.*already exists/, err)
 
         entry = DeprecationRegistry.entries["http.timeout"]
         assert entry[:skipped], "Entry should be marked as skipped when method already exists"
