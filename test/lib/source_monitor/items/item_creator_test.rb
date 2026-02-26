@@ -1155,6 +1155,67 @@ module SourceMonitor
         assert_equal true, creator.send(:deep_copy, true)
       end
 
+      # ─── Association cache safety ───
+
+      test "failed item creation does not pollute source association cache" do
+        # Load the source's items association cache
+        @source.items.load
+
+        # Create an entry that will fail validation (missing url)
+        invalid_entry = OpenStruct.new(
+          title: "Invalid Entry",
+          url: nil,
+          entry_id: "invalid-guid-#{SecureRandom.hex(4)}",
+          summary: "Summary",
+          published: Time.utc(2025, 10, 1),
+          to_h: { title: "Invalid Entry" }
+        )
+
+        # ItemCreator should raise due to missing url validation
+        assert_raises(ActiveRecord::RecordInvalid) do
+          ItemCreator.call(source: @source, entry: invalid_entry)
+        end
+
+        # The critical assertion: after a failed item creation, the source's
+        # association cache should NOT contain any unsaved/invalid items.
+        # Using source_id instead of source avoids inverse_of adding the
+        # unsaved record to the loaded items cache.
+        assert @source.items.none?(&:new_record?),
+          "source.items association cache should not contain unsaved items after failed creation"
+
+        # Verify that source.update! succeeds without cascade failure
+        assert_nothing_raised do
+          @source.update!(name: "Updated Name After Failed Item")
+        end
+      end
+
+      test "create_new_item builds item without polluting association cache" do
+        entry = OpenStruct.new(
+          title: "Association Test Entry",
+          url: "https://example.com/assoc-test",
+          entry_id: "assoc-test-guid-#{SecureRandom.hex(4)}",
+          summary: "Summary",
+          published: Time.utc(2025, 10, 1),
+          to_h: { title: "Association Test Entry" }
+        )
+
+        # Pre-load the association cache
+        @source.items.load
+        initial_cache_size = @source.items.size
+
+        result = ItemCreator.call(source: @source, entry: entry)
+        assert result.created?
+
+        # The new item should be persisted
+        assert result.item.persisted?
+        assert_equal @source.id, result.item.source_id
+
+        # The association cache should NOT have been modified by create_new_item
+        # because we use Item.new(source_id:) which bypasses inverse_of
+        assert_equal initial_cache_size, @source.items.size,
+          "creating an item should not add to the loaded association cache"
+      end
+
       # ─── Feed content record creation ───
 
       test "new item creation with content also creates ItemContent with feed_word_count" do

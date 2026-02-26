@@ -197,6 +197,47 @@ module SourceMonitor
         assert_empty result.item_processing.created_items
         assert_empty result.item_processing.updated_items
       end
+
+      test "failed item creation does not prevent source update after fetch" do
+        url = "https://example.com/mixed-entries.xml"
+        source = build_source(name: "Mixed Entries", feed_url: url)
+
+        body = File.read(file_fixture("feeds/rss_sample.xml"))
+        stub_request(:get, url)
+          .to_return(status: 200, body: body, headers: { "Content-Type" => "application/rss+xml" })
+
+        # Make every other ItemCreator.call raise a validation error to simulate
+        # a mix of valid and invalid entries. This exercises the EntryProcessor rescue
+        # path and verifies that failed items don't pollute the association cache.
+        call_count = 0
+        original_call = SourceMonitor::Items::ItemCreator.method(:call)
+        singleton = SourceMonitor::Items::ItemCreator.singleton_class
+        singleton.define_method(:call) do |source:, entry:|
+          call_count += 1
+          if call_count.odd?
+            raise ActiveRecord::RecordInvalid.new(SourceMonitor::Item.new), "Validation failed: simulated"
+          else
+            original_call.call(source: source, entry: entry)
+          end
+        end
+
+        begin
+          result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+
+          assert_equal :fetched, result.status
+          assert result.item_processing.failed.positive?,
+            "expected some items to fail"
+
+          # The critical assertion: source.update! in SourceUpdater should succeed.
+          # Before the fix, the failed items would remain in source.items cache,
+          # and source.update! would trigger has_many auto-save, cascading the failure.
+          source.reload
+          assert_not_nil source.last_fetched_at, "source should have been updated after fetch"
+          assert_equal 0, source.failure_count
+        ensure
+          singleton.define_method(:call) { |source:, entry:| original_call.call(source: source, entry: entry) }
+        end
+      end
     end
   end
 end
