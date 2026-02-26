@@ -15,6 +15,12 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.10.2] - 2026-02-26
+
+### Fixed
+
+- **Association cache pollution in ItemCreator no longer causes cascading validation failures.** When `source.items.new` was used to build new items, failed saves (e.g., invalid URLs) left unsaved records in the association cache. Subsequent `source.update!` calls triggered Rails' has_many auto-save on the invalid cached items, causing `RecordInvalid: Items is invalid` errors. Fixed by constructing items via `Item.new(source_id:)` to bypass the association cache, and by switching FetchRunner's status updates to `update_columns` for defense-in-depth.
+
 ## [0.10.1] - 2026-02-25
 
 ### Fixed
