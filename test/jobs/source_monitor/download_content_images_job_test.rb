@@ -170,6 +170,23 @@ module SourceMonitor
       assert item.item_content.images.attached?
     end
 
+    test "re-raises ActiveRecord::Deadlocked instead of swallowing it" do
+      source = create_source!
+      item = create_item!(source: source, content: %(<p><img src="#{IMAGE_URL}"></p>))
+
+      SourceMonitor::Images::Downloader.stub(:new, ->(_url, **_opts) {
+        obj = Object.new
+        def obj.call
+          raise ActiveRecord::Deadlocked, "PG::TRDeadlockDetected"
+        end
+        obj
+      }) do
+        assert_raises(ActiveRecord::Deadlocked) do
+          DownloadContentImagesJob.perform_now(item.id)
+        end
+      end
+    end
+
     private
 
     def create_item!(source:, content: nil)

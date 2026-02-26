@@ -161,6 +161,23 @@ module SourceMonitor
       assert_not discoverer_called
     end
 
+    test "re-raises ActiveRecord::Deadlocked instead of swallowing it" do
+      SourceMonitor::Favicons::Discoverer.stub(:new, ->(_url, **_opts) {
+        obj = Object.new
+        def obj.call
+          raise ActiveRecord::Deadlocked, "PG::TRDeadlockDetected"
+        end
+        obj
+      }) do
+        assert_raises(ActiveRecord::Deadlocked) do
+          FaviconFetchJob.new.perform(@source.id)
+        end
+      end
+
+      @source.reload
+      assert_nil @source.metadata["favicon_last_attempted_at"]
+    end
+
     test "uses source_monitor_queue :maintenance" do
       assert_equal SourceMonitor.config.queue_name_for(:maintenance), FaviconFetchJob.new.queue_name
     end

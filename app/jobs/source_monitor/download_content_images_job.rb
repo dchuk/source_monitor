@@ -60,6 +60,8 @@ module SourceMonitor
 
         # Generate a serving URL for the blob
         url_mapping[image_url] = Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
+      rescue ActiveRecord::Deadlocked
+        raise # let job framework retry on database deadlock
       rescue StandardError
         # Individual image failure should not block others.
         # Original URL will be preserved (graceful fallback).
