@@ -24,6 +24,8 @@ module SourceMonitor
         assert_equal "Fetch #42", result[:label]
         assert_equal :success, result[:status]
         assert_equal SourceMonitor::Engine.routes.url_helpers.fetch_log_path(42), result[:path]
+        assert_nil result[:url_display]
+        assert_nil result[:url_href]
       end
 
       test "builds item event view model with fallbacks" do
@@ -48,7 +50,7 @@ module SourceMonitor
         assert_equal SourceMonitor::Engine.routes.url_helpers.item_path(7), result[:path]
       end
 
-      test "fetch event includes source domain as url_display" do
+      test "fetch event includes domain in label" do
         event = SourceMonitor::Dashboard::RecentActivity::Event.new(
           type: :fetch_log,
           id: 10,
@@ -65,11 +67,12 @@ module SourceMonitor
         )
 
         result = presenter.to_a.first
-        assert_equal "blog.example.com", result[:url_display]
-        assert_equal "https://blog.example.com/feed.xml", result[:url_href]
+        assert_equal "blog.example.com \u2014 Fetch #10", result[:label]
+        assert_nil result[:url_display]
+        assert_nil result[:url_href]
       end
 
-      test "fetch event with nil source_feed_url has nil url_display" do
+      test "fetch event with nil source_feed_url falls back to plain label" do
         event = SourceMonitor::Dashboard::RecentActivity::Event.new(
           type: :fetch_log,
           id: 11,
@@ -86,11 +89,12 @@ module SourceMonitor
         )
 
         result = presenter.to_a.first
+        assert_equal "Fetch #11", result[:label]
         assert_nil result[:url_display]
         assert_equal :failure, result[:status]
       end
 
-      test "failure fetch event still includes url_display" do
+      test "failure fetch event includes domain in label" do
         event = SourceMonitor::Dashboard::RecentActivity::Event.new(
           type: :fetch_log,
           id: 12,
@@ -107,11 +111,12 @@ module SourceMonitor
         )
 
         result = presenter.to_a.first
-        assert_equal "failing-feed.example.org", result[:url_display]
+        assert_equal "failing-feed.example.org \u2014 Fetch #12", result[:label]
+        assert_nil result[:url_display]
         assert_equal :failure, result[:status]
       end
 
-      test "fetch event with invalid URI returns nil url_display" do
+      test "fetch event with invalid URI falls back to plain label" do
         event = SourceMonitor::Dashboard::RecentActivity::Event.new(
           type: :fetch_log,
           id: 13,
@@ -128,6 +133,7 @@ module SourceMonitor
         )
 
         result = presenter.to_a.first
+        assert_equal "Fetch #13", result[:label]
         assert_nil result[:url_display]
       end
 
