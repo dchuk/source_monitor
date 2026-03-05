@@ -168,9 +168,63 @@
                 <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :items_count) %></span>
               </span>
             </th>
-            <th scope="col" class="px-6 py-3">New Items / Day</th>
-            <th scope="col" class="px-6 py-3">Avg Feed Words</th>
-            <th scope="col" class="px-6 py-3">Avg Scraped Words</th>
+            <th scope="col"
+                class="px-6 py-3"
+                data-sort-column="new_items_per_day"
+                aria-sort="<%= table_sort_aria(@q, :new_items_per_day) %>">
+              <span class="inline-flex items-center gap-1">
+                <%= table_sort_link(
+                      @q,
+                      :new_items_per_day,
+                      "New Items / Day",
+                      frame: "source_monitor_sources_table",
+                      default_order: :desc,
+                      secondary: ["created_at desc"],
+                      html_options: {
+                        class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
+                      }
+                    ) %>
+                <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :new_items_per_day) %></span>
+              </span>
+            </th>
+            <th scope="col"
+                class="px-6 py-3"
+                data-sort-column="avg_feed_words"
+                aria-sort="<%= table_sort_aria(@q, :avg_feed_words) %>">
+              <span class="inline-flex items-center gap-1">
+                <%= table_sort_link(
+                      @q,
+                      :avg_feed_words,
+                      "Avg Feed Words",
+                      frame: "source_monitor_sources_table",
+                      default_order: :desc,
+                      secondary: ["created_at desc"],
+                      html_options: {
+                        class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
+                      }
+                    ) %>
+                <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :avg_feed_words) %></span>
+              </span>
+            </th>
+            <th scope="col"
+                class="px-6 py-3"
+                data-sort-column="avg_scraped_words"
+                aria-sort="<%= table_sort_aria(@q, :avg_scraped_words) %>">
+              <span class="inline-flex items-center gap-1">
+                <%= table_sort_link(
+                      @q,
+                      :avg_scraped_words,
+                      "Avg Scraped Words",
+                      frame: "source_monitor_sources_table",
+                      default_order: :desc,
+                      secondary: ["created_at desc"],
+                      html_options: {
+                        class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
+                      }
+                    ) %>
+                <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :avg_scraped_words) %></span>
+              </span>
+            </th>
             <th scope="col"
                 class="px-6 py-3"
                 data-sort-column="last_fetched_at"
