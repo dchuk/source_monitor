@@ -90,6 +90,7 @@ module SourceMonitor
 
   module Favicons
     autoload :Discoverer, "source_monitor/favicons/discoverer"
+    autoload :SvgConverter, "source_monitor/favicons/svg_converter"
   end
 
   module Images

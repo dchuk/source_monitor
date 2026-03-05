@@ -144,6 +144,10 @@ module SourceMonitor
         return unless body && body.bytesize > 0
         return if body.bytesize > settings.max_download_size
 
+        if content_type == "image/svg+xml"
+          return convert_svg_to_result(body, url)
+        end
+
         filename = derive_filename(url, content_type)
 
         Result.new(
@@ -154,6 +158,18 @@ module SourceMonitor
         )
       rescue Faraday::Error
         nil
+      end
+
+      def convert_svg_to_result(svg_body, url)
+        converted = SvgConverter.call(svg_body, filename: derive_filename(url, "image/svg+xml"))
+        return nil unless converted
+
+        Result.new(
+          io: converted[:io],
+          filename: converted[:filename],
+          content_type: converted[:content_type],
+          url: url
+        )
       end
 
       def derive_filename(favicon_url, content_type)
