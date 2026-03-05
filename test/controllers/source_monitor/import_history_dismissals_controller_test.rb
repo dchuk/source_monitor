@@ -10,7 +10,7 @@ module SourceMonitor
     setup do
       @import_history = ImportHistory.create!(
         user_id: users(:admin).id,
-        imported_sources: [{ "id" => 1, "feed_url" => "https://example.com/feed.xml", "name" => "Example" }],
+        imported_sources: [ { "id" => 1, "feed_url" => "https://example.com/feed.xml", "name" => "Example" } ],
         failed_sources: [],
         skipped_duplicates: [],
         started_at: 1.minute.ago,

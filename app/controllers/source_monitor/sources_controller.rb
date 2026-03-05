@@ -42,7 +42,7 @@ module SourceMonitor
         search_params: @search_params
       )
 
-      @recent_import_histories = SourceMonitor::ImportHistory.recent_for(source_monitor_current_user&.id).limit(5)
+      @recent_import_histories = SourceMonitor::ImportHistory.not_dismissed.recent_for(source_monitor_current_user&.id).limit(5)
 
       @fetch_interval_distribution = metrics.fetch_interval_distribution
       @fetch_interval_filter = metrics.fetch_interval_filter
