@@ -388,6 +388,80 @@ module SourceMonitor
         assert_equal "good-icon.png", result.filename
       end
 
+      # -- SVG favicon conversion --
+
+      SVG_BODY = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="blue"/></svg>'
+
+      test "converts SVG favicon to PNG before returning result" do
+        html = <<~HTML
+          <html>
+          <head>
+            <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+          </head>
+          </html>
+        HTML
+        stub_request(:get, "https://example.com")
+          .to_return(status: 200, body: html, headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://example.com/favicon.svg")
+          .to_return(status: 200, body: SVG_BODY, headers: { "Content-Type" => "image/svg+xml" })
+        stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
+          .to_return(status: 404, body: "")
+        stub_request(:get, "https://example.com/favicon.ico")
+          .to_return(status: 404, body: "")
+
+        result = Discoverer.new(@website_url).call
+
+        assert_not_nil result
+        assert_equal "image/png", result.content_type
+        assert_equal "favicon.png", result.filename
+        assert_equal "https://example.com/favicon.svg", result.url
+        assert result.io.read.start_with?("\x89PNG".b)
+      end
+
+      test "returns nil for SVG favicon when MiniMagick is unavailable" do
+        html = <<~HTML
+          <html>
+          <head>
+            <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+          </head>
+          </html>
+        HTML
+        stub_request(:get, "https://example.com")
+          .to_return(status: 200, body: html, headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://example.com/favicon.svg")
+          .to_return(status: 200, body: SVG_BODY, headers: { "Content-Type" => "image/svg+xml" })
+        stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
+          .to_return(status: 404, body: "")
+        stub_request(:get, "https://example.com/favicon.ico")
+          .to_return(status: 404, body: "")
+
+        # Stub SvgConverter to simulate MiniMagick being unavailable
+        SvgConverter.stub(:call, nil) do
+          result = Discoverer.new(@website_url).call
+          assert_nil result
+        end
+      end
+
+      test "non-SVG favicons pass through unchanged" do
+        html = <<~HTML
+          <html>
+          <head>
+            <link rel="icon" href="/icon.png">
+          </head>
+          </html>
+        HTML
+        stub_request(:get, "https://example.com")
+          .to_return(status: 200, body: html, headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://example.com/icon.png")
+          .to_return(status: 200, body: PNG_BODY, headers: { "Content-Type" => "image/png" })
+
+        result = Discoverer.new(@website_url).call
+
+        assert_not_nil result
+        assert_equal "image/png", result.content_type
+        assert_equal "icon.png", result.filename
+      end
+
       # -- derive_filename error handling --
 
       test "derive_filename handles unparseable URLs gracefully" do
