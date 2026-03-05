@@ -7,6 +7,9 @@ SourceMonitor::Engine.routes.draw do
   resources :logs, only: :index
   resources :fetch_logs, only: :show
   resources :scrape_logs, only: :show
+  resources :import_histories, only: [] do
+    resource :dismissal, only: :create, controller: "import_history_dismissals"
+  end
   resources :import_sessions, path: "import_opml", only: %i[new create show update destroy] do
     member do
       get "steps/:step", action: :show, as: :step
