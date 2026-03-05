@@ -404,6 +404,10 @@ module SourceMonitor
           .to_return(status: 200, body: html, headers: { "Content-Type" => "text/html" })
         stub_request(:get, "https://example.com/favicon.svg")
           .to_return(status: 200, body: SVG_BODY, headers: { "Content-Type" => "image/svg+xml" })
+        stub_request(:get, "https://www.google.com/s2/favicons?domain=example.com&sz=64")
+          .to_return(status: 404, body: "")
+        stub_request(:get, "https://example.com/favicon.ico")
+          .to_return(status: 404, body: "")
 
         result = Discoverer.new(@website_url).call
 

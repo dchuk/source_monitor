@@ -49,16 +49,13 @@ module SourceMonitor
       end
 
       test "returns nil when MiniMagick is not defined" do
-        # Temporarily hide MiniMagick constant
-        Object.send(:remove_const, :MiniMagick) if defined?(::MiniMagick)
-        mini_magick_mod = nil
+        original = ::MiniMagick
+        Object.send(:remove_const, :MiniMagick)
 
         begin
-          # We already removed it above, but the autoload might reload it
-          # Just test the guard directly
           assert_nil SvgConverter.call(VALID_SVG, filename: "icon.svg")
         ensure
-          require "mini_magick"
+          Object.const_set(:MiniMagick, original)
         end
       end
 
