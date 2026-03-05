@@ -63,12 +63,39 @@ module SourceMonitor
 
       def ransackable_attributes(_auth_object = nil)
         %w[name feed_url website_url created_at fetch_interval_minutes items_count last_fetched_at
-           active health_status feed_format scraper_adapter]
+           active health_status feed_format scraper_adapter
+           new_items_per_day avg_feed_words avg_scraped_words]
       end
 
       def ransackable_associations(_auth_object = nil)
         []
       end
+    end
+
+    ransacker :new_items_per_day do
+      Arel.sql(
+        "(SELECT COUNT(*) / 30.0 FROM #{Item.table_name} i" \
+        " WHERE i.source_id = #{table_name}.id" \
+        " AND i.created_at >= NOW() - INTERVAL '30 days')"
+      )
+    end
+
+    ransacker :avg_feed_words do
+      Arel.sql(
+        "(SELECT AVG(ic.feed_word_count) FROM #{ItemContent.table_name} ic" \
+        " INNER JOIN #{Item.table_name} i ON i.id = ic.item_id" \
+        " WHERE i.source_id = #{table_name}.id" \
+        " AND ic.feed_word_count IS NOT NULL)"
+      )
+    end
+
+    ransacker :avg_scraped_words do
+      Arel.sql(
+        "(SELECT AVG(ic.scraped_word_count) FROM #{ItemContent.table_name} ic" \
+        " INNER JOIN #{Item.table_name} i ON i.id = ic.item_id" \
+        " WHERE i.source_id = #{table_name}.id" \
+        " AND ic.scraped_word_count IS NOT NULL)"
+      )
     end
 
     def fetch_interval_minutes=(value)
