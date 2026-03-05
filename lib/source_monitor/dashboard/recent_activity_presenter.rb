@@ -31,15 +31,14 @@ module SourceMonitor
 
       def fetch_event(event)
         domain = source_domain(event.source_feed_url)
+        label = domain ? "#{domain} \u2014 Fetch ##{event.id}" : "Fetch ##{event.id}"
         {
-          label: "Fetch ##{event.id}",
+          label: label,
           description: "#{event.items_created.to_i} created / #{event.items_updated.to_i} updated",
           status: event.success? ? :success : :failure,
           type: :fetch,
           time: event.occurred_at,
-          path: url_helpers.fetch_log_path(event.id),
-          url_display: domain,
-          url_href: event.source_feed_url
+          path: url_helpers.fetch_log_path(event.id)
         }
       end
 
