@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_22_194201) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_05_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -221,6 +221,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_194201) do
     t.jsonb "bulk_settings", default: {}, null: false
     t.datetime "completed_at"
     t.datetime "created_at", null: false
+    t.datetime "dismissed_at"
     t.jsonb "failed_sources", default: [], null: false
     t.jsonb "imported_sources", default: [], null: false
     t.jsonb "skipped_duplicates", default: [], null: false
