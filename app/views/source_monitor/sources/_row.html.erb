@@ -28,11 +28,19 @@
     <div class="flex items-center gap-3">
       <%= source_favicon_tag(source, size: 24) %>
       <div>
-        <div class="font-medium text-slate-900">
+        <div class="flex items-center gap-2 font-medium text-slate-900">
           <%= link_to source.name,
                 source_monitor.source_path(source),
                 class: "text-slate-900 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
                 data: { turbo_frame: "_top" } %>
+          <% if source.last_error.to_s.match?(/\bblocked\b/i) %>
+            <% blocked_detail = source.last_error.to_s.match(/blocked by (\w+)/i) %>
+            <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700"
+                  title="<%= blocked_detail ? "#{blocked_detail[1].capitalize} Blocked" : "Blocked" %>"
+                  data-testid="source-blocked-badge">
+              Blocked
+            </span>
+          <% end %>
         </div>
         <div class="text-xs text-slate-500 truncate max-w-xs"><%= external_link_to source.feed_url, source.feed_url, class: "text-slate-500 hover:text-blue-500" %></div>
       </div>

@@ -340,6 +340,33 @@ module SourceMonitor
       refute_includes response.body, "Healthy News"
     end
 
+    test "show displays Blocked badge when source last_error indicates blocked" do
+      source = create_source!(name: "Blocked Source")
+      source.update_columns(last_error: "Feed blocked by cloudflare", last_error_at: Time.current)
+
+      get source_monitor.source_path(source)
+      assert_response :success
+      assert_select "[data-testid='source-blocked-badge']", text: "Blocked"
+    end
+
+    test "show does not display Blocked badge when source has no block error" do
+      source = create_source!(name: "Normal Source")
+      source.update_columns(last_error: nil)
+
+      get source_monitor.source_path(source)
+      assert_response :success
+      assert_select "[data-testid='source-blocked-badge']", count: 0
+    end
+
+    test "index displays Blocked badge in row for blocked source" do
+      source = create_source!(name: "Row Blocked Source")
+      source.update_columns(last_error: "Feed blocked by cloudflare", last_error_at: Time.current)
+
+      get source_monitor.sources_path
+      assert_response :success
+      assert_select "[data-testid='source-blocked-badge']", text: "Blocked"
+    end
+
     test "pagination preserves filter params across pages" do
       30.times { |i| create_source!(name: "Filtered #{i}", health_status: "warning") }
       create_source!(name: "Healthy Excluded", health_status: "healthy")

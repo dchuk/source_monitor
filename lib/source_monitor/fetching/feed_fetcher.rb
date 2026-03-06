@@ -229,7 +229,18 @@ module SourceMonitor
 
       def parse_feed(body, response)
         blocked_by = detect_blocked_response(body, response)
-        raise BlockedError.new(blocked_by: blocked_by, response: response) if blocked_by
+
+        if blocked_by == "cloudflare" && !@bypass_attempted
+          @bypass_attempted = true
+          bypass_response = CloudflareBypass.new(response: response, feed_url: source.feed_url).call
+          if bypass_response
+            body = bypass_response.body
+          else
+            raise BlockedError.new(blocked_by: blocked_by, response: response)
+          end
+        elsif blocked_by
+          raise BlockedError.new(blocked_by: blocked_by, response: response)
+        end
 
         Feedjira.parse(body)
       rescue BlockedError
