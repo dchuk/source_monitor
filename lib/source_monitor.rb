@@ -81,6 +81,7 @@ module SourceMonitor
     autoload :RetryPolicy, "source_monitor/fetching/retry_policy"
     autoload :StalledFetchReconciler, "source_monitor/fetching/stalled_fetch_reconciler"
     autoload :AdvisoryLock, "source_monitor/fetching/advisory_lock"
+    autoload :CloudflareBypass, "source_monitor/fetching/cloudflare_bypass"
   end
 
   module ImportSessions
