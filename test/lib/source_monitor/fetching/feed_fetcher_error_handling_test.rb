@@ -237,6 +237,39 @@ module SourceMonitor
         assert_equal 403, result.error.http_status
       end
 
+      test "Cloudflare challenge HTML at 200 raises BlockedError not ParsingError" do
+        url = "https://example.com/cf-blocked.xml"
+        source = build_source(name: "CF Blocked", feed_url: url)
+
+        cf_html = '<html><head><title>Just a moment</title></head><body><div id="cf-challenge">Please wait</div></body></html>'
+        stub_request(:get, url).to_return(status: 200, body: cf_html, headers: { "Content-Type" => "text/html" })
+
+        result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+
+        assert_equal :failed, result.status
+        assert_kind_of SourceMonitor::Fetching::BlockedError, result.error
+        assert_equal "cloudflare", result.error.blocked_by
+
+        log = source.fetch_logs.order(:created_at).last
+        refute log.success
+        assert_equal "SourceMonitor::Fetching::BlockedError", log.error_class
+        assert_equal "blocked", log.error_category
+      end
+
+      test "CAPTCHA page at 200 raises BlockedError" do
+        url = "https://example.com/captcha-blocked.xml"
+        source = build_source(name: "Captcha Blocked", feed_url: url)
+
+        captcha_html = '<html><body><div class="g-recaptcha" data-sitekey="abc"></div></body></html>'
+        stub_request(:get, url).to_return(status: 200, body: captcha_html, headers: { "Content-Type" => "text/html" })
+
+        result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+
+        assert_equal :failed, result.status
+        assert_kind_of SourceMonitor::Fetching::BlockedError, result.error
+        assert_equal "captcha", result.error.blocked_by
+      end
+
       test "re-raises existing FetchError subclasses without double-wrapping" do
         url = "https://example.com/already-timeout.xml"
         source = build_source(name: "Already Timeout", feed_url: url)
