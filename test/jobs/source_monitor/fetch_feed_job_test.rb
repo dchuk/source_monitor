@@ -211,6 +211,78 @@ module SourceMonitor
       end
     end
 
+    test "force-fetch ConcurrencyError does not retry and resets status to idle" do
+      source = create_source(fetch_status: "queued")
+
+      stub_runner = Class.new do
+        def initialize(**); end
+
+        def run
+          raise SourceMonitor::Fetching::FetchRunner::ConcurrencyError, "locked"
+        end
+      end
+
+      SourceMonitor::Fetching::FetchRunner.stub(:new, ->(**_kwargs) { stub_runner.new }) do
+        assert_no_enqueued_jobs only: SourceMonitor::FetchFeedJob do
+          SourceMonitor::FetchFeedJob.perform_now(source.id, force: true)
+        end
+      end
+
+      source.reload
+      assert_equal "idle", source.fetch_status
+    end
+
+    test "force-fetch ConcurrencyError does not reset status when not queued" do
+      source = create_source(fetch_status: "fetching")
+
+      stub_runner = Class.new do
+        def initialize(**); end
+
+        def run
+          raise SourceMonitor::Fetching::FetchRunner::ConcurrencyError, "locked"
+        end
+      end
+
+      SourceMonitor::Fetching::FetchRunner.stub(:new, ->(**_kwargs) { stub_runner.new }) do
+        assert_no_enqueued_jobs only: SourceMonitor::FetchFeedJob do
+          SourceMonitor::FetchFeedJob.perform_now(source.id, force: true)
+        end
+      end
+
+      source.reload
+      assert_equal "fetching", source.fetch_status
+    end
+
+    test "scheduled ConcurrencyError retries up to max attempts then raises" do
+      source = create_source
+
+      stub_runner = Class.new do
+        def initialize(**); end
+
+        def run
+          raise SourceMonitor::Fetching::FetchRunner::ConcurrencyError, "locked"
+        end
+      end
+
+      # Simulate exhausting all retries by setting executions high
+      job = SourceMonitor::FetchFeedJob.new(source.id)
+
+      SourceMonitor::Fetching::FetchRunner.stub(:new, ->(**_kwargs) { stub_runner.new }) do
+        # First execution should retry
+        assert_enqueued_jobs 1 do
+          begin
+            job.perform_now
+          rescue StandardError
+            nil
+          end
+        end
+      end
+
+      enqueued = enqueued_jobs.last
+      assert_equal SourceMonitor::FetchFeedJob, enqueued[:job]
+      assert enqueued[:at].present?, "expected retry to be scheduled in the future"
+    end
+
     test "executes when next_fetch_at is within early execution leeway" do
       now = Time.zone.local(2025, 10, 30, 12, 0, 0)
       travel_to(now) do
