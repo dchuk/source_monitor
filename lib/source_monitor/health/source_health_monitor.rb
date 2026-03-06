@@ -32,6 +32,7 @@ module SourceMonitor
           auto_paused_at = nil
           attrs[:auto_paused_until] = nil
           attrs[:auto_paused_at] = nil
+          attrs[:consecutive_fetch_failures] = 0
           attrs[:backoff_until] = nil if source.backoff_until.present?
         end
 

@@ -113,6 +113,31 @@ module SourceMonitor
         end
       end
 
+      test "resume clears consecutive_fetch_failures" do
+        travel_to(Time.current) do
+          @source.update_columns(
+            consecutive_fetch_failures: 5,
+            auto_paused_until: 30.minutes.from_now,
+            auto_paused_at: Time.current,
+            health_status: "auto_paused"
+          )
+
+          5.times { |index| create_fetch_log(success: false, minutes_ago: index + 1) }
+          SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
+
+          travel 31.minutes
+
+          5.times { |index| create_fetch_log(success: true, minutes_ago: index) }
+
+          SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
+
+          @source.reload
+          assert_equal 0, @source.consecutive_fetch_failures
+          assert_nil @source.auto_paused_until
+          assert_nil @source.auto_paused_at
+        end
+      end
+
       test "private helpers compute failure and success streaks" do
         monitor = SourceMonitor::Health::SourceHealthMonitor.new(source: @source)
 
