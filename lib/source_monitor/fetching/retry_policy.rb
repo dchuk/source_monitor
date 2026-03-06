@@ -21,6 +21,8 @@ module SourceMonitor
         http_5xx: { attempts: 2, wait: 10.minutes, circuit_wait: 90.minutes },
         http_4xx: { attempts: 1, wait: 45.minutes, circuit_wait: 2.hours },
         parsing: { attempts: 1, wait: 30.minutes, circuit_wait: 2.hours },
+        blocked: { attempts: 1, wait: 1.hour, circuit_wait: 4.hours },
+        authentication: { attempts: 1, wait: 1.hour, circuit_wait: 4.hours },
         unexpected: { attempts: 1, wait: 30.minutes, circuit_wait: 2.hours },
         fallback: { attempts: 2, wait: 10.minutes, circuit_wait: 90.minutes }
       }.freeze
@@ -76,6 +78,8 @@ module SourceMonitor
         end
 
         return :parsing if error.is_a?(SourceMonitor::Fetching::ParsingError)
+        return :blocked if error.is_a?(SourceMonitor::Fetching::BlockedError)
+        return :authentication if error.is_a?(SourceMonitor::Fetching::AuthenticationError)
         return :unexpected if error.is_a?(SourceMonitor::Fetching::UnexpectedResponseError)
 
         :fallback

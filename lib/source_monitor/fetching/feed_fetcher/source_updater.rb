@@ -4,6 +4,15 @@ module SourceMonitor
   module Fetching
     class FeedFetcher
       class SourceUpdater
+        ERROR_CATEGORY_MAP = {
+          SourceMonitor::Fetching::TimeoutError => "network",
+          SourceMonitor::Fetching::ConnectionError => "network",
+          SourceMonitor::Fetching::ParsingError => "parse",
+          SourceMonitor::Fetching::BlockedError => "blocked",
+          SourceMonitor::Fetching::AuthenticationError => "auth",
+          SourceMonitor::Fetching::UnexpectedResponseError => "unknown"
+        }.freeze
+
         attr_reader :source, :adaptive_interval
 
         def initialize(source:, adaptive_interval:)
@@ -101,6 +110,7 @@ module SourceMonitor
             error_class: error&.class&.name,
             error_message: error&.message,
             error_backtrace: error_backtrace(error),
+            error_category: categorize_error(error),
             metadata: feed_metadata(feed, error: error, feed_signature: feed_signature, item_errors: item_errors)
           )
         end
@@ -190,6 +200,20 @@ module SourceMonitor
           attributes[:fetch_circuit_opened_at] ||= nil
           attributes[:fetch_circuit_until] ||= nil
           nil
+        end
+
+        def categorize_error(error)
+          return if error.nil?
+
+          if error.is_a?(SourceMonitor::Fetching::HTTPError)
+            status = error.status.to_i
+            return "auth" if status == 401 || status == 403
+            return "network"
+          end
+
+          ERROR_CATEGORY_MAP.fetch(error.class) do
+            error.is_a?(SourceMonitor::Fetching::FetchError) ? "unknown" : nil
+          end
         end
 
         def derive_feed_format(feed)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_05_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_06_233004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -178,6 +178,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_05_120000) do
     t.datetime "created_at", null: false
     t.integer "duration_ms"
     t.text "error_backtrace"
+    t.string "error_category"
     t.string "error_class"
     t.text "error_message"
     t.integer "feed_size_bytes"
@@ -194,6 +195,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_05_120000) do
     t.boolean "success"
     t.datetime "updated_at", null: false
     t.index ["created_at"], name: "index_sourcemon_fetch_logs_on_created_at"
+    t.index ["error_category"], name: "index_sourcemon_fetch_logs_on_error_category"
     t.index ["job_id"], name: "index_sourcemon_fetch_logs_on_job_id"
     t.index ["source_id"], name: "index_sourcemon_fetch_logs_on_source_id"
     t.index ["started_at"], name: "index_sourcemon_fetch_logs_on_started_at"
