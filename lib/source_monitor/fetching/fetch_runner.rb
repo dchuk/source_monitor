@@ -41,6 +41,10 @@ module SourceMonitor
         source = resolve_source(source_or_id)
         return unless source
 
+        if force && source.fetch_status == "fetching"
+          return :already_fetching
+        end
+
         # Don't broadcast here - controller handles immediate UI update
         source.update_columns(fetch_status: "queued")
         SourceMonitor::FetchFeedJob.perform_later(source.id, force: force)
