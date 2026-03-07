@@ -7,3 +7,22 @@
     { label: "Fetches Today", value: stats[:fetches_today], caption: "Completed runs" }
   ], locals: { stats: stats } %>
 </div>
+
+<% if stats[:health_distribution]&.values&.any? { |v| v > 0 } %>
+  <div id="source_monitor_dashboard_health_distribution" class="mt-3 flex flex-wrap items-center gap-2">
+    <%
+      health_colors = {
+        "healthy"   => "bg-green-100 text-green-700",
+        "warning"   => "bg-amber-100 text-amber-700",
+        "declining" => "bg-orange-100 text-orange-700",
+        "critical"  => "bg-rose-100 text-rose-700"
+      }
+    %>
+    <% stats[:health_distribution].each do |status, count| %>
+      <% next if count == 0 %>
+      <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold <%= health_colors[status] %>">
+        <%= status.capitalize %> <span class="font-bold"><%= count %></span>
+      </span>
+    <% end %>
+  </div>
+<% end %>
