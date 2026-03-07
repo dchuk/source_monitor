@@ -52,7 +52,7 @@ module SourceMonitor
       end
 
       test "computes fetch interval distribution and activity rates" do
-        scope = SourceMonitor::Source.where(id: [@fast_source.id, @medium_source.id, @slow_source.id])
+        scope = SourceMonitor::Source.where(id: [ @fast_source.id, @medium_source.id, @slow_source.id ])
         metrics = SourceMonitor::Analytics::SourcesIndexMetrics.new(
           base_scope: scope,
           result_scope: scope,
@@ -73,7 +73,7 @@ module SourceMonitor
       end
 
       test "selects fetch interval bucket based on sanitized filter" do
-        scope = SourceMonitor::Source.where(id: [@fast_source.id, @medium_source.id, @slow_source.id])
+        scope = SourceMonitor::Source.where(id: [ @fast_source.id, @medium_source.id, @slow_source.id ])
         metrics = SourceMonitor::Analytics::SourcesIndexMetrics.new(
           base_scope: scope,
           result_scope: scope,
