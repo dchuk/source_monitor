@@ -14,7 +14,8 @@ module SourceMonitor
             active_sources: integer_value(source_counts["active_sources"]),
             failed_sources: integer_value(source_counts["failed_sources"]),
             total_items: total_items_count,
-            fetches_today: fetches_today_count
+            fetches_today: fetches_today_count,
+            health_distribution: health_distribution
           }
         end
 
@@ -60,6 +61,11 @@ module SourceMonitor
 
         def start_of_day
           reference_time.in_time_zone.beginning_of_day
+        end
+
+        def health_distribution
+          raw_counts = SourceMonitor::Source.active.group(:health_status).count
+          %w[healthy warning declining critical].each_with_object({}) { |s, h| h[s] = raw_counts.fetch(s, 0) }
         end
 
         def integer_value(value)
