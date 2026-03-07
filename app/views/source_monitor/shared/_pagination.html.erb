@@ -1,0 +1,74 @@
+<%# Shared pagination partial
+  Locals:
+    paginator_result - Pagination::Result with total_count/total_pages
+    base_path        - URL path (e.g., source_monitor.sources_path)
+    extra_params     - Hash of additional query params to preserve (default: {})
+    turbo_frame      - Optional Turbo Frame target (default: nil)
+%>
+<% extra_params ||= {} %>
+<% turbo_frame ||= nil %>
+<% current_page = paginator_result.page %>
+<% total_pages = paginator_result.total_pages %>
+<% frame_data = turbo_frame ? { turbo_frame: turbo_frame } : {} %>
+<% pagination_url = ->(pg) { "#{base_path}?#{extra_params.merge(page: pg).to_query}" } %>
+
+<div class="flex flex-col items-center gap-3 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-between">
+  <div class="text-xs text-slate-500">
+    Page <%= current_page %> of <%= total_pages %>
+  </div>
+
+  <% if total_pages > 1 %>
+    <div class="flex items-center gap-2">
+      <%# Previous button %>
+      <% if paginator_result.has_previous_page? %>
+        <%= link_to "Previous", pagination_url.call(paginator_result.previous_page),
+              class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50",
+              data: frame_data %>
+      <% else %>
+        <span class="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-300">Previous</span>
+      <% end %>
+
+      <%# Page numbers %>
+      <% pagination_page_numbers(current_page: current_page, total_pages: total_pages).each do |page_item| %>
+        <% if page_item == :gap %>
+          <span class="px-1 text-sm text-slate-400">&hellip;</span>
+        <% elsif page_item == current_page %>
+          <span class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white"><%= page_item %></span>
+        <% else %>
+          <%= link_to page_item, pagination_url.call(page_item),
+                class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50",
+                data: frame_data %>
+        <% end %>
+      <% end %>
+
+      <%# Next button %>
+      <% if paginator_result.has_next_page? %>
+        <%= link_to "Next", pagination_url.call(paginator_result.next_page),
+              class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50",
+              data: frame_data %>
+      <% else %>
+        <span class="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-300">Next</span>
+      <% end %>
+
+      <%# Jump-to-page form %>
+      <%= form_with url: base_path, method: :get, class: "ml-2 flex items-center gap-1", data: frame_data do |f| %>
+        <% extra_params.each do |key, value| %>
+          <% if value.is_a?(Hash) %>
+            <% value.each do |sub_key, sub_value| %>
+              <%= hidden_field_tag "#{key}[#{sub_key}]", sub_value %>
+            <% end %>
+          <% else %>
+            <%= hidden_field_tag key, value %>
+          <% end %>
+        <% end %>
+        <%= number_field_tag :page, nil,
+              min: 1,
+              max: total_pages,
+              placeholder: "#",
+              class: "w-14 rounded-md border border-slate-300 px-2 py-1.5 text-sm text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
+              "aria-label": "Jump to page" %>
+        <%= f.submit "Go", class: "rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
