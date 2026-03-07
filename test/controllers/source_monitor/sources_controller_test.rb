@@ -255,7 +255,7 @@ module SourceMonitor
       get source_monitor.sources_path
       assert_response :success
 
-      assert_includes response.body, "Page 1"
+      assert_includes response.body, "Page 1 of 2"
       assert_includes response.body, "Next"
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 25
     end
@@ -267,7 +267,7 @@ module SourceMonitor
       get source_monitor.sources_path, params: { page: 2 }
       assert_response :success
 
-      assert_includes response.body, "Page 2"
+      assert_includes response.body, "Page 2 of 2"
       assert_includes response.body, "Previous"
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 5
     end
@@ -291,6 +291,43 @@ module SourceMonitor
 
       # per_page=200 capped at 100, but only 3 sources exist
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 3
+    end
+
+    test "index renders page numbers and total pages" do
+      Source.destroy_all
+      30.times { |i| create_source!(name: "PageNum #{i}") }
+
+      get source_monitor.sources_path, params: { per_page: 10 }
+      assert_response :success
+
+      assert_includes response.body, "Page 1 of 3"
+      # Page number links should be present
+      assert_includes response.body, ">1<"
+      assert_includes response.body, ">2<"
+      assert_includes response.body, ">3<"
+    end
+
+    test "index renders jump-to-page form" do
+      Source.destroy_all
+      30.times { |i| create_source!(name: "JumpPage #{i}") }
+
+      get source_monitor.sources_path, params: { per_page: 10 }
+      assert_response :success
+
+      assert_select "input[name='page'][type='number']"
+      assert_select "input[type='submit'][value='Go']"
+    end
+
+    test "jump to page preserves search params" do
+      Source.destroy_all
+      30.times { |i| create_source!(name: "JumpSearch #{i}", health_status: "warning") }
+
+      get source_monitor.sources_path, params: { page: 2, q: { health_status_eq: "warning" }, per_page: 10 }
+      assert_response :success
+
+      assert_includes response.body, "Page 2 of 3"
+      # Hidden fields in the jump-to-page form should preserve search params
+      assert_select "input[type='hidden'][name='q[health_status_eq]'][value='warning']"
     end
 
     # --- Filter tests ---

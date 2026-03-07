@@ -22,23 +22,20 @@ module SourceMonitor
       @search_params = sanitized_search_params
       @q = build_search_query
 
-      paginator = SourceMonitor::Pagination::Paginator.new(
+      @paginator = SourceMonitor::Pagination::Paginator.new(
         scope: @q.result,
         page: params[:page],
         per_page: params[:per_page] || PER_PAGE
       ).paginate
 
-      @sources = paginator.records
-      @page = paginator.page
-      @has_next_page = paginator.has_next_page
-      @has_previous_page = paginator.has_previous_page
+      @sources = @paginator.records
 
       @search_term = @search_params[SEARCH_FIELD.to_s].to_s.strip
       @search_field = SEARCH_FIELD
 
       metrics = SourceMonitor::Analytics::SourcesIndexMetrics.new(
         base_scope: Source.all,
-        result_scope: paginator.records,
+        result_scope: @paginator.records,
         search_params: @search_params
       )
 
