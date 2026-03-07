@@ -60,10 +60,10 @@ module SourceMonitor
         end
       end
 
-      def upcoming_fetch_schedule
-        cache.fetch(:upcoming_fetch_schedule) do
+      def upcoming_fetch_schedule(pages: {})
+        cache.fetch([ :upcoming_fetch_schedule, pages ]) do
           measure(:upcoming_fetch_schedule) do
-            SourceMonitor::Dashboard::UpcomingFetchSchedule.new(scope: SourceMonitor::Source.active)
+            SourceMonitor::Dashboard::UpcomingFetchSchedule.new(scope: SourceMonitor::Source.active, pages: pages)
           end
         end
       end

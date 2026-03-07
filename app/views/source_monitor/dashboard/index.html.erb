@@ -14,7 +14,7 @@
   <section class="grid gap-6 lg:grid-cols-3">
     <div class="lg:col-span-2 space-y-6">
       <%= render "recent_activity", recent_activity: @recent_activity %>
-      <%= render "fetch_schedule", groups: @fetch_schedule_groups, reference_time: @fetch_schedule_reference_time %>
+      <%= render "fetch_schedule", groups: @fetch_schedule_groups, reference_time: @fetch_schedule_reference_time, schedule_pages: @schedule_pages %>
     </div>
 
     <div class="space-y-6">
