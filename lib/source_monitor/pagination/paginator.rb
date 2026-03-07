@@ -8,6 +8,7 @@ module SourceMonitor
       :per_page,
       :has_next_page,
       :has_previous_page,
+      :total_count,
       keyword_init: true
     ) do
       def has_next_page?
@@ -29,6 +30,12 @@ module SourceMonitor
 
         [ page - 1, 1 ].max
       end
+
+      def total_pages
+        return 1 if total_count.nil? || total_count <= 0
+
+        [ 1, (total_count.to_f / per_page).ceil ].max
+      end
     end
 
     class Paginator
@@ -41,6 +48,7 @@ module SourceMonitor
       end
 
       def paginate
+        total = compute_total_count
         paginated_records = fetch_records
         has_next_page = paginated_records.length > per_page
 
@@ -49,13 +57,22 @@ module SourceMonitor
           page: page,
           per_page: per_page,
           has_next_page: has_next_page,
-          has_previous_page: page > 1
+          has_previous_page: page > 1,
+          total_count: total
         )
       end
 
       private
 
       attr_reader :scope, :page, :per_page
+
+      def compute_total_count
+        if scope.is_a?(ActiveRecord::Relation)
+          scope.count
+        else
+          Array(scope).size
+        end
+      end
 
       def fetch_records
         offset = (page - 1) * per_page
