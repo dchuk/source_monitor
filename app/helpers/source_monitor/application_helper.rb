@@ -252,6 +252,11 @@ module SourceMonitor
     def pagination_page_numbers(current_page:, total_pages:, window: 2)
       return [ 1 ] if total_pages <= 1
 
+      # When total pages fit without gaps, show them all
+      if total_pages <= (2 * window) + 3
+        return (1..total_pages).to_a
+      end
+
       pages = [ 1, total_pages ]
       ((current_page - window)..(current_page + window)).each do |p|
         pages << p if p >= 1 && p <= total_pages
