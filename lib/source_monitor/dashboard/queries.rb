@@ -110,6 +110,9 @@ module SourceMonitor
         SourceMonitor::Metrics.gauge(:dashboard_stats_failed_sources, stats[:failed_sources])
         SourceMonitor::Metrics.gauge(:dashboard_stats_total_items, stats[:total_items])
         SourceMonitor::Metrics.gauge(:dashboard_stats_fetches_today, stats[:fetches_today])
+        stats[:health_distribution]&.each do |status, count|
+          SourceMonitor::Metrics.gauge(:"dashboard_stats_health_#{status}", count)
+        end
       end
 
       def queue_name_map
