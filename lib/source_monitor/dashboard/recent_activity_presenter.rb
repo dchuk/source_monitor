@@ -43,8 +43,10 @@ module SourceMonitor
       end
 
       def scrape_event(event)
+        name = event.source_name.presence
+        label = name ? "#{name} \u2014 Scrape ##{event.id}" : "Scrape ##{event.id}"
         {
-          label: "Scrape ##{event.id}",
+          label: label,
           description: (event.scraper_adapter.presence || "Scraper"),
           status: event.success? ? :success : :failure,
           type: :scrape,
