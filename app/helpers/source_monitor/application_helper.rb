@@ -249,6 +249,25 @@ module SourceMonitor
       end
     end
 
+    def pagination_page_numbers(current_page:, total_pages:, window: 2)
+      return [ 1 ] if total_pages <= 1
+
+      pages = [ 1, total_pages ]
+      ((current_page - window)..(current_page + window)).each do |p|
+        pages << p if p >= 1 && p <= total_pages
+      end
+      pages = pages.uniq.sort
+
+      result = []
+      last = 0
+      pages.each do |p|
+        result << :gap if p > last + 1
+        result << p
+        last = p
+      end
+      result
+    end
+
     private
 
     def external_link_icon
