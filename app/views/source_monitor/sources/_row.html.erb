@@ -25,6 +25,17 @@
 <% delete_path = delete_query.present? ? source_monitor.source_path(source, q: delete_query) : source_monitor.source_path(source) %>
 
 <tr id="<%= dom_id(source, :row) %>" class="hover:bg-slate-50">
+  <td class="w-10 px-3 py-4">
+    <% if scrape_candidates.include?(source.id) %>
+      <input type="checkbox"
+             name="bulk_scrape_enablement[source_ids][]"
+             value="<%= source.id %>"
+             data-select-all-target="item"
+             data-action="select-all#toggleItem"
+             class="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+             aria-label="Select <%= source.name %>">
+    <% end %>
+  </td>
   <td class="px-6 py-4">
     <div class="flex items-center gap-3">
       <%= source_favicon_tag(source, size: 24) %>

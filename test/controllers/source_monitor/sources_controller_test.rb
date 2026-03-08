@@ -500,5 +500,47 @@ module SourceMonitor
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 5
       refute_includes response.body, "Healthy Excluded"
     end
+
+    # --- Bulk scrape checkbox tests ---
+
+    test "index shows checkboxes for scrape candidate sources" do
+      candidate = create_source!(name: "Checkbox Candidate", scraping_enabled: false)
+      item = candidate.items.create!(guid: "cc-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short")
+      item.create_item_content!
+
+      non_candidate = create_source!(name: "Checkbox Non-Candidate", scraping_enabled: true)
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      # Candidate row should have a checkbox
+      assert_select "##{dom_id(candidate, :row)} input[type='checkbox'][name='bulk_scrape_enablement[source_ids][]']"
+
+      # Non-candidate row should NOT have a checkbox
+      assert_select "##{dom_id(non_candidate, :row)} input[type='checkbox'][name='bulk_scrape_enablement[source_ids][]']", count: 0
+    end
+
+    test "index renders bulk action bar markup" do
+      create_source!(name: "Bar Source")
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "[data-select-all-target='actionBar']"
+      assert_select "[data-select-all-target='count']"
+    end
+
+    test "index renders confirmation modal" do
+      create_source!(name: "Modal Source")
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "[data-controller='modal']"
+      assert_includes response.body, "Enable Scraping"
+      assert_includes response.body, "Confirm Enable"
+    end
   end
 end
