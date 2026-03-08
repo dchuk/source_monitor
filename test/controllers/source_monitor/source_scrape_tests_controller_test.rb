@@ -68,6 +68,23 @@ module SourceMonitor
       assert_includes response.body, "+100.0%"
     end
 
+    test "source show page displays Test Scrape button when scraping is disabled" do
+      get source_monitor.source_path(@source)
+
+      assert_response :success
+      assert_includes response.body, "Test Scrape"
+      assert_includes response.body, source_monitor.source_scrape_test_path(@source)
+    end
+
+    test "source show page does not display Test Scrape button when scraping is enabled" do
+      source = create_source!(scraping_enabled: true)
+
+      get source_monitor.source_path(source)
+
+      assert_response :success
+      refute_includes response.body, "Test Scrape"
+    end
+
     test "route helper source_scrape_test_path resolves correctly" do
       path = source_monitor.source_scrape_test_path(@source)
       assert_equal "/source_monitor/sources/#{@source.id}/scrape_test", path
