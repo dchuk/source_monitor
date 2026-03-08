@@ -61,6 +61,24 @@ module SourceMonitor
         active.where(arel_table[:next_fetch_at].eq(nil).or(arel_table[:next_fetch_at].lteq(reference_time)))
       end
 
+      def scrape_candidates(threshold: SourceMonitor.config.scraping.scrape_recommendation_threshold)
+        threshold_value = threshold.to_i
+        return none if threshold_value <= 0
+
+        active
+          .where(scraping_enabled: false)
+          .where(
+            "#{table_name}.id IN (
+              SELECT i.source_id
+              FROM #{Item.table_name} i
+              INNER JOIN #{ItemContent.table_name} ic ON ic.item_id = i.id
+              WHERE ic.feed_word_count IS NOT NULL
+              GROUP BY i.source_id
+              HAVING AVG(ic.feed_word_count) < ?
+            )", threshold_value
+          )
+      end
+
       def ransackable_attributes(_auth_object = nil)
         %w[name feed_url website_url created_at fetch_interval_minutes items_count last_fetched_at
            active health_status feed_format scraper_adapter

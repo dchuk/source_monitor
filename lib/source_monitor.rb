@@ -54,6 +54,7 @@ module SourceMonitor
   autoload :Assets, "source_monitor/assets"
 
   module Analytics
+    autoload :ScrapeRecommendations, "source_monitor/analytics/scrape_recommendations"
     autoload :SourceFetchIntervalDistribution, "source_monitor/analytics/source_fetch_interval_distribution"
     autoload :SourceActivityRates, "source_monitor/analytics/source_activity_rates"
     autoload :SourcesIndexMetrics, "source_monitor/analytics/sources_index_metrics"
