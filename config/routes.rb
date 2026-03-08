@@ -26,5 +26,6 @@ SourceMonitor::Engine.routes.draw do
     resource :health_check, only: :create, controller: "source_health_checks"
     resource :health_reset, only: :create, controller: "source_health_resets"
     resource :favicon_fetch, only: :create, controller: "source_favicon_fetches"
+    resource :scrape_test, only: :create, controller: "source_scrape_tests"
   end
 end
