@@ -15,7 +15,8 @@ module SourceMonitor
             failed_sources: integer_value(source_counts["failed_sources"]),
             total_items: total_items_count,
             fetches_today: fetches_today_count,
-            health_distribution: health_distribution
+            health_distribution: health_distribution,
+            scrape_candidates_count: scrape_candidates_count
           }
         end
 
@@ -66,6 +67,10 @@ module SourceMonitor
         def health_distribution
           raw_counts = SourceMonitor::Source.active.group(:health_status).count
           %w[healthy warning declining critical].each_with_object({}) { |s, h| h[s] = raw_counts.fetch(s, 0) }
+        end
+
+        def scrape_candidates_count
+          SourceMonitor::Analytics::ScrapeRecommendations.new.candidates_count
         end
 
         def integer_value(value)
