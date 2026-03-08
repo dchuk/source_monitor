@@ -330,5 +330,9 @@ module SourceMonitor
       assert_empty SourceMonitor::Source.scrape_candidates(threshold: 0)
       assert_empty SourceMonitor::Source.scrape_candidates(threshold: -1)
     end
+
+    test "scraping_enabled is in ransackable_attributes" do
+      assert_includes SourceMonitor::Source.ransackable_attributes, "scraping_enabled"
+    end
   end
 end

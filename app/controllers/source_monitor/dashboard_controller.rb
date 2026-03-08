@@ -21,6 +21,8 @@ module SourceMonitor
       fetch_schedule = queries.upcoming_fetch_schedule(pages: @schedule_pages)
       @fetch_schedule_groups = fetch_schedule.groups
       @fetch_schedule_reference_time = fetch_schedule.reference_time
+      @scrape_candidates_count = @stats[:scrape_candidates_count]
+      @scrape_recommendation_threshold = SourceMonitor.config.scraping.scrape_recommendation_threshold
       @mission_control_enabled = SourceMonitor.mission_control_enabled?
       @mission_control_dashboard_path = SourceMonitor.mission_control_dashboard_path
     end

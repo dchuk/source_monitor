@@ -81,7 +81,7 @@ module SourceMonitor
 
       def ransackable_attributes(_auth_object = nil)
         %w[name feed_url website_url created_at fetch_interval_minutes items_count last_fetched_at
-           active health_status feed_format scraper_adapter
+           active health_status feed_format scraper_adapter scraping_enabled
            new_items_per_day avg_feed_words avg_scraped_words]
       end
 

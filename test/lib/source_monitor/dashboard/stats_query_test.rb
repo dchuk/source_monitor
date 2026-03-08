@@ -56,6 +56,32 @@ module SourceMonitor
         assert_equal 0, stats[:health_distribution]["declining"]
         assert_equal 0, stats[:health_distribution]["critical"]
       end
+
+      test "scrape_candidates_count is returned in stats hash" do
+        stats = SourceMonitor::Dashboard::Queries::StatsQuery.new(reference_time: Time.current).call
+
+        assert_includes stats.keys, :scrape_candidates_count
+        assert_kind_of Integer, stats[:scrape_candidates_count]
+      end
+
+      test "scrape_candidates_count reflects actual candidate count" do
+        SourceMonitor.configure do |config|
+          config.scraping.scrape_recommendation_threshold = 200
+        end
+
+        source = create_source!(name: "Low WC Stats #{SecureRandom.hex(4)}", scraping_enabled: false)
+        item = SourceMonitor::Item.create!(
+          source: source,
+          guid: SecureRandom.uuid,
+          url: "https://example.com/stats-#{SecureRandom.hex(4)}",
+          content: "short content"
+        )
+        SourceMonitor::ItemContent.create!(item: item)
+
+        stats = SourceMonitor::Dashboard::Queries::StatsQuery.new(reference_time: Time.current).call
+
+        assert_operator stats[:scrape_candidates_count], :>=, 1
+      end
     end
   end
 end
