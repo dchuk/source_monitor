@@ -59,6 +59,8 @@ module SourceMonitor
         @avg_feed_word_counts = {}
         @avg_scraped_word_counts = {}
       end
+
+      @scrape_candidate_ids = compute_scrape_candidate_ids
     end
 
     def show
@@ -175,6 +177,18 @@ module SourceMonitor
           redirect_to source_monitor.sources_path(q: search_params), alert: error_message
         end
       end
+    end
+
+    def compute_scrape_candidate_ids
+      threshold = SourceMonitor.config.scraping.scrape_recommendation_threshold
+      return Set.new if threshold.nil? || threshold <= 0
+
+      candidate_ids = @sources.select do |source|
+        avg = @avg_feed_word_counts[source.id]
+        avg.present? && avg < threshold && !source.scraping_enabled?
+      end.map(&:id)
+
+      Set.new(candidate_ids)
     end
 
     def enqueue_favicon_fetch(source)

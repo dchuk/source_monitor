@@ -1,6 +1,7 @@
 <% rate_map = local_assigns[:item_activity_rates] || {} %>
 <% avg_feed_words_map = local_assigns[:avg_feed_word_counts] || {} %>
 <% avg_scraped_words_map = local_assigns[:avg_scraped_word_counts] || {} %>
+<% scrape_candidates = local_assigns[:scrape_candidate_ids] || Set.new %>
 <% activity_rate = rate_map.fetch(source.id, 0.0) %>
 <% health_status_override = local_assigns[:health_status_override] %>
 <% health_status = if !source.active?
@@ -39,6 +40,13 @@
                   title="<%= blocked_detail ? "#{blocked_detail[1].capitalize} Blocked" : "Blocked" %>"
                   data-testid="source-blocked-badge">
               Blocked
+            </span>
+          <% end %>
+          <% if scrape_candidates.include?(source.id) %>
+            <span class="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700"
+                  title="Low feed word count — consider enabling scraping"
+                  data-testid="scrape-recommendation-badge">
+              Scrape Recommended
             </span>
           <% end %>
         </div>
