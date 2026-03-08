@@ -11,7 +11,7 @@ module SourceMonitor
       source2 = create_source!(name: "Bulk Enable 2", scraping_enabled: false)
 
       post source_monitor.bulk_scrape_enablements_path,
-        params: { bulk_scrape_enablement: { source_ids: [source1.id, source2.id] } },
+        params: { bulk_scrape_enablement: { source_ids: [ source1.id, source2.id ] } },
         as: :turbo_stream
 
       assert_response :success
@@ -41,7 +41,7 @@ module SourceMonitor
       not_enabled = create_source!(name: "Not Enabled", scraping_enabled: false)
 
       post source_monitor.bulk_scrape_enablements_path,
-        params: { bulk_scrape_enablement: { source_ids: [already_enabled.id, not_enabled.id] } },
+        params: { bulk_scrape_enablement: { source_ids: [ already_enabled.id, not_enabled.id ] } },
         as: :turbo_stream
 
       assert_response :success
@@ -59,7 +59,7 @@ module SourceMonitor
       source.update_columns(scraper_adapter: "custom")
 
       post source_monitor.bulk_scrape_enablements_path,
-        params: { bulk_scrape_enablement: { source_ids: [source.id] } },
+        params: { bulk_scrape_enablement: { source_ids: [ source.id ] } },
         as: :turbo_stream
 
       assert_response :success
@@ -71,7 +71,7 @@ module SourceMonitor
       source = create_source!(name: "Redirect Check", scraping_enabled: false)
 
       post source_monitor.bulk_scrape_enablements_path,
-        params: { bulk_scrape_enablement: { source_ids: [source.id] } },
+        params: { bulk_scrape_enablement: { source_ids: [ source.id ] } },
         as: :turbo_stream
 
       assert_response :success
@@ -83,7 +83,7 @@ module SourceMonitor
       source = create_source!(name: "HTML Bulk", scraping_enabled: false)
 
       post source_monitor.bulk_scrape_enablements_path,
-        params: { bulk_scrape_enablement: { source_ids: [source.id] } }
+        params: { bulk_scrape_enablement: { source_ids: [ source.id ] } }
 
       assert_redirected_to source_monitor.sources_path
       assert_equal "Scraping enabled for 1 source.", flash[:notice]
