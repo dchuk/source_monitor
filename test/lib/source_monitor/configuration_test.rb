@@ -964,5 +964,55 @@ module SourceMonitor
 
       assert_equal false, SourceMonitor.config.images.download_to_active_storage
     end
+
+    # =========================================================================
+    # Scrape recommendation threshold (Plan 04-01)
+    # =========================================================================
+
+    test "scrape_recommendation_threshold defaults to 200" do
+      assert_equal 200, SourceMonitor.config.scraping.scrape_recommendation_threshold
+    end
+
+    test "scrape_recommendation_threshold accepts custom value" do
+      SourceMonitor.configure do |config|
+        config.scraping.scrape_recommendation_threshold = 150
+      end
+
+      assert_equal 150, SourceMonitor.config.scraping.scrape_recommendation_threshold
+    end
+
+    test "scrape_recommendation_threshold reset restores default" do
+      SourceMonitor.configure do |config|
+        config.scraping.scrape_recommendation_threshold = 300
+      end
+
+      SourceMonitor.config.scraping.reset!
+
+      assert_equal 200, SourceMonitor.config.scraping.scrape_recommendation_threshold
+    end
+
+    test "scrape_recommendation_threshold normalizes nil to nil" do
+      SourceMonitor.configure do |config|
+        config.scraping.scrape_recommendation_threshold = nil
+      end
+
+      assert_nil SourceMonitor.config.scraping.scrape_recommendation_threshold
+    end
+
+    test "scrape_recommendation_threshold normalizes empty string to nil" do
+      SourceMonitor.configure do |config|
+        config.scraping.scrape_recommendation_threshold = ""
+      end
+
+      assert_nil SourceMonitor.config.scraping.scrape_recommendation_threshold
+    end
+
+    test "scrape_recommendation_threshold normalizes string to integer" do
+      SourceMonitor.configure do |config|
+        config.scraping.scrape_recommendation_threshold = "250"
+      end
+
+      assert_equal 250, SourceMonitor.config.scraping.scrape_recommendation_threshold
+    end
   end
 end
