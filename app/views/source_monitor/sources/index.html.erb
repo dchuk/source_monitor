@@ -50,7 +50,7 @@
 
   <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
     <%= turbo_frame_tag "source_monitor_sources_table" do %>
-      <% dropdown_filter_keys = %w[active_eq health_status_eq feed_format_eq scraper_adapter_eq] %>
+      <% dropdown_filter_keys = %w[active_eq health_status_eq feed_format_eq scraper_adapter_eq avg_feed_words_lt] %>
       <% active_dropdown_filters = dropdown_filter_keys.select { |k| @search_params[k].present? } %>
       <% has_any_filter = @search_term.present? || @fetch_interval_filter.present? || active_dropdown_filters.any? %>
       <% if has_any_filter %>
@@ -87,7 +87,8 @@
                 "active_eq" => @search_params["active_eq"] == "true" ? "Status: Active" : "Status: Paused",
                 "health_status_eq" => "Health: #{@search_params['health_status_eq']&.titleize}",
                 "feed_format_eq" => "Format: #{@search_params['feed_format_eq']&.upcase}",
-                "scraper_adapter_eq" => "Adapter: #{@search_params['scraper_adapter_eq']&.titleize}"
+                "scraper_adapter_eq" => "Adapter: #{@search_params['scraper_adapter_eq']&.titleize}",
+                "avg_feed_words_lt" => "Avg Feed Words: < #{@search_params['avg_feed_words_lt']}"
               } %>
               <% active_dropdown_filters.each do |filter_key| %>
                 <% clear_query = @search_params.dup %>
@@ -255,7 +256,8 @@
                   item_activity_rates: @item_activity_rates,
                   avg_feed_word_counts: @avg_feed_word_counts,
                   avg_scraped_word_counts: @avg_scraped_word_counts,
-                  search_params: @search_params
+                  search_params: @search_params,
+                  scrape_candidate_ids: @scrape_candidate_ids
                 } %>
 
           <%= render("source_monitor/sources/empty_state_row") if @sources.blank? %>

@@ -404,6 +404,84 @@ module SourceMonitor
       assert_select "[data-testid='source-blocked-badge']", text: "Blocked"
     end
 
+    # --- Scrape recommendation badge tests ---
+
+    test "index shows scrape recommendation badge for source below threshold with scraping disabled" do
+      source = create_source!(name: "Low Words Source", scraping_enabled: false)
+      item = source.items.create!(guid: "lwi-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short content here")
+      item.create_item_content!
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "##{dom_id(source, :row)} [data-testid='scrape-recommendation-badge']", text: "Scrape Recommended"
+    end
+
+    test "index does not show scrape recommendation badge for source above threshold" do
+      source = create_source!(name: "High Words Source", scraping_enabled: false)
+      long_content = ([ "word" ] * 500).join(" ")
+      item = source.items.create!(guid: "hwi-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: long_content)
+      item.create_item_content!
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "##{dom_id(source, :row)} [data-testid='scrape-recommendation-badge']", count: 0
+    end
+
+    test "index does not show scrape recommendation badge for source with scraping enabled" do
+      source = create_source!(name: "Scraping Enabled", scraping_enabled: true, scraper_adapter: "readability")
+      item = source.items.create!(guid: "sei-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short content here")
+      item.create_item_content!
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "##{dom_id(source, :row)} [data-testid='scrape-recommendation-badge']", count: 0
+    end
+
+    test "index renders scrape recommendation badge for candidate sources" do
+      source = create_source!(name: "Badge Source", scraping_enabled: false)
+      item = source.items.create!(guid: "bs-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short content")
+      item.create_item_content!
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "[data-testid='scrape-recommendation-badge']", text: "Scrape Recommended"
+    end
+
+    test "index does not render scrape recommendation badge for non-candidate sources" do
+      long_content = ([ "word" ] * 500).join(" ")
+      source = create_source!(name: "No Badge Source", scraping_enabled: false)
+      item = source.items.create!(guid: "nbs-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: long_content)
+      item.create_item_content!
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "[data-testid='scrape-recommendation-badge']", count: 0
+    end
+
+    test "index renders filter pill for avg_feed_words_lt filter" do
+      create_source!(name: "Filter Pill Source")
+
+      get source_monitor.sources_path, params: { q: { avg_feed_words_lt: "200" } }
+      assert_response :success
+
+      assert_includes response.body, "Avg Feed Words: &lt; 200"
+    end
+
     test "pagination preserves filter params across pages" do
       30.times { |i| create_source!(name: "Filtered #{i}", health_status: "warning") }
       create_source!(name: "Healthy Excluded", health_status: "healthy")
