@@ -24,6 +24,12 @@
             mission_control_enabled: @mission_control_enabled,
             mission_control_path: @mission_control_dashboard_path %>
 
+      <% if @scrape_candidates_count.to_i > 0 %>
+        <%= render "scrape_recommendations",
+              count: @scrape_candidates_count,
+              threshold: @scrape_recommendation_threshold %>
+      <% end %>
+
       <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div class="border-b border-slate-200 px-5 py-4">
           <h2 class="text-lg font-medium">Quick Actions</h2>
