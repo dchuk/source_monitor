@@ -19,6 +19,7 @@ SourceMonitor::Engine.routes.draw do
   resources :items, only: %i[index show] do
     post :scrape, on: :member
   end
+  resources :bulk_scrape_enablements, only: :create
   resources :sources do
     resource :fetch, only: :create, controller: "source_fetches"
     resource :retry, only: :create, controller: "source_retries"
