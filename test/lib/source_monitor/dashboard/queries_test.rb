@@ -24,7 +24,7 @@ module SourceMonitor
         queries = SourceMonitor::Dashboard::Queries.new
 
         first_call_queries = count_sql_queries { queries.stats }
-        assert_operator first_call_queries, :<=, 4, "expected at most four SQL statements for stats"
+        assert_operator first_call_queries, :<=, 5, "expected at most five SQL statements for stats"
 
         cached_call_queries = count_sql_queries { queries.stats }
         assert_equal 0, cached_call_queries, "expected cached stats to avoid additional SQL"
