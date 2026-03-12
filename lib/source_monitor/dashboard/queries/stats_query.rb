@@ -66,7 +66,7 @@ module SourceMonitor
 
         def health_distribution
           raw_counts = SourceMonitor::Source.active.group(:health_status).count
-          %w[healthy warning declining critical].each_with_object({}) { |s, h| h[s] = raw_counts.fetch(s, 0) }
+          %w[working declining improving failing].each_with_object({}) { |s, h| h[s] = raw_counts.fetch(s, 0) }
         end
 
         def scrape_candidates_count
