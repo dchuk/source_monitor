@@ -12,6 +12,13 @@
     </div>
   </div>
 
+  <%= render "source_monitor/sources/import_history_panel", import_histories: @recent_import_histories %>
+
+  <%= render "source_monitor/sources/fetch_interval_heatmap",
+        fetch_interval_distribution: @fetch_interval_distribution,
+        selected_bucket: @selected_fetch_interval_bucket,
+        search_params: @search_params %>
+
   <%= search_form_for @q, url: source_monitor.sources_path, method: :get, html: { class: "flex flex-wrap items-end gap-3", data: { turbo_frame: "source_monitor_sources_table" } } do |form| %>
     <div class="flex-1 min-w-[12rem]">
       <%= form.label @search_field, "Search sources", class: "sr-only" %>
@@ -38,19 +45,16 @@
         <%= form.label :scraper_adapter_eq, "Adapter", class: "block text-xs font-medium text-slate-500 mb-1" %>
         <%= form.select :scraper_adapter_eq, options_for_select([["All Adapters", ""]] + adapter_options.map { |a| [a.titleize, a] }, @search_params["scraper_adapter_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
       </div>
+      <div>
+        <%= form.label :scraping_enabled_eq, "Scrape", class: "block text-xs font-medium text-slate-500 mb-1" %>
+        <%= form.select :scraping_enabled_eq, options_for_select([["All Sources", ""], ["Scraping Enabled", "true"], ["Scraping Disabled", "false"], ["Recommendations", "recommend"]], @search_params["scraping_enabled_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
+      </div>
     </div>
   <% end %>
 
-  <%= render "source_monitor/sources/import_history_panel", import_histories: @recent_import_histories %>
-
-  <%= render "source_monitor/sources/fetch_interval_heatmap",
-        fetch_interval_distribution: @fetch_interval_distribution,
-        selected_bucket: @selected_fetch_interval_bucket,
-        search_params: @search_params %>
-
   <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
     <%= turbo_frame_tag "source_monitor_sources_table" do %>
-      <% dropdown_filter_keys = %w[active_eq health_status_eq feed_format_eq scraper_adapter_eq avg_feed_words_lt] %>
+      <% dropdown_filter_keys = %w[active_eq health_status_eq feed_format_eq scraper_adapter_eq scraping_enabled_eq avg_feed_words_lt] %>
       <% active_dropdown_filters = dropdown_filter_keys.select { |k| @search_params[k].present? } %>
       <% has_any_filter = @search_term.present? || @fetch_interval_filter.present? || active_dropdown_filters.any? %>
       <% if has_any_filter %>
@@ -88,6 +92,7 @@
                 "health_status_eq" => "Health: #{@search_params['health_status_eq']&.titleize}",
                 "feed_format_eq" => "Format: #{@search_params['feed_format_eq']&.upcase}",
                 "scraper_adapter_eq" => "Adapter: #{@search_params['scraper_adapter_eq']&.titleize}",
+                "scraping_enabled_eq" => @search_params["scraping_enabled_eq"] == "true" ? "Scraping: Enabled" : "Scraping: Disabled",
                 "avg_feed_words_lt" => "Avg Feed Words: < #{@search_params['avg_feed_words_lt']}"
               } %>
               <% active_dropdown_filters.each do |filter_key| %>
@@ -140,7 +145,8 @@
                   <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :name) %></span>
                 </span>
               </th>
-              <th scope="col" class="px-6 py-3">Status</th>
+              <th scope="col" class="px-6 py-3">Health</th>
+              <th scope="col" class="px-6 py-3">Fetch Status</th>
               <th scope="col"
                   class="px-6 py-3"
                   data-sort-column="fetch_interval_minutes"

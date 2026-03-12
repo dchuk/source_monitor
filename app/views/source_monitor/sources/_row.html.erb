@@ -66,7 +66,7 @@
     </div>
   </td>
   <td class="px-6 py-4">
-    <div class="flex flex-col gap-2 text-xs">
+    <div class="flex flex-col gap-1 text-xs">
       <% if source.active? %>
         <%= render "source_monitor/sources/health_status_badge",
               source: source,
@@ -77,6 +77,10 @@
       <% if source.rolling_success_rate.present? %>
         <span class="text-[11px] text-slate-500">Success Rate: <%= number_to_percentage(source.rolling_success_rate * 100, precision: 0) %></span>
       <% end %>
+    </div>
+  </td>
+  <td class="px-6 py-4">
+    <div class="flex flex-col gap-1 text-xs">
       <span class="inline-flex items-center rounded-full px-3 py-1 font-semibold <%= fetch_status[:classes] %>">
         <%= loading_spinner_svg(css_class: "mr-1 h-3.5 w-3.5 animate-spin text-blue-500") if fetch_status[:show_spinner] %>
         <%= fetch_status[:label] %>
