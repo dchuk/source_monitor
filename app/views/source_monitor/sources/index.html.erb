@@ -149,25 +149,6 @@
               <th scope="col" class="px-6 py-3">Fetch Status</th>
               <th scope="col"
                   class="px-6 py-3"
-                  data-sort-column="fetch_interval_minutes"
-                  aria-sort="<%= table_sort_aria(@q, :fetch_interval_minutes) %>">
-                <span class="inline-flex items-center gap-1">
-                  <%= table_sort_link(
-                        @q,
-                        :fetch_interval_minutes,
-                        "Fetch Interval",
-                        frame: "source_monitor_sources_table",
-                        default_order: :asc,
-                        secondary: ["created_at desc"],
-                        html_options: {
-                          class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
-                        }
-                      ) %>
-                  <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :fetch_interval_minutes) %></span>
-                </span>
-              </th>
-              <th scope="col"
-                  class="px-6 py-3"
                   data-sort-column="items_count"
                   aria-sort="<%= table_sort_aria(@q, :items_count) %>">
                 <span class="inline-flex items-center gap-1">
