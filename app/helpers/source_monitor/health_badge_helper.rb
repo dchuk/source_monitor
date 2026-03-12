@@ -5,15 +5,13 @@ module SourceMonitor
     def source_health_badge(source, override: nil)
       return override if override.present?
 
-      status = source&.health_status.presence || "healthy"
+      status = source&.health_status.presence || "working"
 
       mapping = {
-        "healthy" => { label: "Healthy", classes: "bg-green-100 text-green-700", show_spinner: false },
-        "warning" => { label: "Needs Attention", classes: "bg-amber-100 text-amber-700", show_spinner: false },
-        "critical" => { label: "Failing", classes: "bg-rose-100 text-rose-700", show_spinner: false },
-        "declining" => { label: "Declining", classes: "bg-orange-100 text-orange-700", show_spinner: false },
+        "working" => { label: "Working", classes: "bg-green-100 text-green-700", show_spinner: false },
+        "declining" => { label: "Declining", classes: "bg-yellow-100 text-yellow-700", show_spinner: false },
         "improving" => { label: "Improving", classes: "bg-sky-100 text-sky-700", show_spinner: false },
-        "auto_paused" => { label: "Auto-Paused", classes: "bg-amber-100 text-amber-700", show_spinner: false },
+        "failing" => { label: "Failing", classes: "bg-rose-100 text-rose-700", show_spinner: false },
         "unknown" => { label: "Unknown", classes: "bg-slate-100 text-slate-600", show_spinner: false }
       }
 
@@ -21,11 +19,11 @@ module SourceMonitor
     end
 
     def source_health_actions(source)
-      status = source&.health_status.presence || "healthy"
+      status = source&.health_status.presence || "working"
       helpers = SourceMonitor::Engine.routes.url_helpers
 
       case status
-      when "critical", "declining"
+      when "failing", "declining"
         [
           {
             key: :full_fetch,
@@ -44,17 +42,6 @@ module SourceMonitor
             data: { testid: "source-health-action-health_check" }
           }
         ]
-      when "auto_paused"
-        [
-          {
-            key: :reset,
-            label: "Reset to Active Status",
-            description: "Clears the pause window, failure counters, and schedules the next fetch using the configured interval.",
-            path: helpers.source_health_reset_path(source),
-            method: :post,
-            data: { testid: "source-health-action-reset" }
-          }
-        ]
       else
         []
       end
@@ -63,7 +50,7 @@ module SourceMonitor
     def interactive_health_status?(source, override: nil)
       return false if override.present?
 
-      %w[critical declining auto_paused].include?(source&.health_status.presence)
+      %w[failing declining].include?(source&.health_status.presence)
     end
   end
 end
