@@ -34,7 +34,7 @@ module SourceMonitor
     attribute :custom_headers, default: -> { {} }
     attribute :metadata, default: -> { {} }
     attribute :fetch_status, :string, default: "idle"
-    attribute :health_status, :string, default: "healthy"
+    attribute :health_status, :string, default: "working"
 
     sanitizes_string_attributes :name, :feed_url, :website_url, :scraper_adapter
     sanitizes_hash_attributes :scrape_settings, :custom_headers, :metadata
