@@ -114,19 +114,17 @@ module SourceMonitor
         end
       end
 
-      def determine_status(rate, auto_paused_until, logs)
-        if auto_paused_active?(auto_paused_until)
-          "auto_paused"
+      def determine_status(rate, _auto_paused_until, logs)
+        if rate >= healthy_threshold
+          "working"
+        elsif rate < auto_pause_threshold
+          "failing"
         elsif consecutive_failures(logs) >= 3
           "declining"
         elsif improving_streak?(logs)
           "improving"
-        elsif rate >= healthy_threshold
-          "healthy"
-        elsif rate >= warning_threshold
-          "warning"
         else
-          "critical"
+          "declining"
         end
       end
 
@@ -143,7 +141,7 @@ module SourceMonitor
       end
 
       def apply_status(attrs, status)
-        previous = source.health_status.presence || "healthy"
+        previous = source.health_status.presence || "working"
         return if previous == status
 
         attrs[:health_status] = status
@@ -161,11 +159,7 @@ module SourceMonitor
       end
 
       def healthy_threshold
-        [ config.healthy_threshold.to_f, warning_threshold ].max
-      end
-
-      def warning_threshold
-        config.warning_threshold.to_f
+        config.healthy_threshold.to_f
       end
 
       def auto_paused_active?(value)
