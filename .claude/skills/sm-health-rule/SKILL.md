@@ -96,7 +96,6 @@ end
 |---------|---------|---------|
 | `window_size` | 20 | Number of recent fetch logs to evaluate |
 | `healthy_threshold` | 0.8 | Success rate for "healthy" status |
-| `warning_threshold` | 0.5 | Success rate for "warning" status |
 | `auto_pause_threshold` | 0.2 | Below this, source is auto-paused |
 | `auto_resume_threshold` | 0.6 | Above this, auto-pause is lifted |
 | `auto_pause_cooldown_minutes` | 60 | Minimum pause duration |
