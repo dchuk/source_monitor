@@ -542,5 +542,59 @@ module SourceMonitor
       assert_includes response.body, "Enable Scraping"
       assert_includes response.body, "Confirm Enable"
     end
+
+    # --- Update / Enable scraping tests ---
+
+    test "update enabling scraping enqueues unscraped items and shows flash" do
+      source = create_source!(name: "Scrape Toggle", scraping_enabled: false)
+      # Create unscraped items
+      3.times do |i|
+        source.items.create!(
+          guid: "st-#{i}",
+          title: "Item #{i}",
+          url: "https://example.com/st-#{i}",
+          published_at: Time.current
+        )
+      end
+
+      with_queue_adapter(:test) do
+        patch source_monitor.source_path(source), params: {
+          source: { scraping_enabled: "true" }
+        }
+      end
+
+      assert_redirected_to source_monitor.source_path(source)
+      source.reload
+      assert source.scraping_enabled?, "scraping should be enabled after update"
+      assert_match(/Auto-scraping enabled/, flash[:notice])
+      assert_match(/queued for scraping/, flash[:notice])
+    end
+
+    test "update without toggling scraping does not mention scraping in flash" do
+      source = create_source!(name: "No Toggle", scraping_enabled: true)
+
+      patch source_monitor.source_path(source), params: {
+        source: { name: "Renamed Source" }
+      }
+
+      assert_redirected_to source_monitor.source_path(source)
+      assert_equal "Source updated successfully", flash[:notice]
+    end
+
+    test "update enabling scraping still succeeds when enqueue raises" do
+      source = create_source!(name: "Enqueue Error", scraping_enabled: false)
+
+      SourceMonitor::Scraping::BulkSourceScraper.stub(:new, ->(**) { raise StandardError, "queue down" }) do
+        patch source_monitor.source_path(source), params: {
+          source: { scraping_enabled: "true" }
+        }
+      end
+
+      assert_redirected_to source_monitor.source_path(source)
+      source.reload
+      assert source.scraping_enabled?, "scraping should still be enabled"
+      assert_match(/Auto-scraping enabled/, flash[:notice])
+      assert_match(/0 existing items queued/, flash[:notice])
+    end
   end
 end

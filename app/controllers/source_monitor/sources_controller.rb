@@ -20,7 +20,8 @@ module SourceMonitor
 
     def index
       @search_params = sanitized_search_params
-      @q = build_search_query
+      expand_scrape_recommendation_filter
+      @q = build_search_query(params: @search_params)
 
       @paginator = SourceMonitor::Pagination::Paginator.new(
         scope: @q.result,
@@ -89,8 +90,17 @@ module SourceMonitor
     end
 
     def update
+      scraping_was_disabled = !@source.scraping_enabled?
+
       if @source.update(source_params)
-        redirect_to source_monitor.source_path(@source), notice: "Source updated successfully"
+        notice = "Source updated successfully"
+
+        if scraping_was_disabled && @source.scraping_enabled?
+          enqueued = enqueue_unscraped_items(@source)
+          notice = "Auto-scraping enabled. #{enqueued} existing #{'item'.pluralize(enqueued)} queued for scraping."
+        end
+
+        redirect_to source_monitor.source_path(@source), notice: notice
       else
         render :edit, status: :unprocessable_entity
       end
@@ -179,6 +189,16 @@ module SourceMonitor
       end
     end
 
+    def expand_scrape_recommendation_filter
+      return unless @search_params["scraping_enabled_eq"] == "recommend"
+
+      threshold = SourceMonitor.config.scraping.scrape_recommendation_threshold
+      @search_params.delete("scraping_enabled_eq")
+      @search_params["scraping_enabled_eq"] = "false"
+      @search_params["active_eq"] = "true"
+      @search_params["avg_feed_words_lt"] = threshold.to_s
+    end
+
     def compute_scrape_candidate_ids
       threshold = SourceMonitor.config.scraping.scrape_recommendation_threshold
       return Set.new if threshold.nil? || threshold <= 0
@@ -189,6 +209,17 @@ module SourceMonitor
       end.map(&:id)
 
       Set.new(candidate_ids)
+    end
+
+    def enqueue_unscraped_items(source)
+      result = SourceMonitor::Scraping::BulkSourceScraper.new(
+        source: source,
+        selection: :unscraped
+      ).call
+      result.enqueued_count
+    rescue StandardError => error
+      Rails.logger.warn("[SourceMonitor] Failed to enqueue unscraped items: #{error.message}") if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+      0
     end
 
     def enqueue_favicon_fetch(source)
