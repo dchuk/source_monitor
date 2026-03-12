@@ -136,7 +136,7 @@ module SourceMonitor
       badge = source_health_badge(source)
 
       assert_equal "Declining", badge[:label]
-      assert_match(/orange/, badge[:classes])
+      assert_match(/yellow/, badge[:classes])
     end
 
     test "source_health_badge highlights improving status" do
