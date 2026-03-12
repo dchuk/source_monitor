@@ -13,6 +13,7 @@ module SourceMonitor
       sources = Source.where(id: source_ids, scraping_enabled: false)
       updated_count = sources.update_all(
         scraping_enabled: true,
+        auto_scrape: true,
         scraper_adapter: default_adapter,
         updated_at: Time.current
       )
