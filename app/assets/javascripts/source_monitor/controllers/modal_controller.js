@@ -3,9 +3,13 @@ import { Controller } from "@hotwired/stimulus";
 export default class extends Controller {
   static targets = ["panel"];
   static classes = ["open"];
+  static values = { autoOpen: Boolean, removeOnClose: Boolean };
 
   connect() {
     this.handleEscape = this.handleEscape.bind(this);
+    if (this.autoOpenValue) {
+      this.open();
+    }
   }
 
   disconnect() {
@@ -35,6 +39,10 @@ export default class extends Controller {
     }
 
     this.teardown();
+
+    if (this.removeOnCloseValue) {
+      this.element.remove();
+    }
   }
 
   backdrop(event) {

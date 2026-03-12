@@ -4,11 +4,57 @@
     <%= link_to "Back to Source", source_monitor.source_path(@source), class: "text-sm font-medium text-blue-600 hover:text-blue-500" %>
   </div>
 
-  <div id="scrape_test_result_<%= @source.id %>">
-    <% if @test_result %>
-      <%= render "source_monitor/source_scrape_tests/result", source: @source, test_result: @test_result %>
-    <% else %>
-      <p class="text-sm text-slate-500">No test result available.</p>
-    <% end %>
-  </div>
+  <% if @test_result %>
+    <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div class="border-b border-slate-200 px-6 py-4">
+        <h2 class="text-lg font-semibold text-slate-900">Scrape Test Result</h2>
+        <p class="mt-1 text-xs text-slate-500">
+          Tested item: "<%= @test_result[:item].title.to_s.truncate(60) %>"
+        </p>
+      </div>
+      <div class="px-6 py-5">
+        <div class="grid grid-cols-2 gap-6">
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Feed Word Count</dt>
+            <dd class="mt-1 text-2xl font-semibold text-slate-900"><%= @test_result[:feed_word_count] || "N/A" %></dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Scraped Word Count</dt>
+            <dd class="mt-1 text-2xl font-semibold text-slate-900"><%= @test_result[:scraped_word_count] || "N/A" %></dd>
+          </div>
+        </div>
+
+        <% if @test_result[:improvement] && @test_result[:improvement] != 0 %>
+          <div class="mt-4">
+            <% color = @test_result[:improvement] > 0 ? "text-green-600" : "text-amber-600" %>
+            <span class="text-sm font-medium <%= color %>">
+              <%= @test_result[:improvement] > 0 ? "+" : "" %><%= @test_result[:improvement] %>% word count change
+            </span>
+          </div>
+        <% end %>
+
+        <% if @test_result[:scrape_result]&.success? %>
+          <div class="mt-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+            Scrape successful. Enabling scraping for this source would capture more content.
+          </div>
+        <% else %>
+          <div class="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
+            Scrape had issues: <%= @test_result[:scrape_result]&.message || "Unknown error" %>
+          </div>
+        <% end %>
+      </div>
+
+      <% unless @source.scraping_enabled? %>
+        <div class="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+          <%= form_with url: source_monitor.source_path(@source), method: :patch do |f| %>
+            <%= f.hidden_field :scraping_enabled, value: "true", name: "source[scraping_enabled]" %>
+            <%= f.submit "Enable Auto-Scraping",
+                  class: "inline-flex items-center rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-violet-500 cursor-pointer" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="text-sm text-slate-500">No test result available.</p>
+  <% end %>
 </div>

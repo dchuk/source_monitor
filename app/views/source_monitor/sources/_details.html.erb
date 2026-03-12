@@ -109,14 +109,12 @@
               } %>
       <% end %>
       <% unless source.scraping_enabled? %>
-        <div id="scrape_test_result_<%= source.id %>">
-          <%= button_to "Test Scrape",
-                source_monitor.source_scrape_test_path(source),
-                method: :post,
-                class: "inline-flex items-center rounded-md border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-100",
-                data: { turbo_stream: true },
-                title: "Scrape a recent item to compare feed vs scraped word count" %>
-        </div>
+        <%= button_to "Test Scrape",
+              source_monitor.source_scrape_test_path(source),
+              method: :post,
+              class: "inline-flex items-center rounded-md border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-100",
+              data: { turbo_stream: true },
+              title: "Scrape a recent item to compare feed vs scraped word count" %>
       <% end %>
       <%= link_to "Edit", source_monitor.edit_source_path(source), class: "inline-flex items-center rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-white shadow hover:bg-slate-700" %>
       <%= form_with url: source_monitor.source_path(source), method: :delete, data: { turbo_confirm: "Delete this source and remove all associated data?", turbo_frame: "_top" }, class: "inline" do %>

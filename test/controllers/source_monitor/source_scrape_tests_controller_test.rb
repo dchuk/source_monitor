@@ -27,7 +27,7 @@ module SourceMonitor
       assert_equal "No items available for test scrape.", flash[:alert]
     end
 
-    test "POST create turbo_stream format with items returns turbo stream" do
+    test "POST create turbo_stream format with items returns turbo stream modal" do
       item = create_item_with_content!(@source, feed_word_count: 100)
 
       mock_scrape_result(item) do
@@ -36,7 +36,10 @@ module SourceMonitor
 
       assert_response :success
       assert_equal "text/vnd.turbo-stream.html", response.media_type
-      assert_includes response.body, "scrape_test_result_#{@source.id}"
+      assert_includes response.body, "scrape_test_modal_#{@source.id}"
+      assert_includes response.body, "Scrape Test Result"
+      assert_includes response.body, "Cancel"
+      assert_includes response.body, "Enable Auto-Scraping"
     end
 
     test "POST create turbo_stream format with no items returns warning toast" do

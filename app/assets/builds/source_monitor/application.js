@@ -1,4 +1,4 @@
-// ../../node_modules/@hotwired/stimulus/dist/stimulus.js
+// node_modules/@hotwired/stimulus/dist/stimulus.js
 var EventListener = class {
   constructor(eventTarget, eventName, eventOptions) {
     this.eventTarget = eventTarget;
@@ -2743,8 +2743,12 @@ var dropdown_controller_default = class extends Controller {
 var modal_controller_default = class extends Controller {
   static targets = ["panel"];
   static classes = ["open"];
+  static values = { autoOpen: Boolean, removeOnClose: Boolean };
   connect() {
     this.handleEscape = this.handleEscape.bind(this);
+    if (this.autoOpenValue) {
+      this.open();
+    }
   }
   disconnect() {
     this.teardown();
@@ -2767,6 +2771,9 @@ var modal_controller_default = class extends Controller {
       this.panelTarget.classList.remove(this.openClass);
     }
     this.teardown();
+    if (this.removeOnCloseValue) {
+      this.element.remove();
+    }
   }
   backdrop(event) {
     if (event.target === event.currentTarget) {

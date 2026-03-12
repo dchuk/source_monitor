@@ -25,11 +25,12 @@ module SourceMonitor
 
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            "scrape_test_result_#{@source.id}",
-            partial: "source_monitor/source_scrape_tests/result",
-            locals: { source: @source, test_result: @test_result }
-          )
+          render turbo_stream: [
+            turbo_stream.remove("scrape_test_modal_#{@source.id}"),
+            turbo_stream.append_all("body",
+              partial: "source_monitor/source_scrape_tests/result",
+              locals: { source: @source, test_result: @test_result })
+          ]
         end
         format.html { render :show }
       end
