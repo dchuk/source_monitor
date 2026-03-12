@@ -26,7 +26,7 @@ module SourceMonitor
 
       def reset_attributes
         {
-          health_status: "healthy",
+          health_status: "working",
           auto_paused_at: nil,
           auto_paused_until: nil,
           rolling_success_rate: nil,

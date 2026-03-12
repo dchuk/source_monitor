@@ -11,19 +11,19 @@ module SourceMonitor
       end
 
       def call
-        return Result.new(status: "unhealthy", error_message: "Missing feed URL", http_status: nil) if feed_url.blank?
+        return Result.new(status: "failing", error_message: "Missing feed URL", http_status: nil) if feed_url.blank?
 
         response = connection.get(feed_url)
         status_code = response_status(response)
         healthy = healthy_status?(status_code)
 
         Result.new(
-          status: healthy ? "healthy" : "unhealthy",
+          status: healthy ? "working" : "failing",
           error_message: healthy ? nil : error_for_status(status_code),
           http_status: status_code
         )
       rescue StandardError => error
-        Result.new(status: "unhealthy", error_message: error.message, http_status: response_status(error))
+        Result.new(status: "failing", error_message: error.message, http_status: response_status(error))
       end
 
       private
