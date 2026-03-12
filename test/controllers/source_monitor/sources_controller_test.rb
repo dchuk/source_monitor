@@ -320,31 +320,31 @@ module SourceMonitor
 
     test "jump to page preserves search params" do
       Source.destroy_all
-      30.times { |i| create_source!(name: "JumpSearch #{i}", health_status: "warning") }
+      30.times { |i| create_source!(name: "JumpSearch #{i}", health_status: "declining") }
 
-      get source_monitor.sources_path, params: { page: 2, q: { health_status_eq: "warning" }, per_page: 10 }
+      get source_monitor.sources_path, params: { page: 2, q: { health_status_eq: "declining" }, per_page: 10 }
       assert_response :success
 
       assert_includes response.body, "Page 2 of 3"
       # Hidden fields in the jump-to-page form should preserve search params
-      assert_select "input[type='hidden'][name='q[health_status_eq]'][value='warning']"
+      assert_select "input[type='hidden'][name='q[health_status_eq]'][value='declining']"
     end
 
     # --- Filter tests ---
 
     test "index filters by health_status_eq" do
-      create_source!(name: "Healthy Source", health_status: "healthy")
-      create_source!(name: "Warning Source", health_status: "warning")
-      create_source!(name: "Critical Source", health_status: "critical")
+      create_source!(name: "Healthy Source", health_status: "working")
+      create_source!(name: "Warning Source", health_status: "declining")
+      create_source!(name: "Critical Source", health_status: "failing")
 
-      get source_monitor.sources_path, params: { q: { health_status_eq: "warning" } }
+      get source_monitor.sources_path, params: { q: { health_status_eq: "declining" } }
       assert_response :success
 
       assert_includes response.body, "Warning Source"
       refute_includes response.body, "Healthy Source"
       refute_includes response.body, "Critical Source"
       # Filter banner should show the active filter
-      assert_includes response.body, "Health: Warning"
+      assert_includes response.body, "Health: Declining"
     end
 
     test "index filters by scraper_adapter_eq" do
@@ -360,14 +360,14 @@ module SourceMonitor
     end
 
     test "index combines text search with dropdown filter" do
-      create_source!(name: "Healthy Blog", health_status: "healthy")
-      create_source!(name: "Warning Blog", health_status: "warning")
-      create_source!(name: "Healthy News", health_status: "healthy")
+      create_source!(name: "Healthy Blog", health_status: "working")
+      create_source!(name: "Warning Blog", health_status: "declining")
+      create_source!(name: "Healthy News", health_status: "working")
 
       get source_monitor.sources_path, params: {
         q: {
           name_or_feed_url_or_website_url_cont: "Blog",
-          health_status_eq: "healthy"
+          health_status_eq: "working"
         }
       }
       assert_response :success
@@ -483,10 +483,10 @@ module SourceMonitor
     end
 
     test "pagination preserves filter params across pages" do
-      30.times { |i| create_source!(name: "Filtered #{i}", health_status: "warning") }
-      create_source!(name: "Healthy Excluded", health_status: "healthy")
+      30.times { |i| create_source!(name: "Filtered #{i}", health_status: "declining") }
+      create_source!(name: "Healthy Excluded", health_status: "working")
 
-      get source_monitor.sources_path, params: { q: { health_status_eq: "warning" } }
+      get source_monitor.sources_path, params: { q: { health_status_eq: "declining" } }
       assert_response :success
 
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 25
@@ -494,7 +494,7 @@ module SourceMonitor
       assert_match(/health_status_eq/, response.body)
 
       # Navigate to page 2 with filter
-      get source_monitor.sources_path, params: { page: 2, q: { health_status_eq: "warning" } }
+      get source_monitor.sources_path, params: { page: 2, q: { health_status_eq: "declining" } }
       assert_response :success
 
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 5

@@ -122,7 +122,7 @@ module SourceMonitor
     test "initializes with default health_status" do
       source = Source.new(name: "Test", feed_url: "https://example.com/feed")
 
-      assert_equal "healthy", source.health_status
+      assert_equal "working", source.health_status
     end
 
     test "allows overriding default hash attributes" do
