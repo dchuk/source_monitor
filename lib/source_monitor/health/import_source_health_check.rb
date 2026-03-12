@@ -18,7 +18,7 @@ module SourceMonitor
         healthy = healthy_status?(status_code)
 
         Result.new(
-          status: healthy ? "healthy" : "unhealthy",
+          status: healthy ? "working" : "unhealthy",
           error_message: healthy ? nil : error_for_status(status_code),
           http_status: status_code
         )

@@ -166,7 +166,7 @@ module SourceMonitor
           source.update_columns(
             auto_paused_until: pause_until,
             auto_paused_at: now,
-            health_status: "auto_paused",
+            health_status: "failing",
             health_status_changed_at: now,
             backoff_until: pause_until,
             next_fetch_at: pause_until

@@ -377,7 +377,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_07_120000) do
     t.integer "fetch_retry_attempt", default: 0, null: false
     t.string "fetch_status", default: "idle", null: false
     t.decimal "health_auto_pause_threshold", precision: 5, scale: 4
-    t.string "health_status", default: "healthy", null: false
+    t.string "health_status", default: "working", null: false
     t.datetime "health_status_changed_at"
     t.integer "items_count", default: 0, null: false
     t.integer "items_retention_days"
