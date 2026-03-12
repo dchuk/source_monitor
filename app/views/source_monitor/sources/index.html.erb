@@ -27,7 +27,7 @@
       </div>
       <div>
         <%= form.label :health_status_eq, "Health", class: "block text-xs font-medium text-slate-500 mb-1" %>
-        <%= form.select :health_status_eq, options_for_select([["All Health", ""], ["Healthy", "healthy"], ["Warning", "warning"], ["Declining", "declining"], ["Critical", "critical"]], @search_params["health_status_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
+        <%= form.select :health_status_eq, options_for_select([["All Health", ""], ["Working", "working"], ["Declining", "declining"], ["Improving", "improving"], ["Failing", "failing"]], @search_params["health_status_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
       </div>
       <div>
         <%= form.label :feed_format_eq, "Format", class: "block text-xs font-medium text-slate-500 mb-1" %>
