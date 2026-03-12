@@ -12,7 +12,7 @@ module SourceMonitor
       test "clears auto pause and failure state while scheduling next fetch" do
         travel_to Time.zone.parse("2025-10-22 10:00:00") do
           source = create_source!(
-            health_status: "auto_paused",
+            health_status: "failing",
             auto_paused_at: 4.hours.ago,
             auto_paused_until: 2.hours.from_now,
             rolling_success_rate: 0.1,
@@ -34,7 +34,7 @@ module SourceMonitor
           assert_nil source.last_error
           assert_nil source.last_error_at
           assert_nil source.backoff_until
-          assert_equal "healthy", source.health_status
+          assert_equal "working", source.health_status
           assert_equal "idle", source.fetch_status
 
           expected_next_fetch_at = Time.current + source.fetch_interval_minutes.minutes
@@ -47,7 +47,7 @@ module SourceMonitor
           source = create_source!
           source.define_singleton_method(:fetch_interval_minutes) { nil }
           source.update!(
-            health_status: "auto_paused",
+            health_status: "failing",
             auto_paused_until: 30.minutes.from_now,
             rolling_success_rate: 0.2
           )
@@ -59,7 +59,7 @@ module SourceMonitor
           source.reload
 
           assert_in_delta Time.current + 15.minutes, source.next_fetch_at, 0.5
-          assert_equal "healthy", source.health_status
+          assert_equal "working", source.health_status
         end
       end
     end

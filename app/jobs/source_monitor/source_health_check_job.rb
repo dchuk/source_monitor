@@ -24,7 +24,7 @@ module SourceMonitor
       nil
     end
 
-    DEGRADED_STATUSES = %w[declining critical warning].freeze
+    DEGRADED_STATUSES = %w[declining failing].freeze
 
     private
 

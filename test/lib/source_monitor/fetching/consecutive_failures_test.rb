@@ -67,7 +67,7 @@ module SourceMonitor
 
         assert_equal 4, @source.consecutive_fetch_failures
         assert_nil @source.auto_paused_until
-        assert_not_equal "auto_paused", @source.health_status
+        assert_not_equal "failing", @source.health_status
       end
 
       test "auto-pauses at exactly 5 consecutive failures" do
@@ -76,7 +76,7 @@ module SourceMonitor
           @source.reload
 
           assert_equal 5, @source.consecutive_fetch_failures
-          assert_equal "auto_paused", @source.health_status
+          assert_equal "failing", @source.health_status
           assert_not_nil @source.auto_paused_until
           assert_not_nil @source.auto_paused_at
           assert_operator @source.auto_paused_until, :>, Time.current
@@ -132,7 +132,7 @@ module SourceMonitor
           @source.reload
 
           assert_equal 5, @source.consecutive_fetch_failures
-          assert_equal "auto_paused", @source.health_status
+          assert_equal "failing", @source.health_status
           assert_operator @source.auto_paused_until, :>, first_pause_until
         end
       end

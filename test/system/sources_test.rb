@@ -418,11 +418,11 @@ module SourceMonitor
       assert_selector "[data-testid='fetch-status-badge']", text: "Queued"
     end
 
-    test "auto paused sources show auto paused badge" do
+    test "failing sources show failing badge" do
       source = create_source!(
         name: "Flaky Feed",
         feed_url: "https://flaky.example.com/feed.xml",
-        health_status: "auto_paused",
+        health_status: "failing",
         auto_paused_at: Time.current,
         auto_paused_until: 2.hours.from_now
       )
@@ -430,7 +430,7 @@ module SourceMonitor
       visit source_monitor.sources_path
 
       within find("tr", text: source.name) do
-        assert_selector "span", text: "Auto-Paused"
+        assert_selector "span", text: "Failing"
       end
     end
 
@@ -440,7 +440,7 @@ module SourceMonitor
       source = create_source!(
         name: "Problematic Feed",
         feed_url: "https://problematic.example.com/feed.xml",
-        health_status: "critical",
+        health_status: "failing",
         rolling_success_rate: 0.15,
         failure_count: 5,
         last_error: "HTTP 500 response",
@@ -474,11 +474,11 @@ module SourceMonitor
       assert_selector "table tbody tr td", text: "Health Check"
     end
 
-    test "resetting auto paused source clears state" do
+    test "resetting failing source clears state" do
       source = create_source!(
         name: "Auto Paused Feed",
         feed_url: "https://paused.example.com/feed.xml",
-        health_status: "auto_paused",
+        health_status: "failing",
         auto_paused_at: 6.hours.ago,
         auto_paused_until: 2.hours.from_now,
         rolling_success_rate: 0.05,
@@ -506,7 +506,7 @@ module SourceMonitor
 
       assert_nil source.auto_paused_until
       assert_nil source.auto_paused_at
-      assert_equal "healthy", source.health_status
+      assert_equal "working", source.health_status
       assert_equal 0, source.failure_count
       assert_nil source.last_error
       assert_nil source.last_error_at
