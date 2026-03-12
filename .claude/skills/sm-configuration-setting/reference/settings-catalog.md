@@ -76,7 +76,6 @@ Has `reset!` method. All attributes are plain `attr_accessor`.
 |-----------|------|---------|-------------|
 | `window_size` | Integer | `20` | Rolling window of fetches for health calc |
 | `healthy_threshold` | Float | `0.8` | Success rate above = healthy |
-| `warning_threshold` | Float | `0.5` | Success rate above = warning |
 | `auto_pause_threshold` | Float | `0.2` | Success rate below = auto-pause |
 | `auto_resume_threshold` | Float | `0.6` | Success rate above = auto-resume |
 | `auto_pause_cooldown_minutes` | Integer | `60` | Cooldown before auto-resume check |

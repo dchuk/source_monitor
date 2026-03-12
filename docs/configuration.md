@@ -147,7 +147,7 @@ Handlers can be symbols (invoked on the controller) or callables. Return `false`
 `config.health` tunes automatic pause/resume heuristics.
 
 - `window_size` – number of fetch attempts to evaluate (default `20`)
-- `healthy_threshold` / `warning_threshold` – ratios that drive UI badges
+- `healthy_threshold` – ratio that drives the "working" badge
 - `auto_pause_threshold` / `auto_resume_threshold` – percentages that trigger automatic toggling
 - `auto_pause_cooldown_minutes` – grace period before re-enabling a source
 

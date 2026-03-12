@@ -96,7 +96,6 @@ Tunes automatic pause/resume heuristics per source.
 |---|---|---|---|
 | `window_size` | Integer | `20` | Number of fetch attempts to evaluate |
 | `healthy_threshold` | Float | `0.8` | Success ratio for "healthy" badge |
-| `warning_threshold` | Float | `0.5` | Success ratio for "warning" badge |
 | `auto_pause_threshold` | Float | `0.2` | Auto-pause source below this ratio |
 | `auto_resume_threshold` | Float | `0.6` | Auto-resume source above this ratio |
 | `auto_pause_cooldown_minutes` | Integer | `60` | Grace period before re-enabling |
