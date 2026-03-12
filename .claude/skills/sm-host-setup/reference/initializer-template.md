@@ -108,7 +108,7 @@ SourceMonitor.configure do |config|
   # ===========================================================================
 
   config.health.window_size = 20                   # Fetch attempts to evaluate
-  config.health.healthy_threshold = 0.8            # Ratio for "healthy" badge
+  config.health.healthy_threshold = 0.8            # Ratio for "working" status
   config.health.auto_pause_threshold = 0.2         # Auto-pause below this
   config.health.auto_resume_threshold = 0.6        # Auto-resume above this
   config.health.auto_pause_cooldown_minutes = 60   # Grace period before re-enable

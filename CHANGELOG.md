@@ -13,7 +13,20 @@ All notable changes to this project are documented below. The format follows [Ke
 
 ## [Unreleased]
 
-- No unreleased changes yet.
+### Changed
+
+- **Simplified health status model from 7 values to 4.** Health statuses consolidated: `healthy`/`auto_paused`/`unknown` mapped to `working`, `warning`/`critical` mapped to `failing`. `declining` and `improving` remain unchanged. The `warning_threshold` configuration setting has been removed. Auto-pause is now tracked purely via `auto_paused_at`/`auto_paused_until` columns (operational state), separate from health diagnosis.
+- New `determine_status` decision tree: rate >= `healthy_threshold` = `working`, rate < `auto_pause_threshold` = `failing`, 3+ consecutive failures = `declining`, 2+ consecutive successes after failure = `improving`.
+- Health badge colors updated: working (green), declining (yellow), improving (sky), failing (rose).
+- Reversible data migration (`SimplifyHealthStatusValues`) automatically remaps existing records.
+
+### Removed
+
+- `config.health.warning_threshold` setting removed. If your initializer sets this value, remove the line before upgrading.
+
+### Migration Required
+
+- Run `bin/rails source_monitor:upgrade` then `bin/rails db:migrate` to apply the health status value migration.
 
 ## [0.10.2] - 2026-02-26
 

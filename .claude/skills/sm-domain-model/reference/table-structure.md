@@ -44,7 +44,7 @@ Core feed source configuration and state.
 | adaptive_fetching_enabled | boolean | NO | true | Adaptive interval toggle |
 | feed_content_readability_enabled | boolean | NO | false | Process feed content through readability |
 | rolling_success_rate | decimal(5,4) | YES | | Rolling success rate (0.0-1.0) |
-| health_status | string | NO | "healthy" | Health status string |
+| health_status | string | NO | "working" | Health status (working/declining/improving/failing) |
 | health_status_changed_at | datetime | YES | | Last health status change |
 | auto_paused_at | datetime | YES | | When source was auto-paused |
 | auto_paused_until | datetime | YES | | Auto-pause expiry |

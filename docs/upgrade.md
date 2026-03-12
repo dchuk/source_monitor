@@ -46,6 +46,29 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
+### Upgrading to next release (health status simplification)
+
+**What changed:**
+- Health status values simplified from 7 (`healthy`, `warning`, `critical`, `declining`, `improving`, `auto_paused`, `unknown`) to 4 (`working`, `declining`, `improving`, `failing`).
+- `warning_threshold` configuration setting removed entirely.
+- Auto-pause is now tracked as operational state (via `auto_paused_at`/`auto_paused_until` columns) rather than as a health status value. Sources can be both "failing AND auto-paused".
+- New `determine_status` decision tree uses rate thresholds and streak detection.
+- Dashboard and sources index updated with new badge colors: working (green), declining (yellow), improving (sky), failing (rose).
+
+**Upgrade steps:**
+```bash
+bundle update source_monitor
+bin/rails source_monitor:upgrade
+bin/rails db:migrate
+```
+
+**Notes:**
+- **Action required:** If your initializer sets `config.health.warning_threshold`, remove that line. The setting no longer exists and will raise an error.
+- The data migration automatically remaps existing health_status values: `healthy`/`auto_paused`/`unknown` become `working`, `warning`/`critical` become `failing`. This is reversible.
+- If your host app queries `health_status` directly (e.g., `Source.where(health_status: "healthy")`), update those queries to use the new values.
+- The `auto_paused?` method and `auto_paused_at`/`auto_paused_until` columns still exist and work the same way. Only the `health_status` column values changed.
+- `healthy_threshold` config setting still exists but now drives the `working` status (renamed from `healthy`).
+
 ### Upgrading to 0.10.0 (from 0.9.x)
 
 **What changed:**

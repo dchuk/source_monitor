@@ -338,7 +338,7 @@ class AddHealthFieldsToSources < ActiveRecord::Migration[8.0]
   def change
     change_table :sourcemon_sources, bulk: true do |t|
       t.decimal :rolling_success_rate, precision: 5, scale: 4
-      t.string :health_status, null: false, default: "healthy"
+      t.string :health_status, null: false, default: "working"
       t.datetime :health_status_changed_at
       t.datetime :auto_paused_at
       t.datetime :auto_paused_until

@@ -35,7 +35,7 @@ Health Module (setup!)
   |
   +-- SourceHealthReset (manual reset)
         +-- Clears all health state
-        +-- Resets to "healthy" status
+        +-- Resets to "working" status
 ```
 
 ## Key Files
@@ -55,38 +55,36 @@ Health Module (setup!)
 
 | Status | Meaning | Trigger |
 |--------|---------|---------|
-| `healthy` | Source is reliable | success_rate >= healthy_threshold (0.8) |
-| `warning` | Some failures occurring | success_rate >= warning_threshold (0.5) but < healthy |
-| `critical` | High failure rate | success_rate < warning_threshold |
+| `working` | Source is reliable | success_rate >= healthy_threshold (0.8) |
 | `declining` | Consecutive failures | >= 3 consecutive failures in recent logs |
 | `improving` | Recovery in progress | >= 2 consecutive successes after a failure |
-| `auto_paused` | Automatically paused | success_rate < auto_pause_threshold (0.2) |
+| `failing` | High failure rate | success_rate < auto_pause_threshold (0.2) |
 
-### Status Priority (highest to lowest)
+### Status Decision Tree
 
 ```
-auto_paused > declining > improving > healthy > warning > critical
+failing > declining > improving > working
 ```
 
 Determination logic:
 
 ```ruby
-def determine_status(rate, auto_paused_until, logs)
-  if auto_paused_active?(auto_paused_until)
-    "auto_paused"
+def determine_status(rate, logs)
+  if rate < auto_pause_threshold
+    "failing"
   elsif consecutive_failures(logs) >= 3
     "declining"
   elsif improving_streak?(logs)
     "improving"
   elsif rate >= healthy_threshold
-    "healthy"
-  elsif rate >= warning_threshold
-    "warning"
+    "working"
   else
-    "critical"
+    "declining"  # fallback for intermediate rates
   end
 end
 ```
+
+Note: Auto-pause is tracked separately as operational state (`auto_paused_at`/`auto_paused_until`), not as a health status value. A source can be both "failing" and auto-paused.
 
 ## Health Configuration
 
@@ -95,7 +93,7 @@ end
 | Setting | Default | Purpose |
 |---------|---------|---------|
 | `window_size` | 20 | Number of recent fetch logs to evaluate |
-| `healthy_threshold` | 0.8 | Success rate for "healthy" status |
+| `healthy_threshold` | 0.8 | Success rate for "working" status |
 | `auto_pause_threshold` | 0.2 | Below this, source is auto-paused |
 | `auto_resume_threshold` | 0.6 | Above this, auto-pause is lifted |
 | `auto_pause_cooldown_minutes` | 60 | Minimum pause duration |
@@ -210,7 +208,7 @@ SourceMonitor::Health::SourceHealthReset.call(source: source)
 ```
 
 Resets:
-- `health_status` -> "healthy"
+- `health_status` -> "working"
 - `auto_paused_at`, `auto_paused_until` -> nil
 - `rolling_success_rate` -> nil
 - `failure_count` -> 0
@@ -229,7 +227,7 @@ Lightweight health check for import candidates (no Source record needed):
 
 ```ruby
 result = Health::ImportSourceHealthCheck.new(feed_url: url).call
-result.status        # => "healthy" or "unhealthy"
+result.status        # => "working" or "failing"
 result.error_message # => nil or error description
 result.http_status   # => HTTP status code
 ```
@@ -254,9 +252,9 @@ end
 Add the condition to `determine_status`:
 
 ```ruby
-def determine_status(rate, auto_paused_until, logs)
-  if auto_paused_active?(auto_paused_until)
-    "auto_paused"
+def determine_status(rate, logs)
+  if rate < auto_pause_threshold
+    "failing"
   elsif my_custom_condition?(logs)  # Add here
     "my_custom_status"
   elsif consecutive_failures(logs) >= 3

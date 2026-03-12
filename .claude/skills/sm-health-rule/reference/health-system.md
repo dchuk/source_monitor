@@ -206,7 +206,7 @@ From migration `20251012090000_add_health_fields_to_sources`:
 
 ```ruby
 # Health status tracking
-:health_status            # string, default: "healthy"
+:health_status            # string, default: "working" (values: working, declining, improving, failing)
 :health_status_changed_at # datetime
 :rolling_success_rate     # float
 :health_auto_pause_threshold # float (per-source override)

@@ -92,7 +92,7 @@ URL normalization and format validation. Used by Source and Item.
 | Field | Values | Notes |
 |-------|--------|-------|
 | `fetch_status` | `idle`, `queued`, `fetching`, `failed`, `invalid` | DB CHECK constraint |
-| `health_status` | `healthy` (default) | String, extensible |
+| `health_status` | `working` (default) | Values: working, declining, improving, failing |
 | `active` | `true`/`false` | Boolean toggle |
 
 ### Key Scopes
@@ -101,7 +101,7 @@ URL normalization and format validation. Used by Source and Item.
 |-------|---------|
 | `active` | `WHERE active = true` |
 | `failed` | `failure_count > 0 OR last_error IS NOT NULL OR last_error_at IS NOT NULL` |
-| `healthy` | `active AND failure_count = 0 AND last_error IS NULL AND last_error_at IS NULL` |
+| `healthy` | `active AND failure_count = 0 AND last_error IS NULL AND last_error_at IS NULL` (Note: scope name preserved for backward compat; health_status uses "working") |
 | `due_for_fetch(reference_time:)` | Class method. Active sources where `next_fetch_at IS NULL OR <= reference_time` |
 
 ### Validations
