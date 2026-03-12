@@ -204,7 +204,6 @@ module SourceMonitor
       test "has sensible defaults" do
         assert_equal 20, @settings.window_size
         assert_equal 0.8, @settings.healthy_threshold
-        assert_equal 0.5, @settings.warning_threshold
         assert_equal 0.2, @settings.auto_pause_threshold
         assert_equal 0.6, @settings.auto_resume_threshold
         assert_equal 60, @settings.auto_pause_cooldown_minutes

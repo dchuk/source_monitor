@@ -90,6 +90,8 @@ module SourceMonitor
 
       test "marks source as declining after three consecutive failures" do
         travel_to(Time.current) do
+          # 2 successes + 3 consecutive failures = rate 0.4 (above auto_pause 0.2, below healthy 0.6)
+          2.times { |index| create_fetch_log(success: true, minutes_ago: index + 4) }
           3.times { |index| create_fetch_log(success: false, minutes_ago: index) }
 
           SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
@@ -101,9 +103,9 @@ module SourceMonitor
 
       test "marks source as improving after consecutive recoveries" do
         travel_to(Time.current) do
-          create_fetch_log(success: false, minutes_ago: 2)
-          create_fetch_log(success: true, minutes_ago: 1)
-          create_fetch_log(success: true, minutes_ago: 0)
+          # 3 failures + 2 consecutive successes = rate 0.4 (above auto_pause 0.2, below healthy 0.6)
+          3.times { |index| create_fetch_log(success: false, minutes_ago: index + 3) }
+          2.times { |index| create_fetch_log(success: true, minutes_ago: index) }
 
           SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
 
