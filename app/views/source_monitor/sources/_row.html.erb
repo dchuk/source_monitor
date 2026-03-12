@@ -88,7 +88,7 @@
           <span class="ml-2 font-normal text-[10px] text-slate-500">(since <%= source.last_fetch_started_at.strftime("%H:%M:%S") %>)</span>
         <% end %>
       </span>
-      <span class="text-[11px] text-slate-500">Interval: <%= number_with_precision(1440.0 / source.fetch_interval_minutes, precision: 1) %>/Day</span>
+      <span class="text-[11px] text-slate-500">(<%= number_with_precision(1440.0 / source.fetch_interval_minutes, precision: 1) %>x / day)</span>
     </div>
   </td>
   <td class="px-6 py-4 text-sm"><%= source.items_count %></td>
