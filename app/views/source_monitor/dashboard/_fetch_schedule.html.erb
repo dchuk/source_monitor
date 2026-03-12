@@ -41,7 +41,7 @@
                     <tr>
                       <td class="px-4 py-3">
                         <div class="flex flex-col">
-                          <%= link_to source.name, source_monitor.source_path(source), class: "text-sm font-semibold text-blue-600 hover:text-blue-500" %>
+                          <%= link_to source.name, source_monitor.source_path(source), class: "text-sm font-semibold text-blue-600 hover:text-blue-500", data: { turbo_frame: "_top" } %>
                           <span class="text-xs text-slate-400"><%= source.feed_url %></span>
                         </div>
                       </td>
