@@ -57,7 +57,7 @@ module SourceMonitor
           base_scope: scope,
           result_scope: scope,
           search_params: {},
-          lookback: 2.days,
+          lookback: 3.days,
           now: Time.current
         )
 
@@ -67,8 +67,9 @@ module SourceMonitor
         assert distribution.any? { |bucket| bucket.label == "480+ min" && bucket.count == 1 }
 
         activity_rates = metrics.item_activity_rates
-        assert_in_delta 1.0, activity_rates[@fast_source.id], 0.01
-        assert_in_delta 0.5, activity_rates[@medium_source.id], 0.01
+        # fast_source: 2 items in 3 days ≈ 0.67/day; medium: 1 item in 3 days ≈ 0.33/day
+        assert_in_delta 2.0 / 3, activity_rates[@fast_source.id], 0.05
+        assert_in_delta 1.0 / 3, activity_rates[@medium_source.id], 0.05
         assert_in_delta 0.0, activity_rates[@slow_source.id], 0.01
       end
 

@@ -7,7 +7,7 @@
     @apply min-h-screen bg-slate-50 text-slate-900;
   }
 
-  .fm-admin a {
+  .fm-admin a:not([class*="bg-"]) {
     @apply text-blue-600 hover:text-blue-500;
   }
 }

@@ -393,6 +393,7 @@ module SourceMonitor
       SVG_BODY = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="blue"/></svg>'
 
       test "converts SVG favicon to PNG before returning result" do
+        skip "ImageMagick not available" unless system("which convert > /dev/null 2>&1")
         html = <<~HTML
           <html>
           <head>

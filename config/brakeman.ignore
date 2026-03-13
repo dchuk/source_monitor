@@ -10,8 +10,18 @@
       "line": 77,
       "code": "OpenSSL::SSL::SSLContext.new.verify_mode = OpenSSL::SSL::VERIFY_NONE",
       "note": "Intentional: AIA resolver must connect without verification to fetch the leaf certificate from servers with broken certificate chains. This is the core purpose of the module -- it only uses VERIFY_NONE to read the cert, never to transmit data."
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "b4702d88859ff3c4f9e954eac9335d003834c1d37797c54587a0dc9b3b76bf8b",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/source_monitor/dashboard_controller.rb",
+      "line": 33,
+      "note": "Safe: schedule_pages params are only used as page numbers for Turbo Frame pagination of fetch schedule buckets. No model attributes are assigned from these values."
     }
   ],
-  "updated": "2026-02-17",
+  "updated": "2026-03-13",
   "brakeman_version": "8.0.2"
 }

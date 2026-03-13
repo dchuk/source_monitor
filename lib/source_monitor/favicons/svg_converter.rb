@@ -22,10 +22,10 @@ module SourceMonitor
 
       def call
         convert_svg_to_png
-      rescue StandardError => e # :nocov:
+      rescue StandardError => e
         log_conversion_failure(e)
         nil
-      end # :nocov:
+      end
 
       private
 

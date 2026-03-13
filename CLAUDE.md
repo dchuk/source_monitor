@@ -4,8 +4,8 @@
 
 ## Active Context
 
-**Last shipped:** polish-and-reliability (6 phases, 17 plans, 35 commits)
-**Next action:** /vbw:vibe to start new work
+**Last shipped:** ui-fixes-and-smart-scraping (5 phases, 22 plans)
+**Next action:** /vbw:vibe to plan Phase 01 (Ultimate Turbo Modal Integration)
 
 ## Key Decisions
 

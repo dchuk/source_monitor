@@ -1,0 +1,94 @@
+# Phase 02: Feed Reliability -- Research
+
+## Findings
+
+### 1. Fetch Pipeline Architecture
+- `FetchRunner` (`lib/source_monitor/fetching/fetch_runner.rb`) coordinates fetches with PG advisory locks
+- `FeedFetcher` (`lib/source_monitor/fetching/feed_fetcher.rb`) performs HTTP request, parses with Feedjira, processes entries
+- `AdvisoryLock` (`lib/source_monitor/fetching/advisory_lock.rb`) wraps `pg_try_advisory_lock` — non-blocking, raises `NotAcquiredError` immediately
+- `FetchRunner` catches `NotAcquiredError` and re-raises as `ConcurrencyError`
+- `FetchFeedJob` (`app/jobs/source_monitor/fetch_feed_job.rb`) retries `ConcurrencyError` 5 times with 30s wait — this is the problematic path for force-fetch
+
+### 2. Force-Fetch Flow
+- Triggered by `SourceRetriesController#create` → `FetchRunner.enqueue(source_id, force: true)`
+- `enqueue` sets `fetch_status: "queued"` and enqueues `FetchFeedJob.perform_later(source.id, force: true)`
+- `FetchFeedJob#perform` passes `force: true` to `FetchRunner.new` — but force flag only affects circuit breaker check (`skip_due_to_circuit`), not lock behavior
+- When lock is busy, `ConcurrencyError` triggers retry_on (5 attempts, 30s each) — user sees "failed" after 2.5 min of retries
+
+### 3. Error Hierarchy
+- `FetchError` base class with `original_error`, `response`, `code`, `http_status`
+- Subclasses: `TimeoutError`, `ConnectionError`, `HTTPError`, `ParsingError`, `UnexpectedResponseError`
+- Each has a `CODE` constant (e.g., "timeout", "connection", "parsing")
+- **No Cloudflare/Blocked category exists** — CF responses that return 200 with HTML challenge page go through `parse_feed` → `Feedjira.parse` fails → `ParsingError` (misleading)
+
+### 4. Response Handling Gap
+- `FeedFetcher#parse_feed` (line 212-216): calls `Feedjira.parse(body)` with no content-type or body inspection
+- When Cloudflare returns a 200 with an HTML challenge page, Feedjira raises "No valid XML parser" → wrapped as `ParsingError`
+- **No HTML detection**: response body is not checked for Cloudflare markers (`<title>Just a moment</title>`, `cf-challenge`, etc.)
+- This is the root cause of "No valid XML parser" errors for CF-blocked feeds
+
+### 5. Health Status System
+- `SourceHealthMonitor` (`lib/source_monitor/health/source_health_monitor.rb`) uses rolling success rate from recent fetch_logs
+- Status values: `healthy`, `warning`, `critical`, `declining`, `improving`, `auto_paused`
+- Auto-pause based on success rate threshold (configurable), not consecutive failure count
+- Source fields: `health_status`, `health_status_changed_at`, `rolling_success_rate`, `auto_paused_until`, `auto_paused_at`
+- **Gap**: Discussion decided on "5 consecutive failures" auto-pause, but current system uses rate-based threshold
+
+### 6. Fetch Log Storage
+- `FetchLog` model with `success`, `items_created`, `items_updated`, `items_failed`, `http_response_headers`
+- Created by `SourceUpdater#create_fetch_log` — stores response details, duration, error info
+- **No structured error category field** — errors stored as raw error class/message
+
+### 7. HTTP Client
+- `SourceMonitor::HTTP.client` uses Faraday with retry middleware (4 retries by default)
+- Default UA: `"Mozilla/5.0 (compatible; SourceMonitor/#{VERSION})"` — already browser-like from Phase 1 decision
+- Supports custom headers per source via `source.custom_headers`
+- Conditional GET support: `If-None-Match` (etag), `If-Modified-Since` (last_modified)
+
+### 8. Retry Policy
+- `RetryPolicy` maps error types to retry configs (attempts, wait, circuit_wait)
+- Parsing errors: 1 attempt, 30min wait, 2hr circuit — appropriate for genuine parse failures
+- CF-blocked feeds hitting parsing policy get circuit-broken after 1 retry (good, but wrong category)
+
+## Relevant Patterns
+
+- **Error hierarchy**: Extend `FetchError` for new error types (add `BlockedError`)
+- **Source fields**: Add via migration, use `update_columns` for status updates (matches existing pattern)
+- **Health monitor**: Uses `consecutive_failures` helper already (line 183) — can leverage for auto-pause by count
+- **FetchLog syncs**: `after_save :sync_log_entry` creates unified LogEntry — new fields propagate
+- **Fetch status lifecycle**: "idle" → "queued" → "fetching" → "idle"/"failed"
+- **Circuit breaker pattern**: Already implemented with `fetch_circuit_opened_at`, `fetch_circuit_until`
+
+## Risks
+
+1. **Content-type detection false positives**: Some feeds serve valid XML with `text/html` content type. Must check body content, not just content-type header.
+2. **Auto-pause by consecutive failures vs rate**: Current health monitor uses rate-based threshold. Need to decide whether to modify existing system or add parallel consecutive-failure check. Recommend adding `consecutive_fetch_failures` counter to Source, increment on failure, reset on success — simpler than changing rate-based system.
+3. **Migration complexity**: Adding error_category to FetchLog requires migration + backfill consideration (existing logs won't have category).
+4. **Force-fetch UX**: Skipping with "already in progress" message needs a Turbo Stream response to surface the message to the user immediately.
+
+## Recommendations
+
+### Plan 1: Error Categorization + HTML Detection
+- Add `BlockedError < FetchError` with CODE="blocked"
+- Add HTML body sniffing in `FeedFetcher#parse_feed` — before Feedjira, check for CF markers
+- Add `error_category` enum to FetchLog (network, parse, blocked, auth, unknown)
+- Categorize in `SourceUpdater#create_fetch_log` based on error class
+
+### Plan 2: Force-Fetch Lock Contention
+- Modify `FetchFeedJob`: when `force: true`, don't `retry_on ConcurrencyError` — rescue and return with user-facing message
+- Update `FetchRunner.enqueue` or add check: if source.fetch_status == "fetching", skip with message
+- Return "Fetch already in progress" via toast/Turbo Stream
+
+### Plan 3: Cloudflare Light Bypass
+- Before raising BlockedError: try common workarounds
+  - Cookie jar persistence (re-request with cookies from initial response)
+  - Alternate UA strings (rotate through a small list)
+  - Add `Cache-Control: no-cache` header
+- If all workarounds fail: raise BlockedError, set "blocked" badge on source
+
+### Plan 4: Auto-Pause by Consecutive Failures
+- Add `consecutive_fetch_failures` integer to Source (migration)
+- Increment on failure, reset to 0 on success (in SourceUpdater or FetchRunner)
+- When count >= 5: trigger auto-pause (set `auto_paused_until`, `auto_paused_at`)
+- Notification: toast + log entry when auto-pause triggers
+- Integrate with existing health status transitions (declining → auto_paused)

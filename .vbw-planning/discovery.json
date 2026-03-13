@@ -111,6 +111,90 @@
       "area": "config-surface",
       "phase": "06",
       "date": "2026-02-24"
+    },
+    {
+      "question": "Dashboard vs sources index scope for pagination?",
+      "answer": "Both pages need work. Dashboard schedule needs DB-level scaling. Sources index needs page count and jump-to-page.",
+      "area": "pagination-scope",
+      "phase": "03",
+      "date": "2026-03-07"
+    },
+    {
+      "question": "Dashboard grouping strategy?",
+      "answer": "Keep fetch schedule grouping (0-30, 30-60, etc.), always expanded, no collapsible sections. Each group is a separate paginated section.",
+      "area": "grouping-strategy",
+      "phase": "03",
+      "date": "2026-03-07"
+    },
+    {
+      "question": "Dashboard schedule scaling approach?",
+      "answer": "ActiveRecord scopes per fetch window bucket instead of in-memory Ruby grouping. Separate pagination per section. No raw SQL.",
+      "area": "schedule-scaling",
+      "phase": "03",
+      "date": "2026-03-07"
+    },
+    {
+      "question": "Dashboard aggregate display above pagination?",
+      "answer": "Keep existing stats cards plus add health distribution as inline badge counts (Healthy N, Warning N, Declining N, Critical N).",
+      "area": "aggregate-display",
+      "phase": "03",
+      "date": "2026-03-07"
+    },
+    {
+      "question": "How should low word count threshold be determined?",
+      "answer": "Fixed threshold approach. Single global config setting, no per-source override.",
+      "area": "scrape-threshold",
+      "phase": "04",
+      "date": "2026-03-08"
+    },
+    {
+      "question": "Where should scrape recommendations appear?",
+      "answer": "Dashboard widget (summary + link) plus badge on sources index rows. No dedicated page.",
+      "area": "recommendation-surfacing",
+      "phase": "04",
+      "date": "2026-03-08"
+    },
+    {
+      "question": "How should test-first scrape preview work?",
+      "answer": "Single item preview on a separate comparison page. Feed vs scraped word count side-by-side. User confirms or cancels.",
+      "area": "test-scrape-flow",
+      "phase": "04",
+      "date": "2026-03-08"
+    },
+    {
+      "question": "How should bulk scrape enablement work?",
+      "answer": "Checkboxes for selective + Enable All Matching for bulk. Confirmation modal showing count and scrape job volume warning.",
+      "area": "bulk-enablement",
+      "phase": "04",
+      "date": "2026-03-08"
+    },
+    {
+      "question": "How should 7 health statuses map to 4?",
+      "answer": "Direct rename: healthy→working, warning+critical→failing, declining stays, improving stays. auto_paused removed from health axis.",
+      "area": "status-migration",
+      "phase": "05",
+      "date": "2026-03-11"
+    },
+    {
+      "question": "Schema approach for two-axis model (operational state vs health)?",
+      "answer": "No new columns. Operational state derived from existing active boolean + auto_paused_until timestamp. health_status stores only health values.",
+      "area": "two-axis-schema",
+      "phase": "05",
+      "date": "2026-03-11"
+    },
+    {
+      "question": "Auto-pause interaction with health monitoring?",
+      "answer": "Auto-paused sources continue health checks on slow cadence (24h). health_status updates independently — source can be 'failing AND auto-paused'.",
+      "area": "pause-health-interaction",
+      "phase": "05",
+      "date": "2026-03-11"
+    },
+    {
+      "question": "Simplified health transition decision tree?",
+      "answer": "Rate-based with streaks: rate >= healthy_threshold → working, rate < auto_pause_threshold → failing, 3+ consecutive failures → declining, 2+ successes after failure → improving, fallback → declining. warning_threshold removed.",
+      "area": "health-transitions",
+      "phase": "05",
+      "date": "2026-03-11"
     }
   ],
   "inferred": [

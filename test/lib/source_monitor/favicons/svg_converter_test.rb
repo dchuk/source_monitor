@@ -30,8 +30,8 @@ module SourceMonitor
 
       test "call delegates to instance and returns converted hash" do
         fake_image = Minitest::Mock.new
-        fake_image.expect(:format, nil, ["png"])
-        fake_image.expect(:resize, nil, ["64x64"])
+        fake_image.expect(:format, nil, [ "png" ])
+        fake_image.expect(:resize, nil, [ "64x64" ])
         fake_image.expect(:to_blob, "\x89PNG fake".b)
         fake_image.expect(:destroy!, nil)
 
@@ -49,8 +49,8 @@ module SourceMonitor
 
       test "call returns nil when to_blob returns empty bytes" do
         fake_image = Minitest::Mock.new
-        fake_image.expect(:format, nil, ["png"])
-        fake_image.expect(:resize, nil, ["64x64"])
+        fake_image.expect(:format, nil, [ "png" ])
+        fake_image.expect(:resize, nil, [ "64x64" ])
         fake_image.expect(:to_blob, "")
         fake_image.expect(:destroy!, nil)
 
@@ -64,8 +64,8 @@ module SourceMonitor
 
       test "call returns nil when to_blob returns nil" do
         fake_image = Minitest::Mock.new
-        fake_image.expect(:format, nil, ["png"])
-        fake_image.expect(:resize, nil, ["64x64"])
+        fake_image.expect(:format, nil, [ "png" ])
+        fake_image.expect(:resize, nil, [ "64x64" ])
         fake_image.expect(:to_blob, nil)
         fake_image.expect(:destroy!, nil)
 
@@ -79,8 +79,8 @@ module SourceMonitor
 
       test "replaces .svg extension with .png in filename via mock" do
         fake_image = Minitest::Mock.new
-        fake_image.expect(:format, nil, ["png"])
-        fake_image.expect(:resize, nil, ["64x64"])
+        fake_image.expect(:format, nil, [ "png" ])
+        fake_image.expect(:resize, nil, [ "64x64" ])
         fake_image.expect(:to_blob, "\x89PNG".b)
         fake_image.expect(:destroy!, nil)
 
@@ -94,8 +94,8 @@ module SourceMonitor
 
       test "uses custom size parameter via mock" do
         fake_image = Minitest::Mock.new
-        fake_image.expect(:format, nil, ["png"])
-        fake_image.expect(:resize, nil, ["128x128"])
+        fake_image.expect(:format, nil, [ "png" ])
+        fake_image.expect(:resize, nil, [ "128x128" ])
         fake_image.expect(:to_blob, "\x89PNG".b)
         fake_image.expect(:destroy!, nil)
 
@@ -106,6 +106,36 @@ module SourceMonitor
         end
 
         fake_image.verify
+      end
+
+      test "call returns nil and logs when conversion raises an error" do
+        MiniMagick::Image.stub(:read, ->(*_args) { raise StandardError, "boom" }) do
+          result = SvgConverter.call(VALID_SVG, filename: "icon.svg")
+          assert_nil result
+        end
+      end
+
+      test "log_conversion_failure logs warning via Rails.logger" do
+        converter = SvgConverter.new(VALID_SVG, filename: "icon.svg", size: 64)
+        error = StandardError.new("test error")
+
+        mock_logger = Minitest::Mock.new
+        mock_logger.expect(:warn, nil, [ String ])
+
+        Rails.stub(:logger, mock_logger) do
+          converter.send(:log_conversion_failure, error)
+        end
+
+        mock_logger.verify
+      end
+
+      test "log_conversion_failure does nothing when Rails.logger is nil" do
+        converter = SvgConverter.new(VALID_SVG, filename: "icon.svg", size: 64)
+        error = StandardError.new("test error")
+
+        Rails.stub(:logger, nil) do
+          assert_nil converter.send(:log_conversion_failure, error)
+        end
       end
 
       # --- Tests that require ImageMagick ---
