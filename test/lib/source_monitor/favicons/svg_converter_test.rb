@@ -15,7 +15,104 @@ module SourceMonitor
         SourceMonitor.reset_configuration!
       end
 
+      # --- Mock-based tests (no ImageMagick required) ---
+
+      test "call returns nil when MiniMagick is not defined" do
+        original = ::MiniMagick
+        Object.send(:remove_const, :MiniMagick)
+
+        begin
+          assert_nil SvgConverter.call(VALID_SVG, filename: "icon.svg")
+        ensure
+          Object.const_set(:MiniMagick, original)
+        end
+      end
+
+      test "call delegates to instance and returns converted hash" do
+        fake_image = Minitest::Mock.new
+        fake_image.expect(:format, nil, ["png"])
+        fake_image.expect(:resize, nil, ["64x64"])
+        fake_image.expect(:to_blob, "\x89PNG fake".b)
+        fake_image.expect(:destroy!, nil)
+
+        MiniMagick::Image.stub(:read, fake_image) do
+          result = SvgConverter.call(VALID_SVG, filename: "icon.svg")
+
+          assert_not_nil result
+          assert_equal "image/png", result[:content_type]
+          assert_equal "icon.png", result[:filename]
+          assert result[:io].is_a?(StringIO)
+        end
+
+        fake_image.verify
+      end
+
+      test "call returns nil when to_blob returns empty bytes" do
+        fake_image = Minitest::Mock.new
+        fake_image.expect(:format, nil, ["png"])
+        fake_image.expect(:resize, nil, ["64x64"])
+        fake_image.expect(:to_blob, "")
+        fake_image.expect(:destroy!, nil)
+
+        MiniMagick::Image.stub(:read, fake_image) do
+          result = SvgConverter.call(VALID_SVG, filename: "icon.svg")
+          assert_nil result
+        end
+
+        fake_image.verify
+      end
+
+      test "call returns nil when to_blob returns nil" do
+        fake_image = Minitest::Mock.new
+        fake_image.expect(:format, nil, ["png"])
+        fake_image.expect(:resize, nil, ["64x64"])
+        fake_image.expect(:to_blob, nil)
+        fake_image.expect(:destroy!, nil)
+
+        MiniMagick::Image.stub(:read, fake_image) do
+          result = SvgConverter.call(VALID_SVG, filename: "icon.svg")
+          assert_nil result
+        end
+
+        fake_image.verify
+      end
+
+      test "replaces .svg extension with .png in filename via mock" do
+        fake_image = Minitest::Mock.new
+        fake_image.expect(:format, nil, ["png"])
+        fake_image.expect(:resize, nil, ["64x64"])
+        fake_image.expect(:to_blob, "\x89PNG".b)
+        fake_image.expect(:destroy!, nil)
+
+        MiniMagick::Image.stub(:read, fake_image) do
+          result = SvgConverter.call(VALID_SVG, filename: "favicon.svg")
+          assert_equal "favicon.png", result[:filename]
+        end
+
+        fake_image.verify
+      end
+
+      test "uses custom size parameter via mock" do
+        fake_image = Minitest::Mock.new
+        fake_image.expect(:format, nil, ["png"])
+        fake_image.expect(:resize, nil, ["128x128"])
+        fake_image.expect(:to_blob, "\x89PNG".b)
+        fake_image.expect(:destroy!, nil)
+
+        MiniMagick::Image.stub(:read, fake_image) do
+          result = SvgConverter.call(VALID_SVG, filename: "icon.svg", size: 128)
+          assert_not_nil result
+          assert_equal "image/png", result[:content_type]
+        end
+
+        fake_image.verify
+      end
+
+      # --- Tests that require ImageMagick ---
+
       test "converts valid SVG to PNG" do
+        skip "ImageMagick not available" unless system("which convert > /dev/null 2>&1")
+
         result = SvgConverter.call(VALID_SVG, filename: "icon.svg")
 
         assert_not_nil result
@@ -29,6 +126,8 @@ module SourceMonitor
       end
 
       test "replaces .svg extension with .png in filename" do
+        skip "ImageMagick not available" unless system("which convert > /dev/null 2>&1")
+
         result = SvgConverter.call(VALID_SVG, filename: "favicon.svg")
 
         assert_not_nil result
@@ -36,6 +135,8 @@ module SourceMonitor
       end
 
       test "preserves non-svg filename and adds no extension change" do
+        skip "ImageMagick not available" unless system("which convert > /dev/null 2>&1")
+
         result = SvgConverter.call(VALID_SVG, filename: "icon.png")
 
         assert_not_nil result
@@ -43,23 +144,16 @@ module SourceMonitor
       end
 
       test "returns nil for invalid SVG content" do
+        skip "ImageMagick not available" unless system("which convert > /dev/null 2>&1")
+
         result = SvgConverter.call("not valid svg at all", filename: "bad.svg")
 
         assert_nil result
       end
 
-      test "returns nil when MiniMagick is not defined" do
-        original = ::MiniMagick
-        Object.send(:remove_const, :MiniMagick)
-
-        begin
-          assert_nil SvgConverter.call(VALID_SVG, filename: "icon.svg")
-        ensure
-          Object.const_set(:MiniMagick, original)
-        end
-      end
-
       test "uses custom size parameter" do
+        skip "ImageMagick not available" unless system("which convert > /dev/null 2>&1")
+
         result = SvgConverter.call(VALID_SVG, filename: "icon.svg", size: 128)
 
         assert_not_nil result
@@ -67,6 +161,8 @@ module SourceMonitor
       end
 
       test "returns nil for empty SVG body" do
+        skip "ImageMagick not available" unless system("which convert > /dev/null 2>&1")
+
         result = SvgConverter.call("", filename: "empty.svg")
 
         assert_nil result

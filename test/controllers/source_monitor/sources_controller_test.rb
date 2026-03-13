@@ -473,6 +473,25 @@ module SourceMonitor
       assert_select "[data-testid='scrape-recommendation-badge']", count: 0
     end
 
+    test "index expands scrape recommendation filter into compound query" do
+      source = create_source!(name: "Candidate Source", scraping_enabled: false, active: true)
+      # Create an item with low feed_word_count so avg_feed_words < threshold
+      item = source.items.create!(guid: "rec-1", title: "Item", url: "https://example.com/rec-1", published_at: Time.current, content: "short")
+      item.create_item_content!
+      item.item_content.update_columns(feed_word_count: 50)
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path, params: { q: { "scraping_enabled_eq" => "recommend" } }
+      assert_response :success
+
+      # The "recommend" pseudo-filter should expand into scraping_enabled=false + active=true + avg_feed_words_lt=200
+      assert_includes response.body, "Candidate Source"
+      # Verify the expanded filter params appear in sort/pagination links
+      assert_includes response.body, "scraping_enabled_eq"
+      assert_includes response.body, "active_eq"
+    end
+
     test "index renders filter pill for avg_feed_words_lt filter" do
       create_source!(name: "Filter Pill Source")
 

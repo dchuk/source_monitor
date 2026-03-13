@@ -114,6 +114,25 @@ module SourceMonitor
         end
       end
 
+      test "marks source as declining via else branch when no consecutive failures and no improving streak" do
+        travel_to(Time.current) do
+          # Pattern: F S F S F -> rate 0.4 (above auto_pause 0.2, below healthy 0.6)
+          # Most recent first (ordered by started_at desc):
+          # fail, success, fail, success, fail
+          # consecutive_failures = 1 (< 3), improving_streak? = false (first log is failure)
+          create_fetch_log(success: false, minutes_ago: 0)
+          create_fetch_log(success: true, minutes_ago: 1)
+          create_fetch_log(success: false, minutes_ago: 2)
+          create_fetch_log(success: true, minutes_ago: 3)
+          create_fetch_log(success: false, minutes_ago: 4)
+
+          SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
+
+          @source.reload
+          assert_equal "declining", @source.health_status
+        end
+      end
+
       test "resume clears consecutive_fetch_failures" do
         travel_to(Time.current) do
           @source.update_columns(

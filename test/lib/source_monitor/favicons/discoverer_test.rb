@@ -442,6 +442,31 @@ module SourceMonitor
         end
       end
 
+      test "convert_svg_to_result returns Result when SvgConverter succeeds" do
+        html = <<~HTML
+          <html>
+          <head>
+            <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+          </head>
+          </html>
+        HTML
+        stub_request(:get, "https://example.com")
+          .to_return(status: 200, body: html, headers: { "Content-Type" => "text/html" })
+        stub_request(:get, "https://example.com/favicon.svg")
+          .to_return(status: 200, body: SVG_BODY, headers: { "Content-Type" => "image/svg+xml" })
+
+        converted = { io: StringIO.new("fake png"), filename: "favicon.png", content_type: "image/png" }
+        SvgConverter.stub(:call, converted) do
+          result = Discoverer.new(@website_url).call
+
+          assert_not_nil result
+          assert_equal "image/png", result.content_type
+          assert_equal "favicon.png", result.filename
+          assert_equal "https://example.com/favicon.svg", result.url
+          assert_equal "fake png", result.io.read
+        end
+      end
+
       test "non-SVG favicons pass through unchanged" do
         html = <<~HTML
           <html>
