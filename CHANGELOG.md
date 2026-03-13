@@ -15,6 +15,11 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.11.1] - 2026-03-13
+
+### Fixed
+- Dashboard health status chips (Working/Failing) no longer duplicate when the page is left open — the Turbo Stream target now wraps the entire stats partial for atomic replacement
+
 ## [0.11.0] - 2026-03-13
 
 ### Breaking Changes

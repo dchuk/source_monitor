@@ -1,28 +1,30 @@
-<div id="source_monitor_dashboard_stats" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
-  <%= render partial: "stat_card", collection: [
-    { label: "Sources", value: stats[:total_sources], caption: "Total registered" },
-    { label: "Active", value: stats[:active_sources], caption: "Fetching on schedule" },
-    { label: "Failures", value: stats[:failed_sources], caption: "Require attention" },
-    { label: "Items", value: stats[:total_items], caption: "Stored entries" },
-    { label: "Fetches Today", value: stats[:fetches_today], caption: "Completed runs" }
-  ], locals: { stats: stats } %>
-</div>
-
-<% if stats[:health_distribution]&.values&.any? { |v| v > 0 } %>
-  <div id="source_monitor_dashboard_health_distribution" class="mt-4 flex flex-wrap items-center gap-2">
-    <%
-      health_colors = {
-        "working"   => "bg-green-100 text-green-700",
-        "declining" => "bg-yellow-100 text-yellow-700",
-        "improving" => "bg-sky-100 text-sky-700",
-        "failing"   => "bg-rose-100 text-rose-700"
-      }
-    %>
-    <% stats[:health_distribution].each do |status, count| %>
-      <% next if count == 0 %>
-      <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold <%= health_colors[status] %>">
-        <%= status.capitalize %> <span class="font-bold"><%= count %></span>
-      </span>
-    <% end %>
+<div id="source_monitor_dashboard_stats">
+  <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
+    <%= render partial: "stat_card", collection: [
+      { label: "Sources", value: stats[:total_sources], caption: "Total registered" },
+      { label: "Active", value: stats[:active_sources], caption: "Fetching on schedule" },
+      { label: "Failures", value: stats[:failed_sources], caption: "Require attention" },
+      { label: "Items", value: stats[:total_items], caption: "Stored entries" },
+      { label: "Fetches Today", value: stats[:fetches_today], caption: "Completed runs" }
+    ], locals: { stats: stats } %>
   </div>
-<% end %>
+
+  <% if stats[:health_distribution]&.values&.any? { |v| v > 0 } %>
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+      <%
+        health_colors = {
+          "working"   => "bg-green-100 text-green-700",
+          "declining" => "bg-yellow-100 text-yellow-700",
+          "improving" => "bg-sky-100 text-sky-700",
+          "failing"   => "bg-rose-100 text-rose-700"
+        }
+      %>
+      <% stats[:health_distribution].each do |status, count| %>
+        <% next if count == 0 %>
+        <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold <%= health_colors[status] %>">
+          <%= status.capitalize %> <span class="font-bold"><%= count %></span>
+        </span>
+      <% end %>
+    </div>
+  <% end %>
+</div>
