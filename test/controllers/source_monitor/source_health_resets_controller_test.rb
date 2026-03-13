@@ -9,7 +9,7 @@ module SourceMonitor
     setup do
       @source = create_source!(
         name: "Auto Paused Source",
-        health_status: "auto_paused",
+        health_status: "failing",
         auto_paused_until: 30.minutes.from_now
       )
     end

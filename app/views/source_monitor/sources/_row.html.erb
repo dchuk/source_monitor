@@ -1,6 +1,7 @@
 <% rate_map = local_assigns[:item_activity_rates] || {} %>
 <% avg_feed_words_map = local_assigns[:avg_feed_word_counts] || {} %>
 <% avg_scraped_words_map = local_assigns[:avg_scraped_word_counts] || {} %>
+<% scrape_candidates = local_assigns[:scrape_candidate_ids] || Set.new %>
 <% activity_rate = rate_map.fetch(source.id, 0.0) %>
 <% health_status_override = local_assigns[:health_status_override] %>
 <% health_status = if !source.active?
@@ -24,22 +25,48 @@
 <% delete_path = delete_query.present? ? source_monitor.source_path(source, q: delete_query) : source_monitor.source_path(source) %>
 
 <tr id="<%= dom_id(source, :row) %>" class="hover:bg-slate-50">
+  <td class="w-10 px-3 py-4">
+    <% if scrape_candidates.include?(source.id) %>
+      <input type="checkbox"
+             name="bulk_scrape_enablement[source_ids][]"
+             value="<%= source.id %>"
+             data-select-all-target="item"
+             data-action="select-all#toggleItem"
+             class="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+             aria-label="Select <%= source.name %>">
+    <% end %>
+  </td>
   <td class="px-6 py-4">
     <div class="flex items-center gap-3">
       <%= source_favicon_tag(source, size: 24) %>
       <div>
-        <div class="font-medium text-slate-900">
+        <div class="flex items-center gap-2 font-medium text-slate-900">
           <%= link_to source.name,
                 source_monitor.source_path(source),
                 class: "text-slate-900 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
                 data: { turbo_frame: "_top" } %>
+          <% if source.last_error.to_s.match?(/\bblocked\b/i) %>
+            <% blocked_detail = source.last_error.to_s.match(/blocked by (\w+)/i) %>
+            <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700"
+                  title="<%= blocked_detail ? "#{blocked_detail[1].capitalize} Blocked" : "Blocked" %>"
+                  data-testid="source-blocked-badge">
+              Blocked
+            </span>
+          <% end %>
         </div>
         <div class="text-xs text-slate-500 truncate max-w-xs"><%= external_link_to source.feed_url, source.feed_url, class: "text-slate-500 hover:text-blue-500" %></div>
+        <% if scrape_candidates.include?(source.id) %>
+          <span class="mt-1 inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700"
+                title="Low feed word count — consider enabling scraping"
+                data-testid="scrape-recommendation-badge">
+            Scrape Recommended
+          </span>
+        <% end %>
       </div>
     </div>
   </td>
   <td class="px-6 py-4">
-    <div class="flex flex-col gap-2 text-xs">
+    <div class="flex flex-col gap-1 text-xs">
       <% if source.active? %>
         <%= render "source_monitor/sources/health_status_badge",
               source: source,
@@ -50,6 +77,10 @@
       <% if source.rolling_success_rate.present? %>
         <span class="text-[11px] text-slate-500">Success Rate: <%= number_to_percentage(source.rolling_success_rate * 100, precision: 0) %></span>
       <% end %>
+    </div>
+  </td>
+  <td class="px-6 py-4">
+    <div class="flex flex-col gap-1 text-xs">
       <span class="inline-flex items-center rounded-full px-3 py-1 font-semibold <%= fetch_status[:classes] %>">
         <%= loading_spinner_svg(css_class: "mr-1 h-3.5 w-3.5 animate-spin text-blue-500") if fetch_status[:show_spinner] %>
         <%= fetch_status[:label] %>
@@ -57,11 +88,8 @@
           <span class="ml-2 font-normal text-[10px] text-slate-500">(since <%= source.last_fetch_started_at.strftime("%H:%M:%S") %>)</span>
         <% end %>
       </span>
+      <span class="text-[11px] text-slate-500">(<%= number_with_precision(1440.0 / source.fetch_interval_minutes, precision: 1) %>x / day)</span>
     </div>
-  </td>
-  <td class="px-6 py-4 text-sm">
-    <%= "#{source.fetch_interval_minutes} min" %>
-    <span class="text-xs text-slate-500">(~<%= number_with_precision(source.fetch_interval_minutes / 60.0, precision: 2) %> h)</span>
   </td>
   <td class="px-6 py-4 text-sm"><%= source.items_count %></td>
   <td class="px-6 py-4 text-sm">

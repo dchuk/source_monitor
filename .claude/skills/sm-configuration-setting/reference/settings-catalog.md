@@ -75,8 +75,7 @@ Has `reset!` method. All attributes are plain `attr_accessor`.
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `window_size` | Integer | `20` | Rolling window of fetches for health calc |
-| `healthy_threshold` | Float | `0.8` | Success rate above = healthy |
-| `warning_threshold` | Float | `0.5` | Success rate above = warning |
+| `healthy_threshold` | Float | `0.8` | Success rate above = working |
 | `auto_pause_threshold` | Float | `0.2` | Success rate below = auto-pause |
 | `auto_resume_threshold` | Float | `0.6` | Success rate above = auto-resume |
 | `auto_pause_cooldown_minutes` | Integer | `60` | Cooldown before auto-resume check |
@@ -91,8 +90,9 @@ Has `reset!` method. All attributes are plain `attr_accessor`.
 
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `max_in_flight_per_source` | Integer/nil | `25` | Max concurrent scrape jobs per source |
+| `max_in_flight_per_source` | Integer/nil | `nil` | Max concurrent scrape jobs per source |
 | `max_bulk_batch_size` | Integer/nil | `100` | Max items in a bulk scrape batch |
+| `scrape_recommendation_threshold` | Integer/nil | `200` | Avg feed word count threshold for scrape recommendations |
 
 Has `reset!` method. Custom setters normalize values:
 - `nil` -> `nil`

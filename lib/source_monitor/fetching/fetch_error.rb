@@ -84,5 +84,32 @@ module SourceMonitor
         "Unexpected response received"
       end
     end
+
+    class BlockedError < FetchError
+      CODE = "blocked"
+
+      attr_reader :blocked_by
+
+      def initialize(message = nil, blocked_by: "unknown", **kwargs)
+        @blocked_by = blocked_by
+        super(message, **kwargs)
+      end
+
+      protected
+
+      def default_message
+        "Feed blocked by #{blocked_by}"
+      end
+    end
+
+    class AuthenticationError < FetchError
+      CODE = "authentication"
+
+      protected
+
+      def default_message
+        "Authentication required"
+      end
+    end
   end
 end

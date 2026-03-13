@@ -12,6 +12,13 @@
     </div>
   </div>
 
+  <%= render "source_monitor/sources/import_history_panel", import_histories: @recent_import_histories %>
+
+  <%= render "source_monitor/sources/fetch_interval_heatmap",
+        fetch_interval_distribution: @fetch_interval_distribution,
+        selected_bucket: @selected_fetch_interval_bucket,
+        search_params: @search_params %>
+
   <%= search_form_for @q, url: source_monitor.sources_path, method: :get, html: { class: "flex flex-wrap items-end gap-3", data: { turbo_frame: "source_monitor_sources_table" } } do |form| %>
     <div class="flex-1 min-w-[12rem]">
       <%= form.label @search_field, "Search sources", class: "sr-only" %>
@@ -27,7 +34,7 @@
       </div>
       <div>
         <%= form.label :health_status_eq, "Health", class: "block text-xs font-medium text-slate-500 mb-1" %>
-        <%= form.select :health_status_eq, options_for_select([["All Health", ""], ["Healthy", "healthy"], ["Warning", "warning"], ["Declining", "declining"], ["Critical", "critical"]], @search_params["health_status_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
+        <%= form.select :health_status_eq, options_for_select([["All Health", ""], ["Working", "working"], ["Declining", "declining"], ["Improving", "improving"], ["Failing", "failing"]], @search_params["health_status_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
       </div>
       <div>
         <%= form.label :feed_format_eq, "Format", class: "block text-xs font-medium text-slate-500 mb-1" %>
@@ -38,19 +45,16 @@
         <%= form.label :scraper_adapter_eq, "Adapter", class: "block text-xs font-medium text-slate-500 mb-1" %>
         <%= form.select :scraper_adapter_eq, options_for_select([["All Adapters", ""]] + adapter_options.map { |a| [a.titleize, a] }, @search_params["scraper_adapter_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
       </div>
+      <div>
+        <%= form.label :scraping_enabled_eq, "Scrape", class: "block text-xs font-medium text-slate-500 mb-1" %>
+        <%= form.select :scraping_enabled_eq, options_for_select([["All Sources", ""], ["Scraping Enabled", "true"], ["Scraping Disabled", "false"], ["Recommendations", "recommend"]], @search_params["scraping_enabled_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
+      </div>
     </div>
   <% end %>
 
-  <%= render "source_monitor/sources/import_history_panel", import_histories: @recent_import_histories %>
-
-  <%= render "source_monitor/sources/fetch_interval_heatmap",
-        fetch_interval_distribution: @fetch_interval_distribution,
-        selected_bucket: @selected_fetch_interval_bucket,
-        search_params: @search_params %>
-
   <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
     <%= turbo_frame_tag "source_monitor_sources_table" do %>
-      <% dropdown_filter_keys = %w[active_eq health_status_eq feed_format_eq scraper_adapter_eq] %>
+      <% dropdown_filter_keys = %w[active_eq health_status_eq feed_format_eq scraper_adapter_eq scraping_enabled_eq avg_feed_words_lt] %>
       <% active_dropdown_filters = dropdown_filter_keys.select { |k| @search_params[k].present? } %>
       <% has_any_filter = @search_term.present? || @fetch_interval_filter.present? || active_dropdown_filters.any? %>
       <% if has_any_filter %>
@@ -87,7 +91,9 @@
                 "active_eq" => @search_params["active_eq"] == "true" ? "Status: Active" : "Status: Paused",
                 "health_status_eq" => "Health: #{@search_params['health_status_eq']&.titleize}",
                 "feed_format_eq" => "Format: #{@search_params['feed_format_eq']&.upcase}",
-                "scraper_adapter_eq" => "Adapter: #{@search_params['scraper_adapter_eq']&.titleize}"
+                "scraper_adapter_eq" => "Adapter: #{@search_params['scraper_adapter_eq']&.titleize}",
+                "scraping_enabled_eq" => @search_params["scraping_enabled_eq"] == "true" ? "Scraping: Enabled" : "Scraping: Disabled",
+                "avg_feed_words_lt" => "Avg Feed Words: < #{@search_params['avg_feed_words_lt']}"
               } %>
               <% active_dropdown_filters.each do |filter_key| %>
                 <% clear_query = @search_params.dup %>
@@ -107,131 +113,177 @@
           <% end %>
         </div>
       <% end %>
-      <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
-        <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          <tr>
-            <th scope="col"
-                class="px-6 py-3"
-                data-sort-column="name"
-                aria-sort="<%= table_sort_aria(@q, :name) %>">
-              <span class="inline-flex items-center gap-1">
-                <%= table_sort_link(
-                      @q,
-                      :name,
-                      "Source",
-                      frame: "source_monitor_sources_table",
-                      default_order: :asc,
-                      secondary: ["created_at desc"],
-                      html_options: {
-                        class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
-                      }
-                    ) %>
-                <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :name) %></span>
-              </span>
-            </th>
-            <th scope="col" class="px-6 py-3">Status</th>
-            <th scope="col"
-                class="px-6 py-3"
-                data-sort-column="fetch_interval_minutes"
-                aria-sort="<%= table_sort_aria(@q, :fetch_interval_minutes) %>">
-              <span class="inline-flex items-center gap-1">
-                <%= table_sort_link(
-                      @q,
-                      :fetch_interval_minutes,
-                      "Fetch Interval",
-                      frame: "source_monitor_sources_table",
-                      default_order: :asc,
-                      secondary: ["created_at desc"],
-                      html_options: {
-                        class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
-                      }
-                    ) %>
-                <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :fetch_interval_minutes) %></span>
-              </span>
-            </th>
-            <th scope="col"
-                class="px-6 py-3"
-                data-sort-column="items_count"
-                aria-sort="<%= table_sort_aria(@q, :items_count) %>">
-              <span class="inline-flex items-center gap-1">
-                <%= table_sort_link(
-                      @q,
-                      :items_count,
-                      "Items",
-                      frame: "source_monitor_sources_table",
-                      default_order: :desc,
-                      secondary: ["created_at desc"],
-                      html_options: {
-                        class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
-                      }
-                    ) %>
-                <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :items_count) %></span>
-              </span>
-            </th>
-            <th scope="col" class="px-6 py-3">New Items / Day</th>
-            <th scope="col" class="px-6 py-3">Avg Feed Words</th>
-            <th scope="col" class="px-6 py-3">Avg Scraped Words</th>
-            <th scope="col"
-                class="px-6 py-3"
-                data-sort-column="last_fetched_at"
-                aria-sort="<%= table_sort_aria(@q, :last_fetched_at) %>">
-              <span class="inline-flex items-center gap-1">
-                <%= table_sort_link(
-                      @q,
-                      :last_fetched_at,
-                      "Last Fetch",
-                      frame: "source_monitor_sources_table",
-                      default_order: :desc,
-                      secondary: ["created_at desc"],
-                      html_options: {
-                        class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
-                      }
-                    ) %>
-                <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :last_fetched_at) %></span>
-              </span>
-            </th>
-            <th scope="col" class="px-6 py-3"></th>
-          </tr>
-        </thead>
-        <tbody id="source_monitor_sources_table_body" class="divide-y divide-slate-100 text-slate-700">
-          <%= render partial: "source_monitor/sources/row",
-                collection: @sources,
-                as: :source,
-                locals: {
-                  item_activity_rates: @item_activity_rates,
-                  avg_feed_word_counts: @avg_feed_word_counts,
-                  avg_scraped_word_counts: @avg_scraped_word_counts,
-                  search_params: @search_params
-                } %>
+      <%= form_with url: source_monitor.bulk_scrape_enablements_path, data: { controller: "select-all" } do |form| %>
+        <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+          <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th scope="col" class="w-10 px-3 py-3">
+                <% if @scrape_candidate_ids.any? %>
+                  <input type="checkbox"
+                         data-select-all-target="master"
+                         data-action="select-all#toggleAll"
+                         class="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                         aria-label="Select all sources">
+                <% end %>
+              </th>
+              <th scope="col"
+                  class="px-6 py-3"
+                  data-sort-column="name"
+                  aria-sort="<%= table_sort_aria(@q, :name) %>">
+                <span class="inline-flex items-center gap-1">
+                  <%= table_sort_link(
+                        @q,
+                        :name,
+                        "Source",
+                        frame: "source_monitor_sources_table",
+                        default_order: :asc,
+                        secondary: ["created_at desc"],
+                        html_options: {
+                          class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
+                        }
+                      ) %>
+                  <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :name) %></span>
+                </span>
+              </th>
+              <th scope="col" class="px-6 py-3">Health</th>
+              <th scope="col" class="px-6 py-3">Fetch Status</th>
+              <th scope="col"
+                  class="px-6 py-3"
+                  data-sort-column="items_count"
+                  aria-sort="<%= table_sort_aria(@q, :items_count) %>">
+                <span class="inline-flex items-center gap-1">
+                  <%= table_sort_link(
+                        @q,
+                        :items_count,
+                        "Items",
+                        frame: "source_monitor_sources_table",
+                        default_order: :desc,
+                        secondary: ["created_at desc"],
+                        html_options: {
+                          class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
+                        }
+                      ) %>
+                  <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :items_count) %></span>
+                </span>
+              </th>
+              <th scope="col"
+                  class="px-6 py-3"
+                  data-sort-column="new_items_per_day"
+                  aria-sort="<%= table_sort_aria(@q, :new_items_per_day) %>">
+                <span class="inline-flex items-center gap-1">
+                  <%= table_sort_link(
+                        @q,
+                        :new_items_per_day,
+                        "New Items / Day",
+                        frame: "source_monitor_sources_table",
+                        default_order: :desc,
+                        secondary: ["created_at desc"],
+                        html_options: {
+                          class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
+                        }
+                      ) %>
+                  <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :new_items_per_day) %></span>
+                </span>
+              </th>
+              <th scope="col"
+                  class="px-6 py-3"
+                  data-sort-column="avg_feed_words"
+                  aria-sort="<%= table_sort_aria(@q, :avg_feed_words) %>">
+                <span class="inline-flex items-center gap-1">
+                  <%= table_sort_link(
+                        @q,
+                        :avg_feed_words,
+                        "Avg Feed Words",
+                        frame: "source_monitor_sources_table",
+                        default_order: :desc,
+                        secondary: ["created_at desc"],
+                        html_options: {
+                          class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
+                        }
+                      ) %>
+                  <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :avg_feed_words) %></span>
+                </span>
+              </th>
+              <th scope="col"
+                  class="px-6 py-3"
+                  data-sort-column="avg_scraped_words"
+                  aria-sort="<%= table_sort_aria(@q, :avg_scraped_words) %>">
+                <span class="inline-flex items-center gap-1">
+                  <%= table_sort_link(
+                        @q,
+                        :avg_scraped_words,
+                        "Avg Scraped Words",
+                        frame: "source_monitor_sources_table",
+                        default_order: :desc,
+                        secondary: ["created_at desc"],
+                        html_options: {
+                          class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
+                        }
+                      ) %>
+                  <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :avg_scraped_words) %></span>
+                </span>
+              </th>
+              <th scope="col"
+                  class="px-6 py-3"
+                  data-sort-column="last_fetched_at"
+                  aria-sort="<%= table_sort_aria(@q, :last_fetched_at) %>">
+                <span class="inline-flex items-center gap-1">
+                  <%= table_sort_link(
+                        @q,
+                        :last_fetched_at,
+                        "Last Fetch",
+                        frame: "source_monitor_sources_table",
+                        default_order: :desc,
+                        secondary: ["created_at desc"],
+                        html_options: {
+                          class: "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 focus:outline-none"
+                        }
+                      ) %>
+                  <span class="text-[11px] text-slate-400" aria-hidden="true"><%= table_sort_arrow(@q, :last_fetched_at) %></span>
+                </span>
+              </th>
+              <th scope="col" class="px-6 py-3"></th>
+            </tr>
+          </thead>
+          <tbody id="source_monitor_sources_table_body" class="divide-y divide-slate-100 text-slate-700">
+            <%= render partial: "source_monitor/sources/row",
+                  collection: @sources,
+                  as: :source,
+                  locals: {
+                    item_activity_rates: @item_activity_rates,
+                    avg_feed_word_counts: @avg_feed_word_counts,
+                    avg_scraped_word_counts: @avg_scraped_word_counts,
+                    search_params: @search_params,
+                    scrape_candidate_ids: @scrape_candidate_ids
+                  } %>
 
-          <%= render("source_monitor/sources/empty_state_row") if @sources.blank? %>
-        </tbody>
-      </table>
-      <div class="flex flex-col items-center gap-3 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-between">
-        <div class="text-xs text-slate-500">
-          Page <%= @page %>
+            <%= render("source_monitor/sources/empty_state_row") if @sources.blank? %>
+          </tbody>
+        </table>
+
+        <div data-select-all-target="actionBar" class="hidden sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 shadow-md">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-slate-700">
+              <span data-select-all-target="count">0</span> source(s) selected
+            </span>
+            <button type="button"
+                    data-action="modal#open"
+                    class="inline-flex items-center rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-violet-500">
+              Enable Scraping
+            </button>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <% prev_params = { page: @page - 1 } %>
-          <% prev_params[:q] = @search_params if @search_params.present? %>
-          <% prev_params[:per_page] = params[:per_page] if params[:per_page].present? %>
-          <% next_params = { page: @page + 1 } %>
-          <% next_params[:q] = @search_params if @search_params.present? %>
-          <% next_params[:per_page] = params[:per_page] if params[:per_page].present? %>
 
-          <% if @has_previous_page %>
-            <%= link_to "Previous", source_monitor.sources_path(prev_params), class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50", data: { turbo_frame: "source_monitor_sources_table" } %>
-          <% else %>
-            <span class="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-300">Previous</span>
-          <% end %>
-
-          <% if @has_next_page %>
-            <%= link_to "Next", source_monitor.sources_path(next_params), class: "inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50", data: { turbo_frame: "source_monitor_sources_table" } %>
-          <% else %>
-            <span class="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-300">Next</span>
-          <% end %>
-        </div>
-      </div>
+        <%= render "source_monitor/sources/bulk_scrape_enable_modal" %>
+      <% end %>
+      <% extra_params = {} %>
+      <% extra_params[:q] = @search_params if @search_params.present? %>
+      <% extra_params[:per_page] = params[:per_page] if params[:per_page].present? %>
+      <%= render "source_monitor/shared/pagination",
+            paginator_result: @paginator,
+            base_path: source_monitor.sources_path,
+            extra_params: extra_params,
+            turbo_frame: "source_monitor_sources_table" %>
     <% end %>
   </div>
 </div>

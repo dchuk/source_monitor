@@ -1,0 +1,17 @@
+<div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+  <div class="border-b border-slate-200 px-5 py-4">
+    <h2 class="text-lg font-medium">Scrape Recommendations</h2>
+    <p class="mt-1 text-xs text-slate-500">Sources with low feed word counts.</p>
+  </div>
+  <div class="px-5 py-4">
+    <p class="text-3xl font-bold text-blue-600"><%= count %></p>
+    <p class="mt-1 text-sm text-slate-600">
+      <%= "source".pluralize(count) %> could benefit from scraping
+    </p>
+    <div class="mt-4">
+      <%= link_to "View Candidates",
+            source_monitor.sources_path(q: { avg_feed_words_lt: threshold, scraping_enabled_eq: false, active_eq: true }),
+            class: "inline-flex items-center rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-blue-500" %>
+    </div>
+  </div>
+</div>

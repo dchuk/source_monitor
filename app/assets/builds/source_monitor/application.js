@@ -2743,8 +2743,12 @@ var dropdown_controller_default = class extends Controller {
 var modal_controller_default = class extends Controller {
   static targets = ["panel"];
   static classes = ["open"];
+  static values = { autoOpen: Boolean, removeOnClose: Boolean };
   connect() {
     this.handleEscape = this.handleEscape.bind(this);
+    if (this.autoOpenValue) {
+      this.open();
+    }
   }
   disconnect() {
     this.teardown();
@@ -2767,6 +2771,9 @@ var modal_controller_default = class extends Controller {
       this.panelTarget.classList.remove(this.openClass);
     }
     this.teardown();
+    if (this.removeOnCloseValue) {
+      this.element.remove();
+    }
   }
   backdrop(event) {
     if (event.target === event.currentTarget) {
@@ -2826,15 +2833,18 @@ var confirm_navigation_controller_default = class extends Controller {
 
 // app/assets/javascripts/source_monitor/controllers/select_all_controller.js
 var select_all_controller_default = class extends Controller {
-  static targets = ["master", "item"];
+  static targets = ["master", "item", "actionBar", "count"];
   connect() {
     this.syncMaster();
+    this.updateActionBar();
   }
   itemTargetConnected() {
     this.syncMaster();
+    this.updateActionBar();
   }
   itemTargetDisconnected() {
     this.syncMaster();
+    this.updateActionBar();
   }
   toggleAll(event) {
     const checked = event.target.checked;
@@ -2842,15 +2852,29 @@ var select_all_controller_default = class extends Controller {
       if (checkbox.disabled) return;
       checkbox.checked = checked;
     });
+    this.updateActionBar();
   }
   toggleItem() {
     this.syncMaster();
+    this.updateActionBar();
   }
   syncMaster() {
     if (!this.hasMasterTarget) return;
     const selectable = this.itemTargets.filter((checkbox) => !checkbox.disabled);
     const allChecked = selectable.length > 0 && selectable.every((checkbox) => checkbox.checked);
     this.masterTarget.checked = allChecked;
+  }
+  updateActionBar() {
+    if (!this.hasActionBarTarget) return;
+    const checkedCount = this.itemTargets.filter((cb) => cb.checked).length;
+    if (this.hasCountTarget) {
+      this.countTarget.textContent = checkedCount;
+    }
+    if (checkedCount > 0) {
+      this.actionBarTarget.classList.remove("hidden");
+    } else {
+      this.actionBarTarget.classList.add("hidden");
+    }
   }
 };
 

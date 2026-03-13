@@ -60,10 +60,10 @@ module SourceMonitor
         end
       end
 
-      def upcoming_fetch_schedule
-        cache.fetch(:upcoming_fetch_schedule) do
+      def upcoming_fetch_schedule(pages: {})
+        cache.fetch([ :upcoming_fetch_schedule, pages ]) do
           measure(:upcoming_fetch_schedule) do
-            SourceMonitor::Dashboard::UpcomingFetchSchedule.new(scope: SourceMonitor::Source.active)
+            SourceMonitor::Dashboard::UpcomingFetchSchedule.new(scope: SourceMonitor::Source.active, pages: pages)
           end
         end
       end
@@ -110,6 +110,9 @@ module SourceMonitor
         SourceMonitor::Metrics.gauge(:dashboard_stats_failed_sources, stats[:failed_sources])
         SourceMonitor::Metrics.gauge(:dashboard_stats_total_items, stats[:total_items])
         SourceMonitor::Metrics.gauge(:dashboard_stats_fetches_today, stats[:fetches_today])
+        stats[:health_distribution]&.each do |status, count|
+          SourceMonitor::Metrics.gauge(:"dashboard_stats_health_#{status}", count)
+        end
       end
 
       def queue_name_map

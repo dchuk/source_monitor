@@ -7,6 +7,9 @@ SourceMonitor::Engine.routes.draw do
   resources :logs, only: :index
   resources :fetch_logs, only: :show
   resources :scrape_logs, only: :show
+  resources :import_histories, only: [] do
+    resource :dismissal, only: :create, controller: "import_history_dismissals"
+  end
   resources :import_sessions, path: "import_opml", only: %i[new create show update destroy] do
     member do
       get "steps/:step", action: :show, as: :step
@@ -16,6 +19,7 @@ SourceMonitor::Engine.routes.draw do
   resources :items, only: %i[index show] do
     post :scrape, on: :member
   end
+  resources :bulk_scrape_enablements, only: :create
   resources :sources do
     resource :fetch, only: :create, controller: "source_fetches"
     resource :retry, only: :create, controller: "source_retries"
@@ -23,5 +27,6 @@ SourceMonitor::Engine.routes.draw do
     resource :health_check, only: :create, controller: "source_health_checks"
     resource :health_reset, only: :create, controller: "source_health_resets"
     resource :favicon_fetch, only: :create, controller: "source_favicon_fetches"
+    resource :scrape_test, only: :create, controller: "source_scrape_tests"
   end
 end

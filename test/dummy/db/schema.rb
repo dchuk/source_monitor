@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_22_194201) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_12_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -178,6 +178,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_194201) do
     t.datetime "created_at", null: false
     t.integer "duration_ms"
     t.text "error_backtrace"
+    t.string "error_category"
     t.string "error_class"
     t.text "error_message"
     t.integer "feed_size_bytes"
@@ -194,6 +195,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_194201) do
     t.boolean "success"
     t.datetime "updated_at", null: false
     t.index ["created_at"], name: "index_sourcemon_fetch_logs_on_created_at"
+    t.index ["error_category"], name: "index_sourcemon_fetch_logs_on_error_category"
     t.index ["job_id"], name: "index_sourcemon_fetch_logs_on_job_id"
     t.index ["source_id"], name: "index_sourcemon_fetch_logs_on_source_id"
     t.index ["started_at"], name: "index_sourcemon_fetch_logs_on_started_at"
@@ -221,6 +223,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_194201) do
     t.jsonb "bulk_settings", default: {}, null: false
     t.datetime "completed_at"
     t.datetime "created_at", null: false
+    t.datetime "dismissed_at"
     t.jsonb "failed_sources", default: [], null: false
     t.jsonb "imported_sources", default: [], null: false
     t.jsonb "skipped_duplicates", default: [], null: false
@@ -360,6 +363,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_194201) do
     t.datetime "auto_paused_until"
     t.boolean "auto_scrape", default: false, null: false
     t.datetime "backoff_until"
+    t.integer "consecutive_fetch_failures", default: 0, null: false
     t.datetime "created_at", null: false
     t.jsonb "custom_headers", default: {}, null: false
     t.string "etag"
@@ -400,6 +404,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_194201) do
     t.index ["active", "next_fetch_at"], name: "index_sources_on_active_and_next_fetch", where: "(active = true)"
     t.index ["active"], name: "index_sourcemon_sources_on_active"
     t.index ["auto_paused_until"], name: "index_sourcemon_sources_on_auto_paused_until"
+    t.index ["consecutive_fetch_failures"], name: "index_sources_on_consecutive_failures", where: "(consecutive_fetch_failures > 0)"
     t.index ["created_at"], name: "index_sourcemon_sources_on_created_at"
     t.index ["failure_count"], name: "index_sources_on_failures", where: "(failure_count > 0)"
     t.index ["feed_url"], name: "index_sourcemon_sources_on_feed_url", unique: true

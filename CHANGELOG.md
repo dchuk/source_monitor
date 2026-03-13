@@ -15,6 +15,48 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.11.0] - 2026-03-13
+
+### Breaking Changes
+
+- **Health status model simplified from 7 values to 4.** `healthy`/`auto_paused`/`unknown` → `working`, `warning`/`critical` → `failing`. `declining` and `improving` unchanged. Requires migration: `bin/rails source_monitor:upgrade && bin/rails db:migrate`.
+- **`config.health.warning_threshold` removed.** Delete this line from your initializer if present.
+
+### Added
+
+- **Smart scrape recommendations.** Dashboard widget and sources index badge identify sources with low feed word counts that would benefit from scraping. Configurable threshold via `config.scraping.scrape_recommendation_threshold`.
+- **Bulk scrape enablement.** Select multiple recommended sources and enable scraping in one action with confirmation modal.
+- **Test scrape with modal results.** "Test Scrape" button on source detail page runs a synchronous scrape of the latest item and shows feed vs scraped word count comparison in a modal with "Enable Auto-Scraping" action.
+- **Cloudflare bypass techniques.** Cookie replay and UA rotation for Cloudflare-challenged feeds with clear "Blocked" badge on affected sources.
+- **Consecutive failure auto-pause.** Sources that fail consecutively are automatically paused with a `consecutive_fetch_failures` counter and configurable threshold.
+- **Error categorization on fetch logs.** New `error_category` column classifies fetch failures (blocked, auth, timeout, parse, etc.) for structured diagnostics.
+- **Dashboard pagination.** Turbo Frame pagination for sources list, fetch schedule buckets, and health distribution badges. Handles 100+ sources efficiently.
+- **Health distribution badges.** Dashboard shows working/declining/improving/failing source counts below stats cards.
+- **Sortable computed columns.** New Items/Day, Avg Feed Words, and Avg Scraped Words columns sortable on sources index.
+- **Dismissible OPML import banner.** Import history banner includes a dismiss button.
+- **SVG favicon conversion.** SVG favicons auto-converted to PNG via MiniMagick.
+
+### Changed
+
+- Health badge colors: working (green), declining (yellow), improving (sky), failing (rose).
+- Sources index splits Health and Fetch Status into separate columns.
+- Fetch interval shown as rate "(X.Xx / day)" under fetch status badge instead of separate column.
+- Scrape recommended badge positioned below source URL for better wrapping.
+- Enabling auto-scrape now sets both `scraping_enabled` and `auto_scrape`, and queues existing unscraped items.
+- Bulk scrape enablement also sets `auto_scrape` alongside `scraping_enabled`.
+
+### Fixed
+
+- Dashboard fetch schedule source links no longer show "Content missing" (turbo_frame _top added).
+- Force-fetch lock contention handled gracefully (no permanent failure after retries).
+- Blocked response detection via HTML body sniffing.
+
+### Migration Required
+
+- Run `bin/rails source_monitor:upgrade` then `bin/rails db:migrate`.
+- New columns: `consecutive_fetch_failures` on sources, `error_category` on fetch logs.
+- Health status value migration automatically remaps existing records.
+
 ## [0.10.2] - 2026-02-26
 
 ### Fixed

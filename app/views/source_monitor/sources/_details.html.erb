@@ -40,7 +40,17 @@
         </span>
       </div>
       <div>
-        <h1 class="text-3xl font-semibold text-slate-900"><%= source.name %></h1>
+        <div class="flex items-center gap-2">
+          <h1 class="text-3xl font-semibold text-slate-900"><%= source.name %></h1>
+          <% if source.last_error.to_s.match?(/\bblocked\b/i) %>
+            <% blocked_detail = source.last_error.to_s.match(/blocked by (\w+)/i) %>
+            <span class="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700"
+                  title="<%= blocked_detail ? "#{blocked_detail[1].capitalize} Blocked" : "Blocked" %>"
+                  data-testid="source-blocked-badge">
+              Blocked
+            </span>
+          <% end %>
+        </div>
       <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
         <% if source.last_fetch_started_at.present? %>
           <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
@@ -97,6 +107,14 @@
                   action: "turbo:submit-start->async-submit#start turbo:submit-end->async-submit#finish"
                 }
               } %>
+      <% end %>
+      <% unless source.scraping_enabled? %>
+        <%= button_to "Test Scrape",
+              source_monitor.source_scrape_test_path(source),
+              method: :post,
+              class: "inline-flex items-center rounded-md border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-100",
+              data: { turbo_stream: true },
+              title: "Scrape a recent item to compare feed vs scraped word count" %>
       <% end %>
       <%= link_to "Edit", source_monitor.edit_source_path(source), class: "inline-flex items-center rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-white shadow hover:bg-slate-700" %>
       <%= form_with url: source_monitor.source_path(source), method: :delete, data: { turbo_confirm: "Delete this source and remove all associated data?", turbo_frame: "_top" }, class: "inline" do %>

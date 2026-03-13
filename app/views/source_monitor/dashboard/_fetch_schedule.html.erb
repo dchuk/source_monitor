@@ -1,4 +1,4 @@
-<div id="source_monitor_dashboard_fetch_schedule" class="space-y-4">
+<div id="source_monitor_dashboard_fetch_schedule" class="space-y-6">
   <div>
     <h2 class="text-lg font-medium text-slate-900">Upcoming Fetch Schedule</h2>
     <p class="mt-1 text-xs text-slate-500">
@@ -8,79 +8,105 @@
 
   <% if groups.present? %>
     <% groups.each do |group| %>
-      <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <div>
-            <h3 class="text-sm font-semibold text-slate-900"><%= group.label %></h3>
-            <% if (window_label = fetch_schedule_window_label(group)).present? %>
-              <p class="mt-1 text-xs text-slate-500"><%= window_label %></p>
-            <% elsif group.include_unscheduled %>
-              <p class="mt-1 text-xs text-slate-500">Includes sources scheduled beyond four hours or without a next fetch timestamp.</p>
-            <% end %>
+      <%= turbo_frame_tag "source_monitor_schedule_#{group.key}", class: "block" do %>
+        <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900"><%= group.label %></h3>
+              <% if (window_label = fetch_schedule_window_label(group)).present? %>
+                <p class="mt-1 text-xs text-slate-500"><%= window_label %></p>
+              <% elsif group.include_unscheduled %>
+                <p class="mt-1 text-xs text-slate-500">Includes sources scheduled beyond four hours or without a next fetch timestamp.</p>
+              <% end %>
+            </div>
+            <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              <%= pluralize(group.sources.size, "source") %>
+            </span>
           </div>
-          <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-            <%= pluralize(group.sources.size, "source") %>
-          </span>
-        </div>
 
-        <% if group.sources.any? %>
-          <div class="overflow-x-auto px-5 py-4">
-            <table class="min-w-full table-fixed divide-y divide-slate-200 text-left text-sm">
-              <thead class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th scope="col" class="w-[45%] px-4 py-2">Source</th>
-                  <th scope="col" class="w-[15%] px-4 py-2">Status</th>
-                  <th scope="col" class="w-[22%] px-4 py-2">Next Fetch</th>
-                  <th scope="col" class="w-[18%] px-4 py-2">Interval</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100 text-slate-700">
-                <% group.sources.each do |source| %>
-                  <% badge = async_status_badge(source.fetch_status) %>
+          <% if group.sources.any? %>
+            <div class="overflow-x-auto px-5 py-4">
+              <table class="min-w-full table-fixed divide-y divide-slate-200 text-left text-sm">
+                <thead class="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
-                    <td class="px-4 py-3">
-                      <div class="flex flex-col">
-                        <%= link_to source.name, source_monitor.source_path(source), class: "text-sm font-semibold text-blue-600 hover:text-blue-500" %>
-                        <span class="text-xs text-slate-400"><%= source.feed_url %></span>
-                      </div>
-                    </td>
-                    <td class="px-4 py-3">
-                      <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold <%= badge[:classes] %>">
-                        <% if badge[:show_spinner] %>
-                          <%= loading_spinner_svg(css_class: "h-3 w-3 animate-spin text-current") %>
-                        <% end %>
-                        <%= badge[:label] %>
-                      </span>
-                    </td>
-                    <td class="px-4 py-3">
-                      <% if source.next_fetch_at.present? %>
-                        <div class="text-sm font-medium text-slate-900"><%= format_schedule_time(source.next_fetch_at) %></div>
-                        <% if source.next_fetch_at.future? %>
-                          <div class="text-xs text-slate-400">in <%= distance_of_time_in_words(reference_time, source.next_fetch_at) %></div>
-                        <% else %>
-                          <div class="text-xs text-rose-500"><%= distance_of_time_in_words(source.next_fetch_at, reference_time) %> overdue</div>
-                        <% end %>
-                      <% else %>
-                        <div class="text-sm font-medium text-slate-500">Not scheduled</div>
-                      <% end %>
-                    </td>
-                    <td class="px-4 py-3">
-                      <div class="text-sm font-medium text-slate-900"><%= human_fetch_interval(source.fetch_interval_minutes) %></div>
-                      <% if source.respond_to?(:adaptive_fetching_enabled?) && source.adaptive_fetching_enabled? %>
-                        <div class="text-xs text-slate-400">Adaptive</div>
-                      <% else %>
-                        <div class="text-xs text-slate-400">Fixed</div>
-                      <% end %>
-                    </td>
+                    <th scope="col" class="w-[45%] px-4 py-2">Source</th>
+                    <th scope="col" class="w-[15%] px-4 py-2">Status</th>
+                    <th scope="col" class="w-[22%] px-4 py-2">Next Fetch</th>
+                    <th scope="col" class="w-[18%] px-4 py-2">Interval</th>
                   </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
-        <% else %>
-          <div class="px-5 py-6 text-sm text-slate-500">No sources scheduled in this window.</div>
-        <% end %>
-      </div>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                  <% group.sources.each do |source| %>
+                    <% badge = async_status_badge(source.fetch_status) %>
+                    <tr>
+                      <td class="px-4 py-3">
+                        <div class="flex flex-col">
+                          <%= link_to source.name, source_monitor.source_path(source), class: "text-sm font-semibold text-blue-600 hover:text-blue-500", data: { turbo_frame: "_top" } %>
+                          <span class="text-xs text-slate-400"><%= source.feed_url %></span>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3">
+                        <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold <%= badge[:classes] %>">
+                          <% if badge[:show_spinner] %>
+                            <%= loading_spinner_svg(css_class: "h-3 w-3 animate-spin text-current") %>
+                          <% end %>
+                          <%= badge[:label] %>
+                        </span>
+                      </td>
+                      <td class="px-4 py-3">
+                        <% if source.next_fetch_at.present? %>
+                          <div class="text-sm font-medium text-slate-900"><%= format_schedule_time(source.next_fetch_at) %></div>
+                          <% if source.next_fetch_at.future? %>
+                            <div class="text-xs text-slate-400">in <%= distance_of_time_in_words(reference_time, source.next_fetch_at) %></div>
+                          <% else %>
+                            <div class="text-xs text-rose-500"><%= distance_of_time_in_words(source.next_fetch_at, reference_time) %> overdue</div>
+                          <% end %>
+                        <% else %>
+                          <div class="text-sm font-medium text-slate-500">Not scheduled</div>
+                        <% end %>
+                      </td>
+                      <td class="px-4 py-3">
+                        <div class="text-sm font-medium text-slate-900"><%= human_fetch_interval(source.fetch_interval_minutes) %></div>
+                        <% if source.respond_to?(:adaptive_fetching_enabled?) && source.adaptive_fetching_enabled? %>
+                          <div class="text-xs text-slate-400">Adaptive</div>
+                        <% else %>
+                          <div class="text-xs text-slate-400">Fixed</div>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+
+            <% if group.has_previous_page || group.has_next_page %>
+              <div class="flex items-center justify-between border-t border-slate-200 px-5 py-3">
+                <div>
+                  <% if group.has_previous_page %>
+                    <%= link_to source_monitor.dashboard_path(schedule_pages: schedule_pages.merge(group.key => group.page - 1)),
+                          class: "inline-flex items-center gap-1 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50",
+                          data: { turbo_frame: "source_monitor_schedule_#{group.key}" } do %>
+                      &larr; Previous
+                    <% end %>
+                  <% end %>
+                </div>
+                <span class="text-xs text-slate-500">Page <%= group.page %></span>
+                <div>
+                  <% if group.has_next_page %>
+                    <%= link_to source_monitor.dashboard_path(schedule_pages: schedule_pages.merge(group.key => group.page + 1)),
+                          class: "inline-flex items-center gap-1 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50",
+                          data: { turbo_frame: "source_monitor_schedule_#{group.key}" } do %>
+                      Next &rarr;
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="px-5 py-6 text-sm text-slate-500">No sources scheduled in this window.</div>
+          <% end %>
+        </div>
+      <% end %>
     <% end %>
   <% else %>
     <div class="rounded-lg border border-dashed border-slate-200 bg-white px-5 py-6 text-sm text-slate-500 shadow-sm">

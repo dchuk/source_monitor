@@ -1,7 +1,7 @@
 PATH
   remote: ../..
   specs:
-    source_monitor (0.10.0)
+    source_monitor (0.10.2)
       cssbundling-rails (~> 1.4)
       faraday (~> 2.9)
       faraday-follow_redirects (~> 0.4)
@@ -181,6 +181,8 @@ GEM
       net-smtp
     marcel (1.1.0)
     matrix (0.4.3)
+    mini_magick (5.3.1)
+      logger
     mini_mime (1.1.5)
     minitest (6.0.1)
       prism (~> 1.5)
@@ -386,6 +388,7 @@ DEPENDENCIES
   cgi
   digest
   json
+  mini_magick
   minitest-mock
   mission_control-jobs (~> 1.1)
   ostruct

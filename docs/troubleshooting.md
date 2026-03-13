@@ -109,6 +109,15 @@ This guide lists common issues you might encounter while installing, upgrading, 
 - Fix by running `npm install` followed by `npm run build` inside the engine root so that `app/assets/builds/source_monitor/application.css` and `application.js` exist. The Rake task `app:source_monitor:assets:build` wraps the same scripts for CI usage.
 - When the UI is still unstyled, confirm the dummy app can read the namespaced asset directories noted in `.ai/engine-asset-configuration.md:32-44` and restart `bin/dev` so the CSS/JS watchers reconnect.
 
+## 14. Feed Returns Cloudflare Challenge Page
+
+- **Symptoms:** Fetch logs show HTML containing "Checking your browser" or "Just a moment..." instead of feed XML. The source may display a "Blocked" badge.
+- **How it works:** SourceMonitor automatically detects Cloudflare challenge responses and attempts cookie replay with UA rotation on subsequent fetches. No configuration is needed -- this is enabled by default.
+- **If fetches remain blocked:** Some sites employ aggressive bot mitigation that cannot be bypassed with cookie replay alone. In these cases:
+  - Try setting a custom `user_agent` on the source's custom headers to match a specific browser.
+  - Consider whether the site offers an alternative feed URL that is not behind Cloudflare.
+  - Check the fetch log's `error_category` field -- a value of `blocked` confirms Cloudflare detection triggered.
+
 ## Still Stuck?
 
 Collect the following and open an issue or start a discussion:

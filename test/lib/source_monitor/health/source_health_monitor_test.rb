@@ -18,7 +18,6 @@ module SourceMonitor
         configure_health(
           window_size: 5,
           healthy_threshold: 0.6,
-          warning_threshold: 0.4,
           auto_pause_threshold: 0.2,
           auto_resume_threshold: 0.5,
           cooldown_minutes: 30
@@ -38,7 +37,7 @@ module SourceMonitor
 
           @source.reload
           assert_in_delta 0.6, @source.rolling_success_rate, 0.001
-          assert_equal "improving", @source.health_status
+          assert_equal "working", @source.health_status
         end
       end
 
@@ -49,7 +48,7 @@ module SourceMonitor
           SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
 
           @source.reload
-          assert_equal "auto_paused", @source.health_status
+          assert_equal "failing", @source.health_status
           assert_not_nil @source.auto_paused_at
           assert_not_nil @source.auto_paused_until
           assert_operator @source.auto_paused_until, :>, Time.current
@@ -69,7 +68,7 @@ module SourceMonitor
           SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
 
           @source.reload
-          assert_equal "healthy", @source.health_status
+          assert_equal "working", @source.health_status
           assert_nil @source.auto_paused_at
           assert_nil @source.auto_paused_until
         end
@@ -85,12 +84,14 @@ module SourceMonitor
           SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
 
           @source.reload
-          assert_equal "auto_paused", @source.health_status
+          assert_not_nil @source.auto_paused_until
         end
       end
 
       test "marks source as declining after three consecutive failures" do
         travel_to(Time.current) do
+          # 2 successes + 3 consecutive failures = rate 0.4 (above auto_pause 0.2, below healthy 0.6)
+          2.times { |index| create_fetch_log(success: true, minutes_ago: index + 4) }
           3.times { |index| create_fetch_log(success: false, minutes_ago: index) }
 
           SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
@@ -102,14 +103,58 @@ module SourceMonitor
 
       test "marks source as improving after consecutive recoveries" do
         travel_to(Time.current) do
-          create_fetch_log(success: false, minutes_ago: 2)
-          create_fetch_log(success: true, minutes_ago: 1)
-          create_fetch_log(success: true, minutes_ago: 0)
+          # 3 failures + 2 consecutive successes = rate 0.4 (above auto_pause 0.2, below healthy 0.6)
+          3.times { |index| create_fetch_log(success: false, minutes_ago: index + 3) }
+          2.times { |index| create_fetch_log(success: true, minutes_ago: index) }
 
           SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
 
           @source.reload
           assert_equal "improving", @source.health_status
+        end
+      end
+
+      test "marks source as declining via else branch when no consecutive failures and no improving streak" do
+        travel_to(Time.current) do
+          # Pattern: F S F S F -> rate 0.4 (above auto_pause 0.2, below healthy 0.6)
+          # Most recent first (ordered by started_at desc):
+          # fail, success, fail, success, fail
+          # consecutive_failures = 1 (< 3), improving_streak? = false (first log is failure)
+          create_fetch_log(success: false, minutes_ago: 0)
+          create_fetch_log(success: true, minutes_ago: 1)
+          create_fetch_log(success: false, minutes_ago: 2)
+          create_fetch_log(success: true, minutes_ago: 3)
+          create_fetch_log(success: false, minutes_ago: 4)
+
+          SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
+
+          @source.reload
+          assert_equal "declining", @source.health_status
+        end
+      end
+
+      test "resume clears consecutive_fetch_failures" do
+        travel_to(Time.current) do
+          @source.update_columns(
+            consecutive_fetch_failures: 5,
+            auto_paused_until: 30.minutes.from_now,
+            auto_paused_at: Time.current,
+            health_status: "failing"
+          )
+
+          5.times { |index| create_fetch_log(success: false, minutes_ago: index + 1) }
+          SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
+
+          travel 31.minutes
+
+          5.times { |index| create_fetch_log(success: true, minutes_ago: index) }
+
+          SourceMonitor::Health::SourceHealthMonitor.new(source: @source).call
+
+          @source.reload
+          assert_equal 0, @source.consecutive_fetch_failures
+          assert_nil @source.auto_paused_until
+          assert_nil @source.auto_paused_at
         end
       end
 
@@ -165,13 +210,12 @@ module SourceMonitor
         )
       end
 
-      def configure_health(window_size:, healthy_threshold:, warning_threshold:, auto_pause_threshold:, auto_resume_threshold:, cooldown_minutes:)
+      def configure_health(window_size:, healthy_threshold:, auto_pause_threshold:, auto_resume_threshold:, cooldown_minutes:)
         @previous_health_config = capture_health_configuration
 
         SourceMonitor.configure do |config|
           config.health.window_size = window_size
           config.health.healthy_threshold = healthy_threshold
-          config.health.warning_threshold = warning_threshold
           config.health.auto_pause_threshold = auto_pause_threshold
           config.health.auto_resume_threshold = auto_resume_threshold
           config.health.auto_pause_cooldown_minutes = cooldown_minutes
@@ -184,7 +228,6 @@ module SourceMonitor
         SourceMonitor.configure do |config|
           config.health.window_size = @previous_health_config[:window_size]
           config.health.healthy_threshold = @previous_health_config[:healthy_threshold]
-          config.health.warning_threshold = @previous_health_config[:warning_threshold]
           config.health.auto_pause_threshold = @previous_health_config[:auto_pause_threshold]
           config.health.auto_resume_threshold = @previous_health_config[:auto_resume_threshold]
           config.health.auto_pause_cooldown_minutes = @previous_health_config[:auto_pause_cooldown_minutes]
@@ -196,7 +239,6 @@ module SourceMonitor
         {
           window_size: health.window_size,
           healthy_threshold: health.healthy_threshold,
-          warning_threshold: health.warning_threshold,
           auto_pause_threshold: health.auto_pause_threshold,
           auto_resume_threshold: health.auto_resume_threshold,
           auto_pause_cooldown_minutes: health.auto_pause_cooldown_minutes

@@ -237,6 +237,109 @@ module SourceMonitor
         assert_equal 403, result.error.http_status
       end
 
+      test "Cloudflare challenge HTML at 200 raises BlockedError not ParsingError" do
+        url = "https://example.com/cf-blocked.xml"
+        source = build_source(name: "CF Blocked", feed_url: url)
+
+        cf_html = '<html><head><title>Just a moment</title></head><body><div id="cf-challenge">Please wait</div></body></html>'
+        stub_request(:get, url).to_return(status: 200, body: cf_html, headers: { "Content-Type" => "text/html" })
+
+        result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+
+        assert_equal :failed, result.status
+        assert_kind_of SourceMonitor::Fetching::BlockedError, result.error
+        assert_equal "cloudflare", result.error.blocked_by
+
+        log = source.fetch_logs.order(:created_at).last
+        refute log.success
+        assert_equal "SourceMonitor::Fetching::BlockedError", log.error_class
+        assert_equal "blocked", log.error_category
+      end
+
+      test "CAPTCHA page at 200 raises BlockedError" do
+        url = "https://example.com/captcha-blocked.xml"
+        source = build_source(name: "Captcha Blocked", feed_url: url)
+
+        captcha_html = '<html><body><div class="g-recaptcha" data-sitekey="abc"></div></body></html>'
+        stub_request(:get, url).to_return(status: 200, body: captcha_html, headers: { "Content-Type" => "text/html" })
+
+        result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+
+        assert_equal :failed, result.status
+        assert_kind_of SourceMonitor::Fetching::BlockedError, result.error
+        assert_equal "captcha", result.error.blocked_by
+      end
+
+      # -- Cloudflare Bypass Integration --
+
+      test "Cloudflare block triggers bypass attempt and succeeds when bypass returns valid feed" do
+        url = "https://example.com/cf-bypass-success.xml"
+        source = build_source(name: "CF Bypass Success", feed_url: url)
+        valid_rss = File.read(file_fixture("feeds/rss_sample.xml"))
+
+        cf_html = '<html><head><title>Just a moment</title></head><body><div id="cf-challenge">Please wait</div></body></html>'
+
+        call_count = 0
+        stub_request(:get, url).to_return { |_req|
+          call_count += 1
+          if call_count == 1
+            { status: 200, body: cf_html, headers: { "Content-Type" => "text/html" } }
+          else
+            { status: 200, body: valid_rss, headers: { "Content-Type" => "application/rss+xml" } }
+          end
+        }
+
+        result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+
+        assert_equal :fetched, result.status
+        assert_nil result.error
+      end
+
+      test "Cloudflare block triggers bypass attempt and raises BlockedError when bypass fails" do
+        url = "https://example.com/cf-bypass-fail.xml"
+        source = build_source(name: "CF Bypass Fail", feed_url: url)
+
+        cf_html = '<html><head><title>Just a moment</title></head><body><div id="cf-challenge">Please wait</div></body></html>'
+        stub_request(:get, url).to_return(status: 200, body: cf_html, headers: { "Content-Type" => "text/html" })
+
+        result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+
+        assert_equal :failed, result.status
+        assert_kind_of SourceMonitor::Fetching::BlockedError, result.error
+        assert_equal "cloudflare", result.error.blocked_by
+      end
+
+      test "non-Cloudflare block (login wall) does NOT attempt bypass" do
+        url = "https://example.com/login-wall-no-bypass.xml"
+        source = build_source(name: "Login No Bypass", feed_url: url)
+
+        login_html = "<html><head><title>Log in</title></head><body></body></html>"
+        stub_request(:get, url).to_return(status: 200, body: login_html, headers: { "Content-Type" => "text/html" })
+
+        # Only 1 request should be made (no bypass attempts)
+        result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+
+        assert_equal :failed, result.status
+        assert_kind_of SourceMonitor::Fetching::BlockedError, result.error
+        assert_equal "login_wall", result.error.blocked_by
+        assert_requested :get, url, times: 1
+      end
+
+      test "CAPTCHA block does NOT attempt bypass" do
+        url = "https://example.com/captcha-no-bypass.xml"
+        source = build_source(name: "Captcha No Bypass", feed_url: url)
+
+        captcha_html = '<html><body><div class="g-recaptcha" data-sitekey="abc"></div></body></html>'
+        stub_request(:get, url).to_return(status: 200, body: captcha_html, headers: { "Content-Type" => "text/html" })
+
+        result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+
+        assert_equal :failed, result.status
+        assert_kind_of SourceMonitor::Fetching::BlockedError, result.error
+        assert_equal "captcha", result.error.blocked_by
+        assert_requested :get, url, times: 1
+      end
+
       test "re-raises existing FetchError subclasses without double-wrapping" do
         url = "https://example.com/already-timeout.xml"
         source = build_source(name: "Already Timeout", feed_url: url)

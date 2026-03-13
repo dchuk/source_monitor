@@ -416,7 +416,7 @@ module SourceMonitor
 
     test "health check advance deactivates checks and redirects" do
       parsed = [
-        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid", "health_status" => "healthy" }
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid", "health_status" => "working" }
       ]
 
       session = SourceMonitor::ImportSession.create!(

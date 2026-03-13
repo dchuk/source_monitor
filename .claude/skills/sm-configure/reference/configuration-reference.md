@@ -95,8 +95,7 @@ Tunes automatic pause/resume heuristics per source.
 | Setting | Type | Default | Description |
 |---|---|---|---|
 | `window_size` | Integer | `20` | Number of fetch attempts to evaluate |
-| `healthy_threshold` | Float | `0.8` | Success ratio for "healthy" badge |
-| `warning_threshold` | Float | `0.5` | Success ratio for "warning" badge |
+| `healthy_threshold` | Float | `0.8` | Success ratio for "working" status |
 | `auto_pause_threshold` | Float | `0.2` | Auto-pause source below this ratio |
 | `auto_resume_threshold` | Float | `0.6` | Auto-resume source above this ratio |
 | `auto_pause_cooldown_minutes` | Integer | `60` | Grace period before re-enabling |
@@ -162,8 +161,9 @@ Class: `SourceMonitor::Configuration::ScrapingSettings`
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `max_in_flight_per_source` | Integer/nil | `25` | Max concurrent scrapes per source |
+| `max_in_flight_per_source` | Integer/nil | `nil` | Max concurrent scrapes per source |
 | `max_bulk_batch_size` | Integer/nil | `100` | Max items per bulk scrape enqueue |
+| `scrape_recommendation_threshold` | Integer/nil | `200` | Minimum average feed word count below which a source is recommended for scraping |
 
 Values are normalized to positive integers. Set to `nil` to disable limits.
 

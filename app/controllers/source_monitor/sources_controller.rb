@@ -20,29 +20,27 @@ module SourceMonitor
 
     def index
       @search_params = sanitized_search_params
-      @q = build_search_query
+      expand_scrape_recommendation_filter
+      @q = build_search_query(params: @search_params)
 
-      paginator = SourceMonitor::Pagination::Paginator.new(
+      @paginator = SourceMonitor::Pagination::Paginator.new(
         scope: @q.result,
         page: params[:page],
         per_page: params[:per_page] || PER_PAGE
       ).paginate
 
-      @sources = paginator.records
-      @page = paginator.page
-      @has_next_page = paginator.has_next_page
-      @has_previous_page = paginator.has_previous_page
+      @sources = @paginator.records
 
       @search_term = @search_params[SEARCH_FIELD.to_s].to_s.strip
       @search_field = SEARCH_FIELD
 
       metrics = SourceMonitor::Analytics::SourcesIndexMetrics.new(
         base_scope: Source.all,
-        result_scope: paginator.records,
+        result_scope: @paginator.records,
         search_params: @search_params
       )
 
-      @recent_import_histories = SourceMonitor::ImportHistory.recent_for(source_monitor_current_user&.id).limit(5)
+      @recent_import_histories = SourceMonitor::ImportHistory.not_dismissed.recent_for(source_monitor_current_user&.id).limit(5)
 
       @fetch_interval_distribution = metrics.fetch_interval_distribution
       @fetch_interval_filter = metrics.fetch_interval_filter
@@ -62,6 +60,8 @@ module SourceMonitor
         @avg_feed_word_counts = {}
         @avg_scraped_word_counts = {}
       end
+
+      @scrape_candidate_ids = compute_scrape_candidate_ids
     end
 
     def show
@@ -90,8 +90,17 @@ module SourceMonitor
     end
 
     def update
+      scraping_was_disabled = !@source.scraping_enabled?
+
       if @source.update(source_params)
-        redirect_to source_monitor.source_path(@source), notice: "Source updated successfully"
+        notice = "Source updated successfully"
+
+        if scraping_was_disabled && @source.scraping_enabled?
+          enqueued = enqueue_unscraped_items(@source)
+          notice = "Auto-scraping enabled. #{enqueued} existing #{'item'.pluralize(enqueued)} queued for scraping."
+        end
+
+        redirect_to source_monitor.source_path(@source), notice: notice
       else
         render :edit, status: :unprocessable_entity
       end
@@ -178,6 +187,39 @@ module SourceMonitor
           redirect_to source_monitor.sources_path(q: search_params), alert: error_message
         end
       end
+    end
+
+    def expand_scrape_recommendation_filter
+      return unless @search_params["scraping_enabled_eq"] == "recommend"
+
+      threshold = SourceMonitor.config.scraping.scrape_recommendation_threshold
+      @search_params.delete("scraping_enabled_eq")
+      @search_params["scraping_enabled_eq"] = "false"
+      @search_params["active_eq"] = "true"
+      @search_params["avg_feed_words_lt"] = threshold.to_s
+    end
+
+    def compute_scrape_candidate_ids
+      threshold = SourceMonitor.config.scraping.scrape_recommendation_threshold
+      return Set.new if threshold.nil? || threshold <= 0
+
+      candidate_ids = @sources.select do |source|
+        avg = @avg_feed_word_counts[source.id]
+        avg.present? && avg < threshold && !source.scraping_enabled?
+      end.map(&:id)
+
+      Set.new(candidate_ids)
+    end
+
+    def enqueue_unscraped_items(source)
+      result = SourceMonitor::Scraping::BulkSourceScraper.new(
+        source: source,
+        selection: :unscraped
+      ).call
+      result.enqueued_count
+    rescue StandardError => error
+      Rails.logger.warn("[SourceMonitor] Failed to enqueue unscraped items: #{error.message}") if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+      0
     end
 
     def enqueue_favicon_fetch(source)

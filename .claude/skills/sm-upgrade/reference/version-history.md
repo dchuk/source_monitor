@@ -2,26 +2,31 @@
 
 Version-specific migration notes for each major/minor version transition. Agents should reference this file when guiding users through multi-version upgrades.
 
-## 0.9.x to next release
+## 0.10.2 to 0.11.0
 
 **Key changes:**
-- New third queue: `source_monitor_maintenance` for non-fetch jobs (health checks, cleanup, favicon, images, OPML import). Keeps the fetch queue dedicated to FetchFeedJob and ScheduleFetchesJob.
-- `config.maintenance_queue_name` (default `"source_monitor_maintenance"`) and `config.maintenance_queue_concurrency` (default `1`) for tuning the maintenance queue.
-- `config.fetching.scheduler_batch_size` (default `25`, was hardcoded `100`) limits sources per scheduler run. Optimized for 1-CPU/2GB servers.
-- `config.fetching.stale_timeout_minutes` (default `5`, was hardcoded `10`) controls stalled fetch recovery speed.
-- Fixed-interval sources now get ±10% jitter on `next_fetch_at` (previously exact intervals).
-- Fetch pipeline error handling hardened: DB errors in `update_source_state!` propagate instead of being silently swallowed, `ensure` block guarantees status reset from "fetching", `FollowUpHandler` rescues per-item enqueue failures.
-- New rake task: `source_monitor:maintenance:stagger_fetch_times` distributes overdue sources across a configurable window (`WINDOW_MINUTES` env var, default 10).
+- Health status simplified from 7 values to 4 (`working`, `declining`, `improving`, `failing`). Auto-pause tracked as operational state via `auto_paused_at`/`auto_paused_until` columns.
+- New `consecutive_fetch_failures` column (integer, NOT NULL, default 0) on `sourcemon_sources` for streak-based health detection.
+- New `error_category` column (string, nullable) on `sourcemon_fetch_logs` for classifying failure types.
+- New `config.scraping.scrape_recommendation_threshold` (default 200) controls the word-count threshold for dashboard scrape recommendations.
+- Dashboard pagination for sources and items lists.
+- Automatic Cloudflare bypass via cookie replay and UA rotation (no configuration needed).
+- Smart scrape recommendations widget on the dashboard highlights sources that may benefit from scraping.
+- New third queue: `source_monitor_maintenance` for non-fetch jobs (health checks, cleanup, favicon, images, OPML import).
+- `config.fetching.scheduler_batch_size` (default `25`, was hardcoded `100`) and `config.fetching.stale_timeout_minutes` (default `5`, was `10`).
+- Fixed-interval sources now get +/-10% jitter on `next_fetch_at`.
+- Fetch pipeline error handling hardened: DB errors propagate, `ensure` block guarantees status reset.
 
 **Action items:**
-1. **Action required:** Add the maintenance queue to your `solid_queue.yml`:
+1. **Action required:** If your initializer sets `config.health.warning_threshold`, remove that line. The setting no longer exists.
+2. **Action required:** Add the maintenance queue to your `solid_queue.yml`:
    ```yaml
    source_monitor_maintenance:
      concurrency: <%= ENV.fetch("SOURCE_MONITOR_MAINTENANCE_CONCURRENCY", 1) %>
    ```
-2. If you have many overdue sources after upgrading, run `bin/rails source_monitor:maintenance:stagger_fetch_times` to break the thundering herd.
-3. For larger servers (4+ CPUs, 8GB+), increase batch size: `config.fetching.scheduler_batch_size = 50` (or higher).
-4. All existing configuration remains valid. No breaking changes.
+3. If your host app queries `health_status` directly (e.g., `Source.where(health_status: "healthy")`), update to use the new values (`working`, `declining`, `improving`, `failing`).
+4. If you have many overdue sources after upgrading, run `bin/rails source_monitor:maintenance:stagger_fetch_times` to break the thundering herd.
+5. All existing configuration (except `warning_threshold`) remains valid.
 
 ## 0.7.x to 0.8.0
 

@@ -211,6 +211,120 @@ module SourceMonitor
       end
     end
 
+    test "force-fetch ConcurrencyError does not retry and resets status to idle" do
+      source = create_source(fetch_status: "queued")
+
+      stub_runner = Class.new do
+        def initialize(**); end
+
+        def run
+          raise SourceMonitor::Fetching::FetchRunner::ConcurrencyError, "locked"
+        end
+      end
+
+      SourceMonitor::Fetching::FetchRunner.stub(:new, ->(**_kwargs) { stub_runner.new }) do
+        assert_no_enqueued_jobs only: SourceMonitor::FetchFeedJob do
+          SourceMonitor::FetchFeedJob.perform_now(source.id, force: true)
+        end
+      end
+
+      source.reload
+      assert_equal "idle", source.fetch_status
+    end
+
+    test "force-fetch ConcurrencyError does not reset status when not queued" do
+      source = create_source(fetch_status: "fetching")
+
+      stub_runner = Class.new do
+        def initialize(**); end
+
+        def run
+          raise SourceMonitor::Fetching::FetchRunner::ConcurrencyError, "locked"
+        end
+      end
+
+      SourceMonitor::Fetching::FetchRunner.stub(:new, ->(**_kwargs) { stub_runner.new }) do
+        assert_no_enqueued_jobs only: SourceMonitor::FetchFeedJob do
+          SourceMonitor::FetchFeedJob.perform_now(source.id, force: true)
+        end
+      end
+
+      source.reload
+      assert_equal "fetching", source.fetch_status
+    end
+
+    test "scheduled ConcurrencyError retries up to max attempts then raises" do
+      source = create_source
+
+      stub_runner = Class.new do
+        def initialize(**); end
+
+        def run
+          raise SourceMonitor::Fetching::FetchRunner::ConcurrencyError, "locked"
+        end
+      end
+
+      # Simulate exhausting all retries by setting executions high
+      job = SourceMonitor::FetchFeedJob.new(source.id)
+
+      SourceMonitor::Fetching::FetchRunner.stub(:new, ->(**_kwargs) { stub_runner.new }) do
+        # First execution should retry
+        assert_enqueued_jobs 1 do
+          begin
+            job.perform_now
+          rescue StandardError
+            nil
+          end
+        end
+      end
+
+      enqueued = enqueued_jobs.last
+      assert_equal SourceMonitor::FetchFeedJob, enqueued[:job]
+      assert enqueued[:at].present?, "expected retry to be scheduled in the future"
+    end
+
+    test "concurrency error raises after exhausting max attempts" do
+      source = create_source
+
+      stub_runner = Class.new do
+        def initialize(**); end
+
+        def run
+          raise SourceMonitor::Fetching::FetchRunner::ConcurrencyError, "locked"
+        end
+      end
+
+      job = SourceMonitor::FetchFeedJob.new(source.id)
+      # Simulate having already retried the max number of times
+      max = SourceMonitor::FetchFeedJob::SCHEDULED_CONCURRENCY_MAX_ATTEMPTS
+      job.define_singleton_method(:executions) { max }
+
+      SourceMonitor::Fetching::FetchRunner.stub(:new, ->(**_kwargs) { stub_runner.new }) do
+        assert_raises(SourceMonitor::Fetching::FetchRunner::ConcurrencyError) do
+          job.perform_now
+        end
+      end
+    end
+
+    test "log_force_fetch_skipped rescues StandardError" do
+      source = create_source
+
+      job = SourceMonitor::FetchFeedJob.new(source.id, force: true)
+      job.instance_variable_set(:@source_id, source.id)
+
+      # Stub Rails.logger to raise inside the logging method
+      fake_logger = Object.new
+      def fake_logger.info(_msg)
+        raise StandardError, "logger broken"
+      end
+
+      Rails.stub(:logger, fake_logger) do
+        # log_force_fetch_skipped should rescue and return nil
+        result = job.send(:log_force_fetch_skipped)
+        assert_nil result
+      end
+    end
+
     test "executes when next_fetch_at is within early execution leeway" do
       now = Time.zone.local(2025, 10, 30, 12, 0, 0)
       travel_to(now) do

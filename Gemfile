@@ -27,6 +27,7 @@ end
 # gem "debug", ">= 1.0.0"
 
 group :test do
+  gem "mini_magick"
   gem "simplecov", require: false
   gem "test-prof", require: false
   gem "stackprof", require: false

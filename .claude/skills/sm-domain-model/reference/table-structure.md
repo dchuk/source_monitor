@@ -44,10 +44,11 @@ Core feed source configuration and state.
 | adaptive_fetching_enabled | boolean | NO | true | Adaptive interval toggle |
 | feed_content_readability_enabled | boolean | NO | false | Process feed content through readability |
 | rolling_success_rate | decimal(5,4) | YES | | Rolling success rate (0.0-1.0) |
-| health_status | string | NO | "healthy" | Health status string |
+| health_status | string | NO | "working" | Health status (working/declining/improving/failing) |
 | health_status_changed_at | datetime | YES | | Last health status change |
 | auto_paused_at | datetime | YES | | When source was auto-paused |
 | auto_paused_until | datetime | YES | | Auto-pause expiry |
+| consecutive_fetch_failures | integer | NO | 0 | Consecutive fetch failure streak count |
 | health_auto_pause_threshold | decimal(5,4) | YES | | Custom pause threshold (0.0-1.0) |
 | created_at | datetime | NO | | |
 | updated_at | datetime | NO | | |
@@ -170,6 +171,7 @@ Records of feed fetch attempts.
 | feed_size_bytes | integer | YES | | Feed body size |
 | items_in_feed | integer | YES | | Total entries in feed |
 | job_id | string | YES | | ActiveJob ID |
+| error_category | string | YES | | Failure classification (e.g., timeout, dns, blocked) |
 | metadata | jsonb | NO | {} | Extra metadata (parser, errors) |
 | created_at | datetime | NO | | |
 | updated_at | datetime | NO | | |

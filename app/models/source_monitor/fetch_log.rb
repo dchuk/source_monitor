@@ -12,11 +12,15 @@ module SourceMonitor
     attribute :items_failed, :integer, default: 0
     attribute :http_response_headers, default: -> { {} }
 
+    ERROR_CATEGORIES = %w[network parse blocked auth unknown].freeze
+
     validates :source, presence: true
     validates :items_created, :items_updated, :items_failed,
               numericality: { greater_than_or_equal_to: 0 }
+    validates :error_category, inclusion: { in: ERROR_CATEGORIES }, allow_nil: true
 
     scope :for_job, ->(job_id) { where(job_id:) }
+    scope :by_category, ->(category) { where(error_category: category) }
 
     SourceMonitor::ModelExtensions.register(self, :fetch_log)
 

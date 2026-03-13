@@ -140,8 +140,8 @@ module SourceMonitor
       assert_equal source.id, fetch_jobs.first["arguments"].first
     end
 
-    test "enqueues fetch when health check succeeds on critical source" do
-      source = create_source!(feed_url: "https://example.com/feed.xml", health_status: "critical")
+    test "enqueues fetch when health check succeeds on failing source" do
+      source = create_source!(feed_url: "https://example.com/feed.xml", health_status: "failing")
 
       stub_request(:get, source.feed_url).to_return(
         status: 200, body: "", headers: { "Content-Type" => "application/rss+xml" }
@@ -153,8 +153,8 @@ module SourceMonitor
       assert_equal 1, fetch_jobs.size, "expected FetchFeedJob to be enqueued"
     end
 
-    test "enqueues fetch when health check succeeds on warning source" do
-      source = create_source!(feed_url: "https://example.com/feed.xml", health_status: "warning")
+    test "does not enqueue fetch when health check succeeds on working source" do
+      source = create_source!(feed_url: "https://example.com/feed.xml", health_status: "working")
 
       stub_request(:get, source.feed_url).to_return(
         status: 200, body: "", headers: { "Content-Type" => "application/rss+xml" }
@@ -163,20 +163,7 @@ module SourceMonitor
       SourceMonitor::SourceHealthCheckJob.perform_now(source.id)
 
       fetch_jobs = enqueued_jobs.select { |j| j["job_class"] == "SourceMonitor::FetchFeedJob" }
-      assert_equal 1, fetch_jobs.size, "expected FetchFeedJob to be enqueued"
-    end
-
-    test "does not enqueue fetch when health check succeeds on healthy source" do
-      source = create_source!(feed_url: "https://example.com/feed.xml", health_status: "healthy")
-
-      stub_request(:get, source.feed_url).to_return(
-        status: 200, body: "", headers: { "Content-Type" => "application/rss+xml" }
-      )
-
-      SourceMonitor::SourceHealthCheckJob.perform_now(source.id)
-
-      fetch_jobs = enqueued_jobs.select { |j| j["job_class"] == "SourceMonitor::FetchFeedJob" }
-      assert_empty fetch_jobs, "expected no FetchFeedJob to be enqueued for healthy source"
+      assert_empty fetch_jobs, "expected no FetchFeedJob to be enqueued for working source"
     end
 
     test "does not enqueue fetch when health check fails on degraded source" do

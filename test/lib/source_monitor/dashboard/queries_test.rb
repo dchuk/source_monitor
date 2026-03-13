@@ -24,7 +24,7 @@ module SourceMonitor
         queries = SourceMonitor::Dashboard::Queries.new
 
         first_call_queries = count_sql_queries { queries.stats }
-        assert_operator first_call_queries, :<=, 3, "expected at most three SQL statements for stats"
+        assert_operator first_call_queries, :<=, 5, "expected at most five SQL statements for stats"
 
         cached_call_queries = count_sql_queries { queries.stats }
         assert_equal 0, cached_call_queries, "expected cached stats to avoid additional SQL"
@@ -254,7 +254,8 @@ module SourceMonitor
         assert_equal 0, stats[:failed_sources]
         assert_equal 0, stats[:total_items]
         assert_equal 0, stats[:fetches_today]
-        stats.each_value { |v| assert_kind_of Integer, v }
+        stats.except(:health_distribution).each_value { |v| assert_kind_of Integer, v }
+        assert_kind_of Hash, stats[:health_distribution]
       end
 
       test "stats integer_value handles nil from SQL" do

@@ -4,6 +4,8 @@ module SourceMonitor
   class ImportHistory < ApplicationRecord
     validates :user_id, presence: true
 
+    scope :not_dismissed, -> { where(dismissed_at: nil) }
+
     scope :recent_for, lambda { |user_id|
       scope = order(created_at: :desc)
       scope = scope.where(user_id: user_id) if user_id

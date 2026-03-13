@@ -4,6 +4,17 @@ module SourceMonitor
   module Fetching
     class FeedFetcher
       class SourceUpdater
+        CONSECUTIVE_FAILURE_PAUSE_THRESHOLD = 5
+
+        ERROR_CATEGORY_MAP = {
+          SourceMonitor::Fetching::TimeoutError => "network",
+          SourceMonitor::Fetching::ConnectionError => "network",
+          SourceMonitor::Fetching::ParsingError => "parse",
+          SourceMonitor::Fetching::BlockedError => "blocked",
+          SourceMonitor::Fetching::AuthenticationError => "auth",
+          SourceMonitor::Fetching::UnexpectedResponseError => "unknown"
+        }.freeze
+
         attr_reader :source, :adaptive_interval
 
         def initialize(source:, adaptive_interval:)
@@ -19,6 +30,7 @@ module SourceMonitor
             last_error: nil,
             last_error_at: nil,
             failure_count: 0,
+            consecutive_fetch_failures: 0,
             feed_format: derive_feed_format(feed)
           }
 
@@ -47,7 +59,8 @@ module SourceMonitor
             last_http_status: response.status,
             last_error: nil,
             last_error_at: nil,
-            failure_count: 0
+            failure_count: 0,
+            consecutive_fetch_failures: 0
           }
 
           if (etag = response.headers["etag"] || response.headers["ETag"])
@@ -74,13 +87,15 @@ module SourceMonitor
             last_http_status: error.http_status,
             last_error: error.message,
             last_error_at: now,
-            failure_count: source.failure_count.to_i + 1
+            failure_count: source.failure_count.to_i + 1,
+            consecutive_fetch_failures: source.consecutive_fetch_failures.to_i + 1
           }
 
           adaptive_interval.apply_adaptive_interval!(attrs, content_changed: false, failure: true)
           attrs[:metadata] = updated_metadata
           decision = apply_retry_strategy!(attrs, error, now)
           source.update!(attrs)
+          check_consecutive_failure_auto_pause!
           decision
         end
 
@@ -101,6 +116,7 @@ module SourceMonitor
             error_class: error&.class&.name,
             error_message: error&.message,
             error_backtrace: error_backtrace(error),
+            error_category: categorize_error(error),
             metadata: feed_metadata(feed, error: error, feed_signature: feed_signature, item_errors: item_errors)
           )
         end
@@ -137,6 +153,56 @@ module SourceMonitor
           attributes[:fetch_retry_attempt] = 0
           attributes[:fetch_circuit_opened_at] = nil
           attributes[:fetch_circuit_until] = nil
+        end
+
+        def check_consecutive_failure_auto_pause!
+          return if source.consecutive_fetch_failures < CONSECUTIVE_FAILURE_PAUSE_THRESHOLD
+          return if source.auto_paused_until.present? && source.auto_paused_until.future?
+
+          now = Time.current
+          cooldown = [ SourceMonitor.config.health.auto_pause_cooldown_minutes.to_i, 1 ].max
+          pause_until = now + cooldown.minutes
+
+          source.update_columns(
+            auto_paused_until: pause_until,
+            auto_paused_at: now,
+            health_status: "failing",
+            health_status_changed_at: now,
+            backoff_until: pause_until,
+            next_fetch_at: pause_until
+          )
+
+          notify_auto_pause(now)
+        rescue StandardError => error
+          Rails.logger.error(
+            "[SourceMonitor::SourceUpdater] Auto-pause check failed for source #{source.id}: #{error.message}"
+          ) if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+        end
+
+        def notify_auto_pause(timestamp)
+          message = "Source '#{source.name}' auto-paused after #{CONSECUTIVE_FAILURE_PAUSE_THRESHOLD} consecutive fetch failures"
+
+          source.fetch_logs.create!(
+            success: false,
+            started_at: timestamp,
+            completed_at: timestamp,
+            duration_ms: 0,
+            http_status: nil,
+            error_class: "SourceMonitor::AutoPause",
+            error_message: message,
+            metadata: { event: "auto_pause", consecutive_failures: source.consecutive_fetch_failures }
+          )
+
+          SourceMonitor::Realtime.broadcast_toast(
+            message: "#{message}.",
+            level: :warning,
+            delay_ms: 8000
+          )
+          SourceMonitor::Realtime.broadcast_source(source)
+        rescue StandardError => error
+          Rails.logger.warn(
+            "[SourceMonitor::SourceUpdater] Auto-pause notification failed for source #{source.id}: #{error.message}"
+          ) if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
         end
 
         def enqueue_favicon_fetch_if_needed
@@ -190,6 +256,20 @@ module SourceMonitor
           attributes[:fetch_circuit_opened_at] ||= nil
           attributes[:fetch_circuit_until] ||= nil
           nil
+        end
+
+        def categorize_error(error)
+          return if error.nil?
+
+          if error.is_a?(SourceMonitor::Fetching::HTTPError)
+            status = error.status.to_i
+            return "auth" if status == 401 || status == 403
+            return "network"
+          end
+
+          ERROR_CATEGORY_MAP.fetch(error.class) do
+            error.is_a?(SourceMonitor::Fetching::FetchError) ? "unknown" : nil
+          end
         end
 
         def derive_feed_format(feed)

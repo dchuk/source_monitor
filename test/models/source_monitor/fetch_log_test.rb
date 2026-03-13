@@ -52,5 +52,33 @@ module SourceMonitor
 
       assert_equal [ tracked ], FetchLog.for_job("abc-123").to_a
     end
+
+    test "validates error_category inclusion" do
+      log = FetchLog.new(source: @source, started_at: Time.current, error_category: "invalid")
+      assert_not log.valid?
+      assert_includes log.errors[:error_category], "is not included in the list"
+    end
+
+    test "allows nil error_category" do
+      log = FetchLog.new(source: @source, started_at: Time.current, error_category: nil)
+      assert log.valid?
+    end
+
+    test "allows valid error_category values" do
+      %w[network parse blocked auth unknown].each do |category|
+        log = FetchLog.new(source: @source, started_at: Time.current, error_category: category)
+        assert log.valid?, "Expected error_category '#{category}' to be valid"
+      end
+    end
+
+    test "by_category scope filters logs" do
+      network_log = FetchLog.create!(source: @source, success: false, started_at: 3.minutes.ago, error_category: "network")
+      blocked_log = FetchLog.create!(source: @source, success: false, started_at: 2.minutes.ago, error_category: "blocked")
+      FetchLog.create!(source: @source, success: true, started_at: 1.minute.ago, error_category: nil)
+
+      assert_equal [ network_log ], FetchLog.by_category("network").to_a
+      assert_equal [ blocked_log ], FetchLog.by_category("blocked").to_a
+      assert_empty FetchLog.by_category("auth").to_a
+    end
   end
 end

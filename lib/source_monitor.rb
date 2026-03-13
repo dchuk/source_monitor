@@ -54,6 +54,7 @@ module SourceMonitor
   autoload :Assets, "source_monitor/assets"
 
   module Analytics
+    autoload :ScrapeRecommendations, "source_monitor/analytics/scrape_recommendations"
     autoload :SourceFetchIntervalDistribution, "source_monitor/analytics/source_fetch_interval_distribution"
     autoload :SourceActivityRates, "source_monitor/analytics/source_activity_rates"
     autoload :SourcesIndexMetrics, "source_monitor/analytics/sources_index_metrics"
@@ -81,6 +82,7 @@ module SourceMonitor
     autoload :RetryPolicy, "source_monitor/fetching/retry_policy"
     autoload :StalledFetchReconciler, "source_monitor/fetching/stalled_fetch_reconciler"
     autoload :AdvisoryLock, "source_monitor/fetching/advisory_lock"
+    autoload :CloudflareBypass, "source_monitor/fetching/cloudflare_bypass"
   end
 
   module ImportSessions
@@ -90,6 +92,7 @@ module SourceMonitor
 
   module Favicons
     autoload :Discoverer, "source_monitor/favicons/discoverer"
+    autoload :SvgConverter, "source_monitor/favicons/svg_converter"
   end
 
   module Images

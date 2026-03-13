@@ -41,7 +41,7 @@ Created in: `20241008120000_create_source_monitor_sources.rb`
 | `fetch_circuit_opened_at` | datetime | - | - |
 | `fetch_circuit_until` | datetime | - | - |
 | `rolling_success_rate` | decimal(5,4) | - | - |
-| `health_status` | string | NOT NULL, indexed | `"healthy"` |
+| `health_status` | string | NOT NULL, indexed | `"working"` |
 | `health_status_changed_at` | datetime | - | - |
 | `auto_paused_at` | datetime | - | - |
 | `auto_paused_until` | datetime | indexed | - |

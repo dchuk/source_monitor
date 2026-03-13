@@ -122,7 +122,7 @@ module SourceMonitor
     test "initializes with default health_status" do
       source = Source.new(name: "Test", feed_url: "https://example.com/feed")
 
-      assert_equal "healthy", source.health_status
+      assert_equal "working", source.health_status
     end
 
     test "allows overriding default hash attributes" do
@@ -263,6 +263,76 @@ module SourceMonitor
     test "avg_word_count returns nil when no item_contents have word counts" do
       source = create_source!
       assert_nil source.avg_word_count
+    end
+
+    # =========================================================================
+    # Source.scrape_candidates scope (Plan 04-01)
+    # =========================================================================
+
+    test "scrape_candidates returns sources below threshold with scraping disabled" do
+      source = create_source!(scraping_enabled: false)
+      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
+      SourceMonitor::ItemContent.create!(item: item)
+
+      candidates = SourceMonitor::Source.scrape_candidates(threshold: 500)
+      assert_includes candidates, source
+    end
+
+    test "scrape_candidates excludes sources with scraping already enabled" do
+      source = create_source!(scraping_enabled: true)
+      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
+      SourceMonitor::ItemContent.create!(item: item)
+
+      candidates = SourceMonitor::Source.scrape_candidates(threshold: 500)
+      assert_not_includes candidates, source
+    end
+
+    test "scrape_candidates excludes inactive sources" do
+      source = create_source!(active: false, scraping_enabled: false)
+      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
+      SourceMonitor::ItemContent.create!(item: item)
+
+      candidates = SourceMonitor::Source.scrape_candidates(threshold: 500)
+      assert_not_includes candidates, source
+    end
+
+    test "scrape_candidates excludes sources with no items" do
+      source = create_source!(scraping_enabled: false)
+
+      candidates = SourceMonitor::Source.scrape_candidates(threshold: 500)
+      assert_not_includes candidates, source
+    end
+
+    test "scrape_candidates excludes sources above threshold" do
+      source = create_source!(scraping_enabled: false)
+      words = Array.new(300) { "word" }.join(" ")
+      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: words)
+      SourceMonitor::ItemContent.create!(item: item)
+
+      candidates = SourceMonitor::Source.scrape_candidates(threshold: 200)
+      assert_not_includes candidates, source
+    end
+
+    test "scrape_candidates respects custom threshold parameter" do
+      source = create_source!(scraping_enabled: false)
+      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "one two three")
+      SourceMonitor::ItemContent.create!(item: item)
+
+      assert_includes SourceMonitor::Source.scrape_candidates(threshold: 10), source
+      assert_not_includes SourceMonitor::Source.scrape_candidates(threshold: 2), source
+    end
+
+    test "scrape_candidates returns empty when threshold is zero or negative" do
+      source = create_source!(scraping_enabled: false)
+      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content")
+      SourceMonitor::ItemContent.create!(item: item)
+
+      assert_empty SourceMonitor::Source.scrape_candidates(threshold: 0)
+      assert_empty SourceMonitor::Source.scrape_candidates(threshold: -1)
+    end
+
+    test "scraping_enabled is in ransackable_attributes" do
+      assert_includes SourceMonitor::Source.ransackable_attributes, "scraping_enabled"
     end
   end
 end

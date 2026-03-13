@@ -85,10 +85,9 @@ SourceMonitor.configure do |config|
 
   # ---- Source health monitoring ---------------------------------------
   # Tune how many fetches SourceMonitor evaluates when determining health
-  # status, as well as thresholds for warnings and automatic pauses.
+  # status, as well as thresholds for automatic pauses.
   config.health.window_size = 20
-  config.health.healthy_threshold = 0.8
-  config.health.warning_threshold = 0.5
+  config.health.healthy_threshold = 0.8            # Ratio for "working" status
   config.health.auto_pause_threshold = 0.2
   config.health.auto_resume_threshold = 0.6
   config.health.auto_pause_cooldown_minutes = 60

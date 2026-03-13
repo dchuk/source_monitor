@@ -86,6 +86,14 @@ config.scrapers.register(:custom, "MyApp::Scrapers::Premium" )
 
 Adapters receive merged settings (`default -> source -> invocation`), and must return a `SourceMonitor::Scrapers::Result` object. Use `config.scrapers.unregister(:custom)` to remove overrides.
 
+## Scraping Settings
+
+`config.scraping` controls scrape concurrency and recommendations.
+
+- `max_in_flight_per_source` – max concurrent scrape jobs per source (`nil` = unlimited, default `nil`)
+- `max_bulk_batch_size` – max items per bulk scrape enqueue (default `100`)
+- `scrape_recommendation_threshold` – minimum average feed word count below which a source is recommended for scraping (default `200`)
+
 ## Events & Item Processors
 
 Respond to lifecycle events without monkey patching:
@@ -147,7 +155,7 @@ Handlers can be symbols (invoked on the controller) or callables. Return `false`
 `config.health` tunes automatic pause/resume heuristics.
 
 - `window_size` – number of fetch attempts to evaluate (default `20`)
-- `healthy_threshold` / `warning_threshold` – ratios that drive UI badges
+- `healthy_threshold` – ratio that drives the "working" badge
 - `auto_pause_threshold` / `auto_resume_threshold` – percentages that trigger automatic toggling
 - `auto_pause_cooldown_minutes` – grace period before re-enabling a source
 

@@ -17,11 +17,20 @@ module SourceMonitor
       ).to_a
       @job_adapter = SourceMonitor::Jobs::Visibility.adapter_name
       @job_metrics = queries.job_metrics
-      fetch_schedule = queries.upcoming_fetch_schedule
+      @schedule_pages = schedule_pages_params
+      fetch_schedule = queries.upcoming_fetch_schedule(pages: @schedule_pages)
       @fetch_schedule_groups = fetch_schedule.groups
       @fetch_schedule_reference_time = fetch_schedule.reference_time
+      @scrape_candidates_count = @stats[:scrape_candidates_count]
+      @scrape_recommendation_threshold = SourceMonitor.config.scraping.scrape_recommendation_threshold
       @mission_control_enabled = SourceMonitor.mission_control_enabled?
       @mission_control_dashboard_path = SourceMonitor.mission_control_dashboard_path
+    end
+
+    private
+
+    def schedule_pages_params
+      params.fetch(:schedule_pages, {}).permit!.to_h
     end
   end
 end

@@ -78,7 +78,7 @@ module SourceMonitor
       def perform_fetch(started_at, instrumentation_payload)
         response = perform_request
         handle_response(response, started_at, instrumentation_payload)
-      rescue TimeoutError, ConnectionError, HTTPError, ParsingError => error
+      rescue TimeoutError, ConnectionError, HTTPError, ParsingError, BlockedError, AuthenticationError => error
         raise error
       rescue Faraday::TimeoutError => error
         raise TimeoutError.new(error.message, original_error: error)
@@ -209,10 +209,64 @@ module SourceMonitor
         )
       end
 
+      SNIFF_LIMIT = 4096
+
+      CLOUDFLARE_MARKERS = [
+        "<title>Just a moment</title>",
+        "<title>Attention Required</title>",
+        "cf-challenge",
+        "cf-browser-verification",
+        "__cf_chl_",
+        "data-ray="
+      ].freeze
+
+      CAPTCHA_MARKERS = [
+        "g-recaptcha",
+        "h-captcha"
+      ].freeze
+
+      LOGIN_TITLE_PATTERN = /<title>\s*(log\s*in|sign\s*in)\s*<\/title>/i
+
       def parse_feed(body, response)
+        blocked_by = detect_blocked_response(body, response)
+
+        if blocked_by == "cloudflare" && !@bypass_attempted
+          @bypass_attempted = true
+          bypass_response = CloudflareBypass.new(response: response, feed_url: source.feed_url).call
+          if bypass_response
+            body = bypass_response.body
+          else
+            raise BlockedError.new(blocked_by: blocked_by, response: response)
+          end
+        elsif blocked_by
+          raise BlockedError.new(blocked_by: blocked_by, response: response)
+        end
+
         Feedjira.parse(body)
+      rescue BlockedError
+        raise
       rescue StandardError => error
         raise ParsingError.new(error.message, response: response, original_error: error)
+      end
+
+      def detect_blocked_response(body, _response)
+        return if body.blank?
+
+        snippet = body[0, SNIFF_LIMIT]
+        snippet_lower = snippet.downcase
+
+        return "cloudflare" if CLOUDFLARE_MARKERS.any? { |marker| snippet_lower.include?(marker.downcase) }
+        return "captcha" if CAPTCHA_MARKERS.any? { |marker| snippet_lower.include?(marker.downcase) }
+
+        if snippet_lower.match?(LOGIN_TITLE_PATTERN)
+          return "login_wall"
+        end
+
+        if snippet_lower.include?("<html") && snippet_lower.include?("<form") && snippet_lower.include?("password")
+          return "login_wall"
+        end
+
+        nil
       end
 
       def handle_failure(error, started_at:, instrumentation_payload:)

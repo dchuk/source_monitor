@@ -255,7 +255,7 @@ module SourceMonitor
       get source_monitor.sources_path
       assert_response :success
 
-      assert_includes response.body, "Page 1"
+      assert_includes response.body, "Page 1 of 2"
       assert_includes response.body, "Next"
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 25
     end
@@ -267,7 +267,7 @@ module SourceMonitor
       get source_monitor.sources_path, params: { page: 2 }
       assert_response :success
 
-      assert_includes response.body, "Page 2"
+      assert_includes response.body, "Page 2 of 2"
       assert_includes response.body, "Previous"
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 5
     end
@@ -293,21 +293,58 @@ module SourceMonitor
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 3
     end
 
+    test "index renders page numbers and total pages" do
+      Source.destroy_all
+      30.times { |i| create_source!(name: "PageNum #{i}") }
+
+      get source_monitor.sources_path, params: { per_page: 10 }
+      assert_response :success
+
+      assert_includes response.body, "Page 1 of 3"
+      # Page number links should be present
+      assert_includes response.body, ">1<"
+      assert_includes response.body, ">2<"
+      assert_includes response.body, ">3<"
+    end
+
+    test "index renders jump-to-page form" do
+      Source.destroy_all
+      30.times { |i| create_source!(name: "JumpPage #{i}") }
+
+      get source_monitor.sources_path, params: { per_page: 10 }
+      assert_response :success
+
+      assert_select "input[name='page'][type='number']"
+      assert_select "input[type='submit'][value='Go']"
+    end
+
+    test "jump to page preserves search params" do
+      Source.destroy_all
+      30.times { |i| create_source!(name: "JumpSearch #{i}", health_status: "declining") }
+
+      get source_monitor.sources_path, params: { page: 2, q: { health_status_eq: "declining" }, per_page: 10 }
+      assert_response :success
+
+      assert_includes response.body, "Page 2 of 3"
+      # Hidden fields in the jump-to-page form should preserve search params
+      assert_select "input[type='hidden'][name='q[health_status_eq]'][value='declining']"
+    end
+
     # --- Filter tests ---
 
     test "index filters by health_status_eq" do
-      create_source!(name: "Healthy Source", health_status: "healthy")
-      create_source!(name: "Warning Source", health_status: "warning")
-      create_source!(name: "Critical Source", health_status: "critical")
+      create_source!(name: "Healthy Source", health_status: "working")
+      create_source!(name: "Warning Source", health_status: "declining")
+      create_source!(name: "Critical Source", health_status: "failing")
 
-      get source_monitor.sources_path, params: { q: { health_status_eq: "warning" } }
+      get source_monitor.sources_path, params: { q: { health_status_eq: "declining" } }
       assert_response :success
 
       assert_includes response.body, "Warning Source"
       refute_includes response.body, "Healthy Source"
       refute_includes response.body, "Critical Source"
       # Filter banner should show the active filter
-      assert_includes response.body, "Health: Warning"
+      assert_includes response.body, "Health: Declining"
     end
 
     test "index filters by scraper_adapter_eq" do
@@ -323,14 +360,14 @@ module SourceMonitor
     end
 
     test "index combines text search with dropdown filter" do
-      create_source!(name: "Healthy Blog", health_status: "healthy")
-      create_source!(name: "Warning Blog", health_status: "warning")
-      create_source!(name: "Healthy News", health_status: "healthy")
+      create_source!(name: "Healthy Blog", health_status: "working")
+      create_source!(name: "Warning Blog", health_status: "declining")
+      create_source!(name: "Healthy News", health_status: "working")
 
       get source_monitor.sources_path, params: {
         q: {
           name_or_feed_url_or_website_url_cont: "Blog",
-          health_status_eq: "healthy"
+          health_status_eq: "working"
         }
       }
       assert_response :success
@@ -340,11 +377,135 @@ module SourceMonitor
       refute_includes response.body, "Healthy News"
     end
 
-    test "pagination preserves filter params across pages" do
-      30.times { |i| create_source!(name: "Filtered #{i}", health_status: "warning") }
-      create_source!(name: "Healthy Excluded", health_status: "healthy")
+    test "show displays Blocked badge when source last_error indicates blocked" do
+      source = create_source!(name: "Blocked Source")
+      source.update_columns(last_error: "Feed blocked by cloudflare", last_error_at: Time.current)
 
-      get source_monitor.sources_path, params: { q: { health_status_eq: "warning" } }
+      get source_monitor.source_path(source)
+      assert_response :success
+      assert_select "[data-testid='source-blocked-badge']", text: "Blocked"
+    end
+
+    test "show does not display Blocked badge when source has no block error" do
+      source = create_source!(name: "Normal Source")
+      source.update_columns(last_error: nil)
+
+      get source_monitor.source_path(source)
+      assert_response :success
+      assert_select "[data-testid='source-blocked-badge']", count: 0
+    end
+
+    test "index displays Blocked badge in row for blocked source" do
+      source = create_source!(name: "Row Blocked Source")
+      source.update_columns(last_error: "Feed blocked by cloudflare", last_error_at: Time.current)
+
+      get source_monitor.sources_path
+      assert_response :success
+      assert_select "[data-testid='source-blocked-badge']", text: "Blocked"
+    end
+
+    # --- Scrape recommendation badge tests ---
+
+    test "index shows scrape recommendation badge for source below threshold with scraping disabled" do
+      source = create_source!(name: "Low Words Source", scraping_enabled: false)
+      item = source.items.create!(guid: "lwi-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short content here")
+      item.create_item_content!
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "##{dom_id(source, :row)} [data-testid='scrape-recommendation-badge']", text: "Scrape Recommended"
+    end
+
+    test "index does not show scrape recommendation badge for source above threshold" do
+      source = create_source!(name: "High Words Source", scraping_enabled: false)
+      long_content = ([ "word" ] * 500).join(" ")
+      item = source.items.create!(guid: "hwi-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: long_content)
+      item.create_item_content!
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "##{dom_id(source, :row)} [data-testid='scrape-recommendation-badge']", count: 0
+    end
+
+    test "index does not show scrape recommendation badge for source with scraping enabled" do
+      source = create_source!(name: "Scraping Enabled", scraping_enabled: true, scraper_adapter: "readability")
+      item = source.items.create!(guid: "sei-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short content here")
+      item.create_item_content!
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "##{dom_id(source, :row)} [data-testid='scrape-recommendation-badge']", count: 0
+    end
+
+    test "index renders scrape recommendation badge for candidate sources" do
+      source = create_source!(name: "Badge Source", scraping_enabled: false)
+      item = source.items.create!(guid: "bs-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short content")
+      item.create_item_content!
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "[data-testid='scrape-recommendation-badge']", text: "Scrape Recommended"
+    end
+
+    test "index does not render scrape recommendation badge for non-candidate sources" do
+      long_content = ([ "word" ] * 500).join(" ")
+      source = create_source!(name: "No Badge Source", scraping_enabled: false)
+      item = source.items.create!(guid: "nbs-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: long_content)
+      item.create_item_content!
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "[data-testid='scrape-recommendation-badge']", count: 0
+    end
+
+    test "index expands scrape recommendation filter into compound query" do
+      source = create_source!(name: "Candidate Source", scraping_enabled: false, active: true)
+      # Create an item with low feed_word_count so avg_feed_words < threshold
+      item = source.items.create!(guid: "rec-1", title: "Item", url: "https://example.com/rec-1", published_at: Time.current, content: "short")
+      item.create_item_content!
+      item.item_content.update_columns(feed_word_count: 50)
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path, params: { q: { "scraping_enabled_eq" => "recommend" } }
+      assert_response :success
+
+      # The "recommend" pseudo-filter should expand into scraping_enabled=false + active=true + avg_feed_words_lt=200
+      assert_includes response.body, "Candidate Source"
+      # Verify the expanded filter params appear in sort/pagination links
+      assert_includes response.body, "scraping_enabled_eq"
+      assert_includes response.body, "active_eq"
+    end
+
+    test "index renders filter pill for avg_feed_words_lt filter" do
+      create_source!(name: "Filter Pill Source")
+
+      get source_monitor.sources_path, params: { q: { avg_feed_words_lt: "200" } }
+      assert_response :success
+
+      assert_includes response.body, "Avg Feed Words: &lt; 200"
+    end
+
+    test "pagination preserves filter params across pages" do
+      30.times { |i| create_source!(name: "Filtered #{i}", health_status: "declining") }
+      create_source!(name: "Healthy Excluded", health_status: "working")
+
+      get source_monitor.sources_path, params: { q: { health_status_eq: "declining" } }
       assert_response :success
 
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 25
@@ -352,11 +513,107 @@ module SourceMonitor
       assert_match(/health_status_eq/, response.body)
 
       # Navigate to page 2 with filter
-      get source_monitor.sources_path, params: { page: 2, q: { health_status_eq: "warning" } }
+      get source_monitor.sources_path, params: { page: 2, q: { health_status_eq: "declining" } }
       assert_response :success
 
       assert_select "tbody#source_monitor_sources_table_body tr[id^='row_']", 5
       refute_includes response.body, "Healthy Excluded"
+    end
+
+    # --- Bulk scrape checkbox tests ---
+
+    test "index shows checkboxes for scrape candidate sources" do
+      candidate = create_source!(name: "Checkbox Candidate", scraping_enabled: false)
+      item = candidate.items.create!(guid: "cc-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short")
+      item.create_item_content!
+
+      non_candidate = create_source!(name: "Checkbox Non-Candidate", scraping_enabled: true)
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      # Candidate row should have a checkbox
+      assert_select "##{dom_id(candidate, :row)} input[type='checkbox'][name='bulk_scrape_enablement[source_ids][]']"
+
+      # Non-candidate row should NOT have a checkbox
+      assert_select "##{dom_id(non_candidate, :row)} input[type='checkbox'][name='bulk_scrape_enablement[source_ids][]']", count: 0
+    end
+
+    test "index renders bulk action bar markup" do
+      create_source!(name: "Bar Source")
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "[data-select-all-target='actionBar']"
+      assert_select "[data-select-all-target='count']"
+    end
+
+    test "index renders confirmation modal" do
+      create_source!(name: "Modal Source")
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_select "[data-controller='modal']"
+      assert_includes response.body, "Enable Scraping"
+      assert_includes response.body, "Confirm Enable"
+    end
+
+    # --- Update / Enable scraping tests ---
+
+    test "update enabling scraping enqueues unscraped items and shows flash" do
+      source = create_source!(name: "Scrape Toggle", scraping_enabled: false)
+      # Create unscraped items
+      3.times do |i|
+        source.items.create!(
+          guid: "st-#{i}",
+          title: "Item #{i}",
+          url: "https://example.com/st-#{i}",
+          published_at: Time.current
+        )
+      end
+
+      with_queue_adapter(:test) do
+        patch source_monitor.source_path(source), params: {
+          source: { scraping_enabled: "true" }
+        }
+      end
+
+      assert_redirected_to source_monitor.source_path(source)
+      source.reload
+      assert source.scraping_enabled?, "scraping should be enabled after update"
+      assert_match(/Auto-scraping enabled/, flash[:notice])
+      assert_match(/queued for scraping/, flash[:notice])
+    end
+
+    test "update without toggling scraping does not mention scraping in flash" do
+      source = create_source!(name: "No Toggle", scraping_enabled: true)
+
+      patch source_monitor.source_path(source), params: {
+        source: { name: "Renamed Source" }
+      }
+
+      assert_redirected_to source_monitor.source_path(source)
+      assert_equal "Source updated successfully", flash[:notice]
+    end
+
+    test "update enabling scraping still succeeds when enqueue raises" do
+      source = create_source!(name: "Enqueue Error", scraping_enabled: false)
+
+      SourceMonitor::Scraping::BulkSourceScraper.stub(:new, ->(**) { raise StandardError, "queue down" }) do
+        patch source_monitor.source_path(source), params: {
+          source: { scraping_enabled: "true" }
+        }
+      end
+
+      assert_redirected_to source_monitor.source_path(source)
+      source.reload
+      assert source.scraping_enabled?, "scraping should still be enabled"
+      assert_match(/Auto-scraping enabled/, flash[:notice])
+      assert_match(/0 existing items queued/, flash[:notice])
     end
   end
 end

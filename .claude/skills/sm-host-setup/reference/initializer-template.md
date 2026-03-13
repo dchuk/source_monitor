@@ -108,8 +108,7 @@ SourceMonitor.configure do |config|
   # ===========================================================================
 
   config.health.window_size = 20                   # Fetch attempts to evaluate
-  config.health.healthy_threshold = 0.8            # Ratio for "healthy" badge
-  config.health.warning_threshold = 0.5            # Ratio for "warning" badge
+  config.health.healthy_threshold = 0.8            # Ratio for "working" status
   config.health.auto_pause_threshold = 0.2         # Auto-pause below this
   config.health.auto_resume_threshold = 0.6        # Auto-resume above this
   config.health.auto_pause_cooldown_minutes = 60   # Grace period before re-enable
@@ -137,6 +136,7 @@ SourceMonitor.configure do |config|
 
   # config.scraping.max_in_flight_per_source = 25  # Concurrent scrapes per source
   # config.scraping.max_bulk_batch_size = 100       # Max bulk enqueue size
+  # config.scraping.scrape_recommendation_threshold = 200
 
   # ===========================================================================
   # Event Callbacks

@@ -34,7 +34,7 @@ module SourceMonitor
     attribute :custom_headers, default: -> { {} }
     attribute :metadata, default: -> { {} }
     attribute :fetch_status, :string, default: "idle"
-    attribute :health_status, :string, default: "healthy"
+    attribute :health_status, :string, default: "working"
 
     sanitizes_string_attributes :name, :feed_url, :website_url, :scraper_adapter
     sanitizes_hash_attributes :scrape_settings, :custom_headers, :metadata
@@ -61,14 +61,59 @@ module SourceMonitor
         active.where(arel_table[:next_fetch_at].eq(nil).or(arel_table[:next_fetch_at].lteq(reference_time)))
       end
 
+      def scrape_candidates(threshold: SourceMonitor.config.scraping.scrape_recommendation_threshold)
+        threshold_value = threshold.to_i
+        return none if threshold_value <= 0
+
+        active
+          .where(scraping_enabled: false)
+          .where(
+            "#{table_name}.id IN (
+              SELECT i.source_id
+              FROM #{Item.table_name} i
+              INNER JOIN #{ItemContent.table_name} ic ON ic.item_id = i.id
+              WHERE ic.feed_word_count IS NOT NULL
+              GROUP BY i.source_id
+              HAVING AVG(ic.feed_word_count) < ?
+            )", threshold_value
+          )
+      end
+
       def ransackable_attributes(_auth_object = nil)
         %w[name feed_url website_url created_at fetch_interval_minutes items_count last_fetched_at
-           active health_status feed_format scraper_adapter]
+           active health_status feed_format scraper_adapter scraping_enabled
+           new_items_per_day avg_feed_words avg_scraped_words]
       end
 
       def ransackable_associations(_auth_object = nil)
         []
       end
+    end
+
+    ransacker :new_items_per_day do
+      Arel.sql(
+        "(SELECT COUNT(*) / 30.0 FROM #{Item.table_name} i" \
+        " WHERE i.source_id = #{table_name}.id" \
+        " AND i.created_at >= NOW() - INTERVAL '30 days')"
+      )
+    end
+
+    ransacker :avg_feed_words do
+      Arel.sql(
+        "(SELECT AVG(ic.feed_word_count) FROM #{ItemContent.table_name} ic" \
+        " INNER JOIN #{Item.table_name} i ON i.id = ic.item_id" \
+        " WHERE i.source_id = #{table_name}.id" \
+        " AND ic.feed_word_count IS NOT NULL)"
+      )
+    end
+
+    ransacker :avg_scraped_words do
+      Arel.sql(
+        "(SELECT AVG(ic.scraped_word_count) FROM #{ItemContent.table_name} ic" \
+        " INNER JOIN #{Item.table_name} i ON i.id = ic.item_id" \
+        " WHERE i.source_id = #{table_name}.id" \
+        " AND ic.scraped_word_count IS NOT NULL)"
+      )
     end
 
     def fetch_interval_minutes=(value)

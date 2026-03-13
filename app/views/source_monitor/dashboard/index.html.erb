@@ -14,7 +14,7 @@
   <section class="grid gap-6 lg:grid-cols-3">
     <div class="lg:col-span-2 space-y-6">
       <%= render "recent_activity", recent_activity: @recent_activity %>
-      <%= render "fetch_schedule", groups: @fetch_schedule_groups, reference_time: @fetch_schedule_reference_time %>
+      <%= render "fetch_schedule", groups: @fetch_schedule_groups, reference_time: @fetch_schedule_reference_time, schedule_pages: @schedule_pages %>
     </div>
 
     <div class="space-y-6">
@@ -23,6 +23,12 @@
             adapter: @job_adapter,
             mission_control_enabled: @mission_control_enabled,
             mission_control_path: @mission_control_dashboard_path %>
+
+      <% if @scrape_candidates_count.to_i > 0 %>
+        <%= render "scrape_recommendations",
+              count: @scrape_candidates_count,
+              threshold: @scrape_recommendation_threshold %>
+      <% end %>
 
       <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div class="border-b border-slate-200 px-5 py-4">

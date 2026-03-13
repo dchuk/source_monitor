@@ -121,12 +121,12 @@ module SourceMonitor
       refute fallback[:show_spinner]
     end
 
-    test "source_health_badge returns healthy styling" do
-      source = SourceMonitor::Source.new(health_status: "healthy")
+    test "source_health_badge returns working styling" do
+      source = SourceMonitor::Source.new(health_status: "working")
 
       badge = source_health_badge(source)
 
-      assert_equal "Healthy", badge[:label]
+      assert_equal "Working", badge[:label]
       assert_match(/green/, badge[:classes])
     end
 
@@ -136,7 +136,7 @@ module SourceMonitor
       badge = source_health_badge(source)
 
       assert_equal "Declining", badge[:label]
-      assert_match(/orange/, badge[:classes])
+      assert_match(/yellow/, badge[:classes])
     end
 
     test "source_health_badge highlights improving status" do
@@ -148,13 +148,13 @@ module SourceMonitor
       assert_match(/sky|blue|green/, badge[:classes])
     end
 
-    test "source_health_badge indicates auto paused" do
-      source = SourceMonitor::Source.new(health_status: "auto_paused")
+    test "source_health_badge indicates failing status" do
+      source = SourceMonitor::Source.new(health_status: "failing")
 
       badge = source_health_badge(source)
 
-      assert_equal "Auto-Paused", badge[:label]
-      assert_match(/amber|rose/, badge[:classes])
+      assert_equal "Failing", badge[:label]
+      assert_match(/rose/, badge[:classes])
     end
 
     test "source_health_actions include recovery options for declining sources" do
@@ -174,6 +174,18 @@ module SourceMonitor
       source = SourceMonitor::Source.new(health_status: "declining")
 
       assert interactive_health_status?(source)
+    end
+
+    test "interactive_health_status is enabled for failing sources" do
+      source = SourceMonitor::Source.new(health_status: "failing")
+
+      assert interactive_health_status?(source)
+    end
+
+    test "interactive_health_status is disabled for working sources" do
+      source = SourceMonitor::Source.new(health_status: "working")
+
+      refute interactive_health_status?(source)
     end
 
     test "item_scrape_status_badge shows scraped label for success" do
