@@ -90,8 +90,9 @@ Has `reset!` method. All attributes are plain `attr_accessor`.
 
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `max_in_flight_per_source` | Integer/nil | `25` | Max concurrent scrape jobs per source |
+| `max_in_flight_per_source` | Integer/nil | `nil` | Max concurrent scrape jobs per source |
 | `max_bulk_batch_size` | Integer/nil | `100` | Max items in a bulk scrape batch |
+| `scrape_recommendation_threshold` | Integer/nil | `200` | Avg feed word count threshold for scrape recommendations |
 
 Has `reset!` method. Custom setters normalize values:
 - `nil` -> `nil`

@@ -46,7 +46,7 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
-### Upgrading to next release (health status simplification)
+### Upgrading to 0.11.0
 
 **What changed:**
 - Health status values simplified from 7 (`healthy`, `warning`, `critical`, `declining`, `improving`, `auto_paused`, `unknown`) to 4 (`working`, `declining`, `improving`, `failing`).
@@ -54,6 +54,12 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 - Auto-pause is now tracked as operational state (via `auto_paused_at`/`auto_paused_until` columns) rather than as a health status value. Sources can be both "failing AND auto-paused".
 - New `determine_status` decision tree uses rate thresholds and streak detection.
 - Dashboard and sources index updated with new badge colors: working (green), declining (yellow), improving (sky), failing (rose).
+- New `consecutive_fetch_failures` column on sources for streak-based health detection.
+- New `error_category` column on fetch logs for classifying failure types (e.g., timeout, DNS, blocked).
+- New `config.scraping.scrape_recommendation_threshold` setting (default 200) controls the word-count threshold for scrape recommendations on the dashboard.
+- Dashboard pagination for sources and items lists.
+- Automatic Cloudflare bypass via cookie replay and UA rotation (no configuration needed).
+- Smart scrape recommendations widget on the dashboard highlights sources that may benefit from scraping.
 
 **Upgrade steps:**
 ```bash
@@ -68,6 +74,8 @@ bin/rails db:migrate
 - If your host app queries `health_status` directly (e.g., `Source.where(health_status: "healthy")`), update those queries to use the new values.
 - The `auto_paused?` method and `auto_paused_at`/`auto_paused_until` columns still exist and work the same way. Only the `health_status` column values changed.
 - `healthy_threshold` config setting still exists but now drives the `working` status (renamed from `healthy`).
+- The `consecutive_fetch_failures` and `error_category` columns are added via migrations and require no configuration.
+- Cloudflare bypass is automatic -- sources that return Cloudflare challenge pages will show a "Blocked" badge and the engine retries with cookie replay and UA rotation.
 
 ### Upgrading to 0.10.0 (from 0.9.x)
 

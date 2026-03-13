@@ -161,8 +161,9 @@ Class: `SourceMonitor::Configuration::ScrapingSettings`
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `max_in_flight_per_source` | Integer/nil | `25` | Max concurrent scrapes per source |
+| `max_in_flight_per_source` | Integer/nil | `nil` | Max concurrent scrapes per source |
 | `max_bulk_batch_size` | Integer/nil | `100` | Max items per bulk scrape enqueue |
+| `scrape_recommendation_threshold` | Integer/nil | `200` | Minimum average feed word count below which a source is recommended for scraping |
 
 Values are normalized to positive integers. Set to `nil` to disable limits.
 
