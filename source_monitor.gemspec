@@ -46,4 +46,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "solid_queue", ">= 0.3", "< 3.0"
   spec.add_dependency "solid_cable", ">= 3.0", "< 4.0"
   spec.add_dependency "ransack", "~> 4.2"
+  spec.add_dependency "view_component", ">= 3.0", "< 4.0"
 end
