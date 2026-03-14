@@ -76,8 +76,6 @@ module SourceMonitor
           url: "https://example.com/stats-#{SecureRandom.hex(4)}",
           content: "short content"
         )
-        SourceMonitor::ItemContent.create!(item: item)
-
         stats = SourceMonitor::Dashboard::Queries::StatsQuery.new(reference_time: Time.current).call
 
         assert_operator stats[:scrape_candidates_count], :>=, 1

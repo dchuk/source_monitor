@@ -17,7 +17,7 @@ module SourceMonitor
           url: "https://example.com/sr-#{SecureRandom.hex(4)}",
           content: "short feed content"
         )
-        SourceMonitor::ItemContent.create!(item: item1)
+        item1.reload # ensure callback-created ItemContent is loaded
 
         @high_wc_source = create_source!(name: "High WC #{SecureRandom.hex(4)}", scraping_enabled: false)
         words = Array.new(300) { "word" }.join(" ")
@@ -27,7 +27,7 @@ module SourceMonitor
           url: "https://example.com/sr-#{SecureRandom.hex(4)}",
           content: words
         )
-        SourceMonitor::ItemContent.create!(item: item2)
+        item2.reload # ensure callback-created ItemContent is loaded
 
         @scraping_enabled_source = create_source!(name: "Scraping On #{SecureRandom.hex(4)}", scraping_enabled: true)
         item3 = SourceMonitor::Item.create!(
@@ -36,7 +36,7 @@ module SourceMonitor
           url: "https://example.com/sr-#{SecureRandom.hex(4)}",
           content: "short content"
         )
-        SourceMonitor::ItemContent.create!(item: item3)
+        item3.reload # ensure callback-created ItemContent is loaded
       end
 
       test "candidates_count returns correct count" do

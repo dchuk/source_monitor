@@ -120,7 +120,6 @@ module SourceMonitor
         new_item = SourceMonitor::Item.new(source_id: source.id)
         apply_attributes(new_item, attributes)
         new_item.save!
-        new_item.ensure_feed_content_record
         Result.new(item: new_item, status: :created)
       rescue ActiveRecord::RecordNotUnique
         handle_concurrent_duplicate(attributes, raw_guid_present:)

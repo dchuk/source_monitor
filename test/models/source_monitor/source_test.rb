@@ -254,8 +254,8 @@ module SourceMonitor
         source: source, guid: SecureRandom.uuid,
         url: "https://example.com/b-#{SecureRandom.hex(4)}", title: "B"
       )
-      SourceMonitor::ItemContent.create!(item: item1, scraped_content: "one two three four") # 4 words
-      SourceMonitor::ItemContent.create!(item: item2, scraped_content: "one two three four five six") # 6 words
+      item1.create_item_content!(scraped_content: "one two three four") # 4 words
+      item2.create_item_content!(scraped_content: "one two three four five six") # 6 words
 
       assert_equal 5, source.avg_word_count # (4 + 6) / 2 = 5
     end
@@ -271,8 +271,7 @@ module SourceMonitor
 
     test "scrape_candidates returns sources below threshold with scraping disabled" do
       source = create_source!(scraping_enabled: false)
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
 
       candidates = SourceMonitor::Source.scrape_candidates(threshold: 500)
       assert_includes candidates, source
@@ -280,8 +279,7 @@ module SourceMonitor
 
     test "scrape_candidates excludes sources with scraping already enabled" do
       source = create_source!(scraping_enabled: true)
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
 
       candidates = SourceMonitor::Source.scrape_candidates(threshold: 500)
       assert_not_includes candidates, source
@@ -289,8 +287,7 @@ module SourceMonitor
 
     test "scrape_candidates excludes inactive sources" do
       source = create_source!(active: false, scraping_enabled: false)
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
 
       candidates = SourceMonitor::Source.scrape_candidates(threshold: 500)
       assert_not_includes candidates, source
@@ -306,8 +303,7 @@ module SourceMonitor
     test "scrape_candidates excludes sources above threshold" do
       source = create_source!(scraping_enabled: false)
       words = Array.new(300) { "word" }.join(" ")
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: words)
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: words)
 
       candidates = SourceMonitor::Source.scrape_candidates(threshold: 200)
       assert_not_includes candidates, source
@@ -315,8 +311,7 @@ module SourceMonitor
 
     test "scrape_candidates respects custom threshold parameter" do
       source = create_source!(scraping_enabled: false)
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "one two three")
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "one two three")
 
       assert_includes SourceMonitor::Source.scrape_candidates(threshold: 10), source
       assert_not_includes SourceMonitor::Source.scrape_candidates(threshold: 2), source
@@ -324,8 +319,7 @@ module SourceMonitor
 
     test "scrape_candidates returns empty when threshold is zero or negative" do
       source = create_source!(scraping_enabled: false)
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content")
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content")
 
       assert_empty SourceMonitor::Source.scrape_candidates(threshold: 0)
       assert_empty SourceMonitor::Source.scrape_candidates(threshold: -1)

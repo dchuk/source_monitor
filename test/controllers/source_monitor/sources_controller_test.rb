@@ -409,7 +409,7 @@ module SourceMonitor
     test "index shows scrape recommendation badge for source below threshold with scraping disabled" do
       source = create_source!(name: "Low Words Source", scraping_enabled: false)
       item = source.items.create!(guid: "lwi-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short content here")
-      item.create_item_content!
+      item.reload # callback auto-creates ItemContent
 
       SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
 
@@ -423,7 +423,7 @@ module SourceMonitor
       source = create_source!(name: "High Words Source", scraping_enabled: false)
       long_content = ([ "word" ] * 500).join(" ")
       item = source.items.create!(guid: "hwi-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: long_content)
-      item.create_item_content!
+      item.reload # callback auto-creates ItemContent
 
       SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
 
@@ -436,7 +436,7 @@ module SourceMonitor
     test "index does not show scrape recommendation badge for source with scraping enabled" do
       source = create_source!(name: "Scraping Enabled", scraping_enabled: true, scraper_adapter: "readability")
       item = source.items.create!(guid: "sei-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short content here")
-      item.create_item_content!
+      item.reload # callback auto-creates ItemContent
 
       SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
 
@@ -449,7 +449,7 @@ module SourceMonitor
     test "index renders scrape recommendation badge for candidate sources" do
       source = create_source!(name: "Badge Source", scraping_enabled: false)
       item = source.items.create!(guid: "bs-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short content")
-      item.create_item_content!
+      item.reload # callback auto-creates ItemContent
 
       SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
 
@@ -463,7 +463,7 @@ module SourceMonitor
       long_content = ([ "word" ] * 500).join(" ")
       source = create_source!(name: "No Badge Source", scraping_enabled: false)
       item = source.items.create!(guid: "nbs-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: long_content)
-      item.create_item_content!
+      item.reload # callback auto-creates ItemContent
 
       SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
 
@@ -477,7 +477,7 @@ module SourceMonitor
       source = create_source!(name: "Candidate Source", scraping_enabled: false, active: true)
       # Create an item with low feed_word_count so avg_feed_words < threshold
       item = source.items.create!(guid: "rec-1", title: "Item", url: "https://example.com/rec-1", published_at: Time.current, content: "short")
-      item.create_item_content!
+      item.reload # callback auto-creates ItemContent
       item.item_content.update_columns(feed_word_count: 50)
 
       SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
@@ -525,7 +525,7 @@ module SourceMonitor
     test "index shows checkboxes for scrape candidate sources" do
       candidate = create_source!(name: "Checkbox Candidate", scraping_enabled: false)
       item = candidate.items.create!(guid: "cc-1", title: "Item", url: "https://example.com/1", published_at: Time.current, content: "short")
-      item.create_item_content!
+      item.reload # callback auto-creates ItemContent
 
       non_candidate = create_source!(name: "Checkbox Non-Candidate", scraping_enabled: true)
 

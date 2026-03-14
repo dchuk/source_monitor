@@ -19,7 +19,9 @@ module SourceMonitor
         title: "Backfill Test",
         content: "<p>Hello world from feed</p>"
       )
-      content = SourceMonitor::ItemContent.create!(item: item, scraped_content: "Hello world from scraper")
+      item.reload
+      content = item.item_content
+      content.update!(scraped_content: "Hello world from scraper")
 
       # Manually nil out word counts to simulate pre-migration state
       content.update_columns(scraped_word_count: nil, feed_word_count: nil)
@@ -40,16 +42,18 @@ module SourceMonitor
 
     test "backfill_word_counts creates ItemContent for items with content but no ItemContent" do
       source = create_source!
+      # Create item without content first, then add content via update_columns
+      # to bypass the after_create_commit callback (simulates pre-v0.9.0 items)
       item = SourceMonitor::Item.create!(
         source: source,
         guid: SecureRandom.uuid,
         url: "https://example.com/feed-only-#{SecureRandom.hex(4)}",
-        title: "Feed Only Item",
-        content: "<p>Three word sentence</p>"
+        title: "Feed Only Item"
       )
+      item.update_columns(content: "<p>Three word sentence</p>")
 
       # Item has content but no ItemContent (simulates pre-v0.9.0 items)
-      assert_nil item.item_content
+      assert_nil item.reload.item_content
 
       Rake::Task["source_monitor:backfill_word_counts"].reenable
       assert_output(/Phase 1.*1 records created.*Done\. Phase 1: 1 created\./m) do

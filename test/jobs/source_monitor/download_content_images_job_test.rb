@@ -96,7 +96,6 @@ module SourceMonitor
 
       item.reload
       assert_equal "<p>No images here</p>", item.content
-      assert_nil item.item_content
     end
 
     test "gracefully handles individual image download failure" do
@@ -155,9 +154,11 @@ module SourceMonitor
 
     test "creates item_content if it does not exist yet" do
       source = create_source!
-      item = create_item!(source: source, content: %(<p><img src="#{IMAGE_URL}"></p>))
+      # Create without content, then add via update_columns to bypass callback
+      item = create_item!(source: source, content: nil)
+      item.update_columns(content: %(<p><img src="#{IMAGE_URL}"></p>))
 
-      assert_nil item.item_content
+      assert_nil item.reload.item_content
 
       stub_request(:get, IMAGE_URL)
         .to_return(body: TINY_PNG, headers: { "Content-Type" => "image/png" })
