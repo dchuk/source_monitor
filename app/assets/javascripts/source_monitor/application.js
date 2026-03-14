@@ -8,12 +8,7 @@ import ConfirmNavigationController from "./controllers/confirm_navigation_contro
 import SelectAllController from "./controllers/select_all_controller";
 import "./turbo_actions";
 
-const existingApplication = window.SourceMonitorStimulus;
-const application = existingApplication || Application.start();
-
-if (!existingApplication) {
-  window.SourceMonitorStimulus = application;
-}
+const application = Application.start();
 
 application.register("notification", NotificationController);
 application.register("notification-container", NotificationContainerController);

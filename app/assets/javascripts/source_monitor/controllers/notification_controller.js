@@ -6,12 +6,7 @@ export default class extends Controller {
   };
 
   connect() {
-    if (!window.SourceMonitorControllers) {
-      window.SourceMonitorControllers = {};
-    }
-
     this.clearTimeout();
-    this.registerController();
     this.applyLevelDelay();
     this.startTimer();
   }
@@ -24,10 +19,6 @@ export default class extends Controller {
     if (event) event.preventDefault();
     this.clearTimeout();
     this.dismiss();
-  }
-
-  registerController() {
-    window.SourceMonitorControllers.notification = this;
   }
 
   startTimer() {

@@ -5,11 +5,11 @@
 <% interactive = interactive_health_status?(source, override: override) && actions.any? %>
 
 <% if interactive %>
-  <div data-controller="dropdown" class="relative inline-block text-left" data-testid="source-health-menu">
+  <div data-controller="dropdown" class="relative inline-block text-left" data-testid="source-health-menu-<%= dom_id(source) %>">
     <button type="button"
             class="inline-flex w-full items-center justify-center rounded-full px-3 py-1 text-xs font-semibold <%= badge[:classes] %>"
-            data-action="dropdown#toggle click@window->dropdown#hide"
-            data-testid="source-health-menu-toggle">
+            data-action="dropdown#toggle"
+            data-testid="source-health-menu-toggle-<%= dom_id(source) %>">
       <% if badge[:show_spinner] %>
         <%= loading_spinner_svg(css_class: "mr-1 h-3.5 w-3.5 animate-spin text-blue-500") %>
       <% end %>
