@@ -38,7 +38,7 @@ module SourceMonitor
     private
 
     def default_adapter
-      "readability"
+      Source.column_defaults["scraper_adapter"] || "readability"
     end
 
     def handle_empty_selection
