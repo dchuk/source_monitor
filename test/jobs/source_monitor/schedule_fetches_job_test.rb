@@ -15,6 +15,16 @@ module SourceMonitor
       assert_equal SourceMonitor.config.fetching.scheduler_batch_size, captured_limit
     end
 
+    test "logs errors and re-raises on failure" do
+      error = StandardError.new("scheduler failure")
+
+      SourceMonitor::Scheduler.stub(:run, ->(**) { raise error }) do
+        assert_raises(StandardError, "scheduler failure") do
+          SourceMonitor::ScheduleFetchesJob.perform_now
+        end
+      end
+    end
+
     test "passes through an explicit limit when provided" do
       captured_limit = nil
 

@@ -145,14 +145,15 @@ module SourceMonitor
 
     def reset_items_counter!
       # Recalculate items_count from actual active (non-deleted) items
-      actual_count = items.count
-      update_columns(items_count: actual_count)
+      # Use reset_counters which is the Rails-native way to fix counter caches
+      self.class.reset_counters(id, :items)
+      reload
     end
 
     def avg_word_count
       items.joins(:item_content)
-           .where.not(sourcemon_item_contents: { scraped_word_count: nil })
-           .average("sourcemon_item_contents.scraped_word_count")
+           .where.not(ItemContent.table_name => { scraped_word_count: nil })
+           .average("#{ItemContent.table_name}.scraped_word_count")
            &.round
     end
 
