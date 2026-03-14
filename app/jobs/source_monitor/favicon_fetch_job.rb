@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "faraday"
+
 module SourceMonitor
   class FaviconFetchJob < ApplicationJob
     TRANSIENT_ERRORS = [

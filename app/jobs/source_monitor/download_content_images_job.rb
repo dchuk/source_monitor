@@ -1,7 +1,15 @@
 # frozen_string_literal: true
 
+require "faraday"
+
 module SourceMonitor
   class DownloadContentImagesJob < ApplicationJob
+    TRANSIENT_ERRORS = [
+      Timeout::Error, Errno::ETIMEDOUT,
+      Faraday::TimeoutError, Faraday::ConnectionFailed,
+      Net::OpenTimeout, Net::ReadTimeout
+    ].freeze
+
     source_monitor_queue :maintenance
 
     discard_on ActiveJob::DeserializationError
@@ -62,13 +70,26 @@ module SourceMonitor
         url_mapping[image_url] = Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
       rescue ActiveRecord::Deadlocked
         raise # let job framework retry on database deadlock
-      rescue StandardError
+      rescue *TRANSIENT_ERRORS
+        raise # re-raise transient errors to abort job for framework retry
+      rescue StandardError => error
         # Individual image failure should not block others.
         # Original URL will be preserved (graceful fallback).
+        log_image_error(image_url, error)
         next
       end
 
       url_mapping
+    end
+
+    def log_image_error(image_url, error)
+      return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+      Rails.logger.warn(
+        "[SourceMonitor::DownloadContentImagesJob] Skipping image #{image_url}: #{error.class} - #{error.message}"
+      )
+    rescue StandardError
+      nil
     end
   end
 end
