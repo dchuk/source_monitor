@@ -50,6 +50,7 @@ require "source_monitor/feedjira_extensions"
 
 module SourceMonitor
   autoload :HTTP, "source_monitor/http"
+  autoload :Queries, "source_monitor/queries"
   autoload :Scheduler, "source_monitor/scheduler"
   autoload :Assets, "source_monitor/assets"
 
