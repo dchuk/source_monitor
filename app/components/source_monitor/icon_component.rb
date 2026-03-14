@@ -75,7 +75,7 @@ module SourceMonitor
       return "".html_safe unless icon
 
       size_cls = @size ? SIZE_CLASSES.fetch(@size, SIZE_CLASSES[:md]) : nil
-      classes = [size_cls, @css_class].compact.join(" ")
+      classes = [ size_cls, @css_class ].compact.join(" ")
 
       if icon[:spinner]
         render_spinner(icon, classes)
