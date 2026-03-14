@@ -80,6 +80,7 @@ module SourceMonitor
     autoload :UnexpectedResponseError, "source_monitor/fetching/fetch_error"
     autoload :FeedFetcher, "source_monitor/fetching/feed_fetcher"
     autoload :FetchRunner, "source_monitor/fetching/fetch_runner"
+    autoload :RetryOrchestrator, "source_monitor/fetching/retry_orchestrator"
     autoload :RetryPolicy, "source_monitor/fetching/retry_policy"
     autoload :StalledFetchReconciler, "source_monitor/fetching/stalled_fetch_reconciler"
     autoload :AdvisoryLock, "source_monitor/fetching/advisory_lock"
