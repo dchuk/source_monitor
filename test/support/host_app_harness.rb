@@ -55,24 +55,24 @@ module HostAppHarness
   def prepare_working_directory(template: :default)
     ensure_ruby_version!
     capture_override_from_env!
-    ensure_template!(template)
+    template_mutex.synchronize { ensure_template!(template) }
     reset_working_directory!(template)
-    @current_template = template
+    self.current_template = template
     yield current_work_root if block_given?
     ensure_bundle_installed!(current_work_root)
   end
 
   def cleanup_working_directory
-    return unless @current_template
+    return unless current_template
 
     FileUtils.rm_rf(current_work_root)
-    @current_template = nil
+    self.current_template = nil
   end
 
   def bundle_exec!(*command, env: {})
-    with_working_directory(env:) do |resolved_env|
+    with_working_directory(env:) do |resolved_env, work_dir|
       bundle_command = rbenv_available? ? [ "rbenv", "exec", "bundle", "exec", *command ] : [ "bundle", "exec", *command ]
-      output, status = Open3.capture2e(resolved_env, *bundle_command)
+      output, status = Open3.capture2e(resolved_env, *bundle_command, chdir: work_dir)
       raise_command_failure(command, output) unless status.success?
       output
     end
@@ -96,10 +96,25 @@ module HostAppHarness
 
   private
 
-  def current_work_root
-    raise "call prepare_working_directory before interacting with HostAppHarness" unless @current_template
+  TEMPLATE_MUTEX = Mutex.new
+  private_constant :TEMPLATE_MUTEX
 
-    work_root(@current_template)
+  def template_mutex
+    TEMPLATE_MUTEX
+  end
+
+  def current_template
+    Thread.current[:host_app_harness_template]
+  end
+
+  def current_template=(value)
+    Thread.current[:host_app_harness_template] = value
+  end
+
+  def current_work_root
+    raise "call prepare_working_directory before interacting with HostAppHarness" unless current_template
+
+    work_root(current_template)
   end
 
   def ensure_template!(template)
@@ -165,11 +180,10 @@ module HostAppHarness
   end
 
   def with_working_directory(env: {})
+    work_dir = current_work_root
     Bundler.with_unbundled_env do
-      Dir.chdir(current_work_root) do
-        merged_env = default_env.merge(env)
-        yield merged_env
-      end
+      merged_env = default_env(work_dir).merge(env)
+      yield merged_env, work_dir
     end
   end
 
@@ -217,10 +231,15 @@ module HostAppHarness
   end
 
   def worker_suffix
-    value = ENV.fetch("TEST_ENV_NUMBER", "")
-    return "" if value.empty?
+    # Thread-based parallelism: use thread object_id to isolate work directories.
+    # Process-based parallelism: use TEST_ENV_NUMBER for backward compatibility.
+    env_number = ENV.fetch("TEST_ENV_NUMBER", "")
+    return "_worker_#{env_number}" unless env_number.empty?
 
-    "_worker_#{value}"
+    thread_id = Thread.current.object_id
+    return "" if thread_id == Thread.main.object_id
+
+    "_thread_#{thread_id}"
   end
 
   def pin_ruby_version!(root)
@@ -246,17 +265,23 @@ module HostAppHarness
   end
 
   def override_gem_path
-    @override_gem_path
+    Thread.current[:host_app_harness_gem_path]
   end
 
   def capture_override_from_env!
     raw = ENV["SOURCE_MONITOR_GEM_PATH"]
-    return @override_gem_path = nil if raw.nil?
+    if raw.nil?
+      Thread.current[:host_app_harness_gem_path] = nil
+      return
+    end
 
     value = raw.strip
-    return @override_gem_path = nil if value.empty?
+    if value.empty?
+      Thread.current[:host_app_harness_gem_path] = nil
+      return
+    end
 
-    @override_gem_path = File.expand_path(value)
+    Thread.current[:host_app_harness_gem_path] = File.expand_path(value)
   end
 
   def ensure_ruby_version!
