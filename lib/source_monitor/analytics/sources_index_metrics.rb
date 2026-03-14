@@ -43,6 +43,21 @@ module SourceMonitor
         @item_activity_rates ||= SourceActivityRates.new(scope: result_scope, lookback:, now:).per_source_rates
       end
 
+      def word_count_averages(source_ids)
+        if source_ids.any?
+          base = SourceMonitor::ItemContent.joins(:item).where(sourcemon_items: { source_id: source_ids })
+          feed = base.where.not(feed_word_count: nil)
+                     .group("sourcemon_items.source_id")
+                     .average(:feed_word_count)
+          scraped = base.where.not(scraped_word_count: nil)
+                       .group("sourcemon_items.source_id")
+                       .average(:scraped_word_count)
+          { feed:, scraped: }
+        else
+          { feed: {}, scraped: {} }
+        end
+      end
+
       def fetch_interval_filter
         min = integer_param(search_params["fetch_interval_minutes_gteq"])
         max = integer_param(search_params["fetch_interval_minutes_lt"]) || integer_param(search_params["fetch_interval_minutes_lteq"])

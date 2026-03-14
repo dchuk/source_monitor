@@ -48,18 +48,9 @@ module SourceMonitor
       @item_activity_rates = metrics.item_activity_rates
 
       source_ids = @sources.map(&:id)
-      if source_ids.any?
-        base = ItemContent.joins(:item).where(sourcemon_items: { source_id: source_ids })
-        @avg_feed_word_counts = base.where.not(feed_word_count: nil)
-                                    .group("sourcemon_items.source_id")
-                                    .average(:feed_word_count)
-        @avg_scraped_word_counts = base.where.not(scraped_word_count: nil)
-                                      .group("sourcemon_items.source_id")
-                                      .average(:scraped_word_count)
-      else
-        @avg_feed_word_counts = {}
-        @avg_scraped_word_counts = {}
-      end
+      word_counts = metrics.word_count_averages(source_ids)
+      @avg_feed_word_counts = word_counts[:feed]
+      @avg_scraped_word_counts = word_counts[:scraped]
 
       @scrape_candidate_ids = compute_scrape_candidate_ids
     end
@@ -131,7 +122,7 @@ module SourceMonitor
             search_params:
           )
 
-          redirect_location = safe_redirect_path(params[:redirect_to])
+          redirect_location = SourceMonitor::Security::ParameterSanitizer.safe_redirect_path(params[:redirect_to])
 
           responder = SourceMonitor::TurboStreams::StreamResponder.new
           presenter = SourceMonitor::Sources::TurboStreamPresenter.new(source: @source, responder:)
@@ -166,13 +157,6 @@ module SourceMonitor
 
     def source_params
       SourceMonitor::Sources::Params.sanitize(params)
-    end
-
-    def safe_redirect_path(raw_value)
-      return if raw_value.blank?
-
-      sanitized = SourceMonitor::Security::ParameterSanitizer.sanitize(raw_value.to_s)
-      sanitized.start_with?("/") ? sanitized : nil
     end
 
     def handle_destroy_failure(search_params, error_message)
