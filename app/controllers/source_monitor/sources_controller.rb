@@ -53,6 +53,17 @@ module SourceMonitor
       @avg_scraped_word_counts = word_counts[:scraped]
 
       @scrape_candidate_ids = compute_scrape_candidate_ids
+
+      # Row partial preload requirements (V3): item_activity_rates,
+      # avg_feed_word_counts, avg_scraped_word_counts are pre-computed above
+      # and passed as locals to avoid N+1 queries in _row.html.erb.
+      adapter_options = Source.distinct.where.not(scraper_adapter: [ nil, "" ]).order(:scraper_adapter).pluck(:scraper_adapter)
+      @filter_presenter = SourceMonitor::SourcesFilterPresenter.new(
+        search_params: @search_params,
+        search_term: @search_term,
+        fetch_interval_filter: @fetch_interval_filter,
+        adapter_options: adapter_options
+      )
     end
 
     def show
