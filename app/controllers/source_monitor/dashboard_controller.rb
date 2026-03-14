@@ -30,7 +30,11 @@ module SourceMonitor
     private
 
     def schedule_pages_params
-      params.fetch(:schedule_pages, {}).permit!.to_h
+      raw = params.fetch(:schedule_pages, {})
+      return {} unless raw.respond_to?(:permit)
+
+      permitted_keys = raw.keys.select { |k| k.to_s.match?(/\Apage_\d+\z/) }
+      raw.permit(*permitted_keys).to_h
     end
   end
 end
