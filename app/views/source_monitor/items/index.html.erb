@@ -100,18 +100,8 @@
                 <% end %>
               </td>
               <td class="px-6 py-4 text-xs">
-                <% status_label, status_classes =
-                     case item.scrape_status
-                     when "success"
-                       ["Scraped", "bg-green-100 text-green-700"]
-                     when "failed"
-                       ["Failed", "bg-rose-100 text-rose-700"]
-                     when "pending"
-                       ["Pending", "bg-amber-100 text-amber-700"]
-                     else
-                       ["Not Scraped", "bg-slate-100 text-slate-600"]
-                     end %>
-                <span class="inline-flex items-center rounded-full px-3 py-1 font-semibold <%= status_classes %>"><%= status_label %></span>
+                <% badge = item_scrape_status_badge(item: item, source: @source, show_spinner: false) %>
+                <span class="inline-flex items-center rounded-full px-3 py-1 font-semibold <%= badge[:classes] %>"><%= badge[:label] %></span>
               </td>
               <td class="px-6 py-4 text-xs text-slate-500">
                 <%= item.item_content&.feed_word_count || "\u2014" %>
