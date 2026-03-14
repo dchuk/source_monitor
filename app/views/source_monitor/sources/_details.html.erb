@@ -1,4 +1,5 @@
 <% source = local_assigns.fetch(:source) %>
+<% presenter = SourceMonitor::SourceDetailsPresenter.new(source) %>
 <% recent_fetch_logs = source.fetch_logs.order(started_at: :desc).limit(5) %>
 <% recent_scrape_logs = source.scrape_logs.order(started_at: :desc).limit(5) %>
 <% preview_limit = SourceMonitor::Scraping::BulkSourceScraper::DEFAULT_PREVIEW_LIMIT %>
@@ -174,34 +175,11 @@
           <h2 class="text-lg font-medium">Source Details</h2>
         </div>
         <dl class="divide-y divide-slate-100">
-          <% interval_hours = number_with_precision(source.fetch_interval_minutes / 60.0, precision: 2)
-             circuit_state =
-               if source.fetch_circuit_open?
-                 until_time = source.fetch_circuit_until&.strftime("%b %d, %Y %H:%M %Z") || "unknown"
-                 "Open until #{until_time}"
-               else
-                 "Closed"
-               end
-
-             details = {
-               "Website" => (source.website_url.present? ? external_link_to(source.website_url, source.website_url, class: "text-slate-900 hover:text-blue-500") : "\u2014"),
-               "Fetch interval" => "#{source.fetch_interval_minutes} minutes (~#{interval_hours} hours)",
-               "Adaptive interval" => source.adaptive_fetching_enabled? ? "Auto" : "Fixed",
-               "Scraper" => source.scraper_adapter,
-               "Feed content" => source.feed_content_readability_enabled? ? "Readability" : "Raw",
-               "Active" => source.active? ? "Yes" : "No",
-               "Scraping" => source.scraping_enabled? ? "Enabled" : "Disabled",
-               "Auto scrape" => source.auto_scrape? ? "Enabled" : "Disabled",
-               "Requires JS" => source.requires_javascript? ? "Yes" : "No",
-               "Failure count" => source.failure_count,
-               "Retry attempt" => source.fetch_retry_attempt,
-               "Circuit state" => circuit_state,
-               "Last error" => source.last_error.presence || "None",
-               "Items count" => source.items_count,
-               "Retention days" => source.items_retention_days || "—",
-               "Max items" => source.max_items || "—"
-             } %>
-          <% details.each do |label, value| %>
+          <div class="flex items-center justify-between px-5 py-3">
+            <dt class="text-sm font-medium text-slate-600">Website</dt>
+            <dd class="text-sm text-slate-900"><%= source.website_url.present? ? external_link_to(source.website_url, source.website_url, class: "text-slate-900 hover:text-blue-500") : "\u2014" %></dd>
+          </div>
+          <% presenter.details_hash.each do |label, value| %>
             <div class="flex items-center justify-between px-5 py-3">
               <dt class="text-sm font-medium text-slate-600"><%= label %></dt>
               <dd class="text-sm text-slate-900"><%= value %></dd>
