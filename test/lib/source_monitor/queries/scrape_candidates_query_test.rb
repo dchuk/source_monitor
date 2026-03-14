@@ -10,8 +10,7 @@ module SourceMonitor
       end
 
       test "returns sources with avg feed word count below threshold" do
-        item = Item.create!(source: @source, guid: SecureRandom.uuid, url: "https://example.com/q-#{SecureRandom.hex(4)}", content: "short content here")
-        ItemContent.create!(item: item)
+        Item.create!(source: @source, guid: SecureRandom.uuid, url: "https://example.com/q-#{SecureRandom.hex(4)}", content: "short content here")
 
         results = ScrapeCandidatesQuery.new(threshold: 500).call
 
@@ -20,8 +19,7 @@ module SourceMonitor
 
       test "excludes sources above threshold" do
         words = Array.new(600) { "word" }.join(" ")
-        item = Item.create!(source: @source, guid: SecureRandom.uuid, url: "https://example.com/q-#{SecureRandom.hex(4)}", content: words)
-        ItemContent.create!(item: item)
+        Item.create!(source: @source, guid: SecureRandom.uuid, url: "https://example.com/q-#{SecureRandom.hex(4)}", content: words)
 
         results = ScrapeCandidatesQuery.new(threshold: 500).call
 
@@ -30,8 +28,7 @@ module SourceMonitor
 
       test "excludes sources with scraping enabled" do
         @source.update!(scraping_enabled: true)
-        item = Item.create!(source: @source, guid: SecureRandom.uuid, url: "https://example.com/q-#{SecureRandom.hex(4)}", content: "short content here")
-        ItemContent.create!(item: item)
+        Item.create!(source: @source, guid: SecureRandom.uuid, url: "https://example.com/q-#{SecureRandom.hex(4)}", content: "short content here")
 
         results = ScrapeCandidatesQuery.new(threshold: 500).call
 
@@ -40,8 +37,7 @@ module SourceMonitor
 
       test "excludes inactive sources" do
         @source.update!(active: false)
-        item = Item.create!(source: @source, guid: SecureRandom.uuid, url: "https://example.com/q-#{SecureRandom.hex(4)}", content: "short content here")
-        ItemContent.create!(item: item)
+        Item.create!(source: @source, guid: SecureRandom.uuid, url: "https://example.com/q-#{SecureRandom.hex(4)}", content: "short content here")
 
         results = ScrapeCandidatesQuery.new(threshold: 500).call
 
@@ -49,8 +45,7 @@ module SourceMonitor
       end
 
       test "returns none for zero or negative threshold" do
-        item = Item.create!(source: @source, guid: SecureRandom.uuid, url: "https://example.com/q-#{SecureRandom.hex(4)}", content: "short content here")
-        ItemContent.create!(item: item)
+        Item.create!(source: @source, guid: SecureRandom.uuid, url: "https://example.com/q-#{SecureRandom.hex(4)}", content: "short content here")
 
         assert_empty ScrapeCandidatesQuery.new(threshold: 0).call
         assert_empty ScrapeCandidatesQuery.new(threshold: -1).call
