@@ -13,6 +13,10 @@ module SourceMonitor
       scope :recent, -> { order(started_at: :desc) }
       scope :successful, -> { where(success: true) }
       scope :failed, -> { where(success: false) }
+      scope :since, ->(date) { where(arel_table[:started_at].gteq(date)) }
+      scope :before, ->(date) { where(arel_table[:started_at].lteq(date)) }
+      scope :today, -> { since(Time.current.beginning_of_day) }
+      scope :by_date_range, ->(start_date, end_date) { since(start_date).before(end_date) }
     end
   end
 end
