@@ -136,6 +136,11 @@ module SourceMonitor
       reload
     end
 
+    def clear_favicon_cooldown!
+      metadata_without_cooldown = (metadata || {}).except("favicon_last_attempted_at")
+      update_column(:metadata, metadata_without_cooldown)
+    end
+
     def avg_word_count
       items.joins(:item_content)
            .where.not(ItemContent.table_name => { scraped_word_count: nil })

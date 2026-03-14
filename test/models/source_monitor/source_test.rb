@@ -328,5 +328,52 @@ module SourceMonitor
     test "scraping_enabled is in ransackable_attributes" do
       assert_includes SourceMonitor::Source.ransackable_attributes, "scraping_enabled"
     end
+
+    # =========================================================================
+    # Source#clear_favicon_cooldown! (Plan 03-02)
+    # =========================================================================
+
+    test "clear_favicon_cooldown! removes favicon_last_attempted_at from metadata" do
+      source = create_source!(metadata: { "favicon_last_attempted_at" => 1.hour.ago.iso8601, "other_key" => "value" })
+
+      source.clear_favicon_cooldown!
+      source.reload
+
+      assert_nil source.metadata["favicon_last_attempted_at"]
+      assert_equal "value", source.metadata["other_key"]
+    end
+
+    test "clear_favicon_cooldown! is a no-op when key is absent" do
+      source = create_source!(metadata: { "some_key" => "some_value" })
+
+      assert_nothing_raised { source.clear_favicon_cooldown! }
+
+      source.reload
+      assert_equal({ "some_key" => "some_value" }, source.metadata)
+    end
+
+    test "clear_favicon_cooldown! handles empty metadata gracefully" do
+      source = create_source!(metadata: {})
+
+      assert_nothing_raised { source.clear_favicon_cooldown! }
+
+      source.reload
+      assert_equal({}, source.metadata)
+    end
+
+    test "clear_favicon_cooldown! preserves other metadata keys" do
+      source = create_source!(metadata: {
+        "favicon_last_attempted_at" => Time.current.iso8601,
+        "last_health_check" => "2026-01-01",
+        "custom_flag" => true
+      })
+
+      source.clear_favicon_cooldown!
+      source.reload
+
+      assert_nil source.metadata["favicon_last_attempted_at"]
+      assert_equal "2026-01-01", source.metadata["last_health_check"]
+      assert_equal true, source.metadata["custom_flag"]
+    end
   end
 end
