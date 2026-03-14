@@ -20,6 +20,8 @@ module SourceMonitor
       warning: :warning
     }.freeze
 
+    # Toast display durations in milliseconds. These values are passed to the
+    # Stimulus notification_controller via data-notification-delay-value.
     TOAST_DURATION_DEFAULT = 5000
     TOAST_DURATION_ERROR = 6000
 
