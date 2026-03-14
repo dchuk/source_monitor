@@ -24,6 +24,8 @@ module SourceMonitor
     validates :content_fingerprint, uniqueness: { scope: :source_id }, allow_blank: true
     validates :url, presence: true
 
+    after_create_commit :ensure_feed_content_record, if: -> { content.present? }
+
     scope :recent, -> { active.order(Arel.sql("published_at DESC NULLS LAST, created_at DESC")) }
     scope :published, -> { active.where.not(published_at: nil) }
     scope :pending_scrape, -> { active.where(scraped_at: nil) }

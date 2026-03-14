@@ -30,11 +30,11 @@ module SourceMonitor
     end
 
     def compute_feed_word_count
-      content = item&.content
-      if content.blank?
+      feed_content = item&.content
+      if feed_content.blank?
         self.feed_word_count = nil
       else
-        stripped = ActionView::Base.full_sanitizer.sanitize(content)
+        stripped = ActionView::Base.full_sanitizer.sanitize(feed_content)
         self.feed_word_count = stripped.present? ? stripped.split.size : nil
       end
     end
