@@ -10,6 +10,11 @@ module SourceMonitor
 
     discard_on ActiveJob::DeserializationError
 
+    rescue_from ActiveRecord::Deadlocked do |error|
+      Rails.logger&.warn("[SourceMonitor::ImportSessionHealthCheckJob] Deadlock: #{error.message}")
+      retry_job(wait: 2.seconds + rand(3).seconds)
+    end
+
     def perform(import_session_id, entry_id)
       import_session = SourceMonitor::ImportSession.find_by(id: import_session_id)
       return unless import_session
@@ -50,6 +55,8 @@ module SourceMonitor
       broadcaster = SourceMonitor::ImportSessions::HealthCheckBroadcaster.new(import_session)
       broadcaster.broadcast_row(updated_entry) if updated_entry
       broadcaster.broadcast_progress
+    rescue ActiveRecord::Deadlocked
+      raise
     rescue StandardError => error
       Rails.logger.error(
         "[SourceMonitor::ImportSessionHealthCheckJob] #{error.class}: #{error.message}"

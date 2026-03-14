@@ -45,6 +45,30 @@ module SourceMonitor
       assert session.health_check_completed_at.present?
     end
 
+    test "retries on ActiveRecord::Deadlocked" do
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "health_check",
+        parsed_sources: [
+          { "id" => "one", "feed_url" => "https://example.com/feed.xml", "status" => "valid" }
+        ],
+        selected_source_ids: [ "one" ],
+        health_checks_active: true,
+        health_check_target_ids: [ "one" ]
+      )
+
+      deadlock_checker = Object.new
+      def deadlock_checker.call
+        raise ActiveRecord::Deadlocked, "deadlock detected"
+      end
+
+      SourceMonitor::Health::ImportSourceHealthCheck.stub(:new, ->(**_args) { deadlock_checker }) do
+        assert_enqueued_with(job: SourceMonitor::ImportSessionHealthCheckJob) do
+          SourceMonitor::ImportSessionHealthCheckJob.perform_now(session.id, "one")
+        end
+      end
+    end
+
     test "skips updates when session is inactive" do
       session = SourceMonitor::ImportSession.create!(
         user_id: @admin.id,

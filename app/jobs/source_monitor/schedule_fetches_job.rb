@@ -7,6 +7,9 @@ module SourceMonitor
     def perform(options = nil)
       limit = extract_limit(options)
       SourceMonitor::Scheduler.run(limit:)
+    rescue StandardError => error
+      Rails.logger&.error("[SourceMonitor::ScheduleFetchesJob] #{error.class}: #{error.message}")
+      raise
     end
 
     private
