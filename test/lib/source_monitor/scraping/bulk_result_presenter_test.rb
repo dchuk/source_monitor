@@ -6,10 +6,6 @@ require "source_monitor/scraping/bulk_result_presenter"
 module SourceMonitor
   module Scraping
     class BulkResultPresenterTest < ActiveSupport::TestCase
-      def setup
-        @pluralizer = ->(count, word) { count == 1 ? "#{count} #{word}" : "#{count} #{word}s" }
-      end
-
       test "success status with enqueued items" do
         result = mock_result(
           status: :success,
@@ -18,7 +14,7 @@ module SourceMonitor
           already_enqueued_count: 0
         )
 
-        presenter = BulkResultPresenter.new(result:, pluralizer: @pluralizer)
+        presenter = BulkResultPresenter.new(result:)
         payload = presenter.to_flash_payload
 
         assert_equal :notice, payload[:flash_key]
@@ -35,7 +31,7 @@ module SourceMonitor
           already_enqueued_count: 2
         )
 
-        presenter = BulkResultPresenter.new(result:, pluralizer: @pluralizer)
+        presenter = BulkResultPresenter.new(result:)
         payload = presenter.to_flash_payload
 
         assert_equal :success, payload[:level]
@@ -53,7 +49,7 @@ module SourceMonitor
           failure_details: { rate_limited: 5 }
         )
 
-        presenter = BulkResultPresenter.new(result:, pluralizer: @pluralizer)
+        presenter = BulkResultPresenter.new(result:)
         payload = presenter.to_flash_payload
 
         assert_equal :warning, payload[:level]
@@ -74,7 +70,7 @@ module SourceMonitor
           failure_details: { rate_limited: 3 }
         )
 
-        presenter = BulkResultPresenter.new(result:, pluralizer: @pluralizer)
+        presenter = BulkResultPresenter.new(result:)
         payload = presenter.to_flash_payload
 
         assert_includes payload[:message], "Stopped after reaching the per-source limit"
@@ -93,7 +89,7 @@ module SourceMonitor
           failure_details: { rate_limited: 3 }
         )
 
-        presenter = BulkResultPresenter.new(result:, pluralizer: @pluralizer)
+        presenter = BulkResultPresenter.new(result:)
         payload = presenter.to_flash_payload
 
         assert_includes payload[:message], "Stopped after reaching the per-source limit of 10"
@@ -109,7 +105,7 @@ module SourceMonitor
           failure_details: { scraping_disabled: 3, rate_limited: 0 }
         )
 
-        presenter = BulkResultPresenter.new(result:, pluralizer: @pluralizer)
+        presenter = BulkResultPresenter.new(result:)
         payload = presenter.to_flash_payload
 
         assert_equal :warning, payload[:level]
@@ -127,7 +123,7 @@ module SourceMonitor
           messages: [ "Scraping is disabled for this source." ]
         )
 
-        presenter = BulkResultPresenter.new(result:, pluralizer: @pluralizer)
+        presenter = BulkResultPresenter.new(result:)
         payload = presenter.to_flash_payload
 
         assert_equal :alert, payload[:flash_key]
@@ -144,7 +140,7 @@ module SourceMonitor
           messages: []
         )
 
-        presenter = BulkResultPresenter.new(result:, pluralizer: @pluralizer)
+        presenter = BulkResultPresenter.new(result:)
         payload = presenter.to_flash_payload
 
         assert_equal :error, payload[:level]
