@@ -17,7 +17,7 @@ SourceMonitor::Engine.routes.draw do
     end
   end
   resources :items, only: %i[index show] do
-    post :scrape, on: :member
+    resource :scrape, only: :create, controller: "item_scrapes"
   end
   resources :bulk_scrape_enablements, only: :create
   resources :sources do
