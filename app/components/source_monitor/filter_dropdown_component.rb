@@ -24,7 +24,7 @@ module SourceMonitor
 
     def call
       content_tag(:div) do
-        safe_join([render_label, render_select])
+        safe_join([ render_label, render_select ])
       end
     end
 

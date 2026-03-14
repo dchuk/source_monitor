@@ -10,7 +10,7 @@ module SourceMonitor
       render_inline(FilterDropdownComponent.new(
         label: "Status",
         param_name: :active_eq,
-        options: [["All Statuses", ""], ["Active", "true"]]
+        options: [ [ "All Statuses", "" ], [ "Active", "true" ] ]
       ))
 
       assert_selector "label", text: "Status"
@@ -20,7 +20,7 @@ module SourceMonitor
       render_inline(FilterDropdownComponent.new(
         label: "Status",
         param_name: :active_eq,
-        options: [["All Statuses", ""], ["Active", "true"]]
+        options: [ [ "All Statuses", "" ], [ "Active", "true" ] ]
       ))
 
       assert_selector "select[name='active_eq']"
@@ -30,7 +30,7 @@ module SourceMonitor
       render_inline(FilterDropdownComponent.new(
         label: "Format",
         param_name: :feed_format_eq,
-        options: [["All Formats", ""], ["RSS", "rss"], ["Atom", "atom"]]
+        options: [ [ "All Formats", "" ], [ "RSS", "rss" ], [ "Atom", "atom" ] ]
       ))
 
       assert_selector "option[value='']", text: "All Formats"
@@ -42,7 +42,7 @@ module SourceMonitor
       render_inline(FilterDropdownComponent.new(
         label: "Format",
         param_name: :feed_format_eq,
-        options: [["All Formats", ""], ["RSS", "rss"], ["Atom", "atom"]],
+        options: [ [ "All Formats", "" ], [ "RSS", "rss" ], [ "Atom", "atom" ] ],
         selected_value: "rss"
       ))
 
@@ -53,7 +53,7 @@ module SourceMonitor
       render_inline(FilterDropdownComponent.new(
         label: "Status",
         param_name: :active_eq,
-        options: [["All Statuses", ""]]
+        options: [ [ "All Statuses", "" ] ]
       ))
 
       assert_selector "select[onchange='this.form.requestSubmit()']"
@@ -63,7 +63,7 @@ module SourceMonitor
       render_inline(FilterDropdownComponent.new(
         label: "Status",
         param_name: :active_eq,
-        options: [["All Statuses", ""]]
+        options: [ [ "All Statuses", "" ] ]
       ))
 
       assert_selector "label.text-xs.font-medium.text-slate-500"
@@ -74,7 +74,7 @@ module SourceMonitor
       render_inline(FilterDropdownComponent.new(
         label: "Health",
         param_name: :health_status_eq,
-        options: [["All Health", ""], ["Working", "working"]]
+        options: [ [ "All Health", "" ], [ "Working", "working" ] ]
       ))
 
       assert_selector "select"
@@ -86,7 +86,7 @@ module SourceMonitor
       render_inline(FilterDropdownComponent.new(
         label: "Status",
         param_name: :active_eq,
-        options: [["All Statuses", ""]],
+        options: [ [ "All Statuses", "" ] ],
         form: nil
       ))
 
