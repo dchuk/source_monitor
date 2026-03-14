@@ -6,6 +6,11 @@ module SourceMonitor
 
     discard_on ActiveJob::DeserializationError
 
+    rescue_from ActiveRecord::Deadlocked do |error|
+      Rails.logger&.warn("[SourceMonitor::ScrapeItemJob] Deadlock: #{error.message}")
+      retry_job(wait: 2.seconds + rand(3).seconds)
+    end
+
     def perform(item_id)
       log("job:start", item_id: item_id)
       item = SourceMonitor::Item.includes(:source).find_by(id: item_id)
@@ -59,7 +64,8 @@ module SourceMonitor
         item_id: item&.id || item_id,
         source_id: item&.source_id
       }.merge(extra.compact)
-      Rails.logger.info("[SourceMonitor::ManualScrape] #{payload.to_json}")
+      level = stage.to_s.include?("error") ? :error : :info
+      Rails.logger.public_send(level, "[SourceMonitor::ScrapeItemJob] #{payload.to_json}")
     rescue StandardError
       nil
     end

@@ -4,6 +4,11 @@ module SourceMonitor
   class ScheduleFetchesJob < ApplicationJob
     source_monitor_queue :fetch
 
+    rescue_from ActiveRecord::Deadlocked do |error|
+      Rails.logger&.warn("[SourceMonitor::ScheduleFetchesJob] Deadlock: #{error.message}")
+      retry_job(wait: 2.seconds + rand(3).seconds)
+    end
+
     def perform(options = nil)
       limit = extract_limit(options)
       SourceMonitor::Scheduler.run(limit:)

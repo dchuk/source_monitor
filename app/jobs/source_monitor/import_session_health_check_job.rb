@@ -56,7 +56,7 @@ module SourceMonitor
       broadcaster.broadcast_row(updated_entry) if updated_entry
       broadcaster.broadcast_progress
     rescue ActiveRecord::Deadlocked
-      raise
+      raise # re-raise so rescue_from handler catches it (prevent StandardError from swallowing)
     rescue StandardError => error
       Rails.logger.error(
         "[SourceMonitor::ImportSessionHealthCheckJob] #{error.class}: #{error.message}"
