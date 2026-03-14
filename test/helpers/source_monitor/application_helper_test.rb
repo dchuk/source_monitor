@@ -285,5 +285,24 @@ module SourceMonitor
     test "domain_from_url returns nil for invalid URL" do
       assert_nil domain_from_url("not a url %%%")
     end
+
+    test "compact_blank_hash removes blank and nil values" do
+      result = compact_blank_hash({ "a" => "keep", "b" => "", "c" => nil, "d" => "also keep" })
+
+      assert_equal({ "a" => "keep", "d" => "also keep" }, result)
+    end
+
+    test "compact_blank_hash returns empty hash for blank input" do
+      assert_equal({}, compact_blank_hash(nil))
+      assert_equal({}, compact_blank_hash({}))
+    end
+
+    test "compact_blank_hash works with hash lacking compact_blank" do
+      plain_hash = { "x" => "value", "y" => "" }
+      # Plain hashes in Ruby 4 have compact_blank, but test the fallback logic
+      result = compact_blank_hash(plain_hash)
+
+      assert_equal({ "x" => "value" }, result)
+    end
   end
 end

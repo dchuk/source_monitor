@@ -35,6 +35,16 @@ module SourceMonitor
       end
     end
 
+    def compact_blank_hash(hash)
+      return {} if hash.blank?
+
+      if hash.respond_to?(:compact_blank)
+        hash.compact_blank
+      else
+        hash.reject { |_key, value| value.respond_to?(:blank?) ? value.blank? : value.nil? }
+      end
+    end
+
     def fetch_interval_bucket_path(bucket, search_params, selected: false)
       query = fetch_interval_bucket_query(bucket, search_params, selected: selected)
       route_helpers = SourceMonitor::Engine.routes.url_helpers
@@ -62,11 +72,7 @@ module SourceMonitor
         updated
       end
 
-      if query.respond_to?(:compact_blank)
-        query.compact_blank
-      else
-        query.reject { |_key, value| value.respond_to?(:blank?) ? value.blank? : value.nil? }
-      end
+      compact_blank_hash(query)
     end
 
     def fetch_interval_filter_label(bucket, filter)

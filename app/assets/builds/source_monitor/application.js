@@ -1,4 +1,4 @@
-// node_modules/@hotwired/stimulus/dist/stimulus.js
+// ../../node_modules/@hotwired/stimulus/dist/stimulus.js
 var EventListener = class {
   constructor(eventTarget, eventName, eventOptions) {
     this.eventTarget = eventTarget;
@@ -2507,10 +2507,6 @@ var notification_controller_default = class extends Controller {
     this.timeoutId = window.setTimeout(() => this.dismiss(), this.delayValue);
   }
   applyLevelDelay() {
-    const level = this.element.dataset.level;
-    if (level === "error" && this.delayValue === 5e3) {
-      this.delayValue = 1e4;
-    }
   }
   dismiss() {
     if (!this.element) return;
