@@ -36,10 +36,9 @@ export default class extends Controller {
   }
 
   applyLevelDelay() {
-    const level = this.element.dataset.level;
-    if (level === "error" && this.delayValue === 5000) {
-      this.delayValue = 10000;
-    }
+    // Error delay is set server-side via TOAST_DURATION_ERROR (6000ms) in
+    // ApplicationController and passed as data-notification-delay-value.
+    // No client-side override needed.
   }
 
   dismiss() {

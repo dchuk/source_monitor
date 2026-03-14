@@ -34,5 +34,15 @@ module SourceMonitor
       assert_response :success
       assert_select "h2", text: "Scrape Recommendations", count: 0
     end
+
+    test "index accepts valid schedule_pages params" do
+      get "/source_monitor/dashboard", params: { schedule_pages: { page_1: "2", page_2: "3" } }
+      assert_response :success
+    end
+
+    test "index filters out non-page schedule_pages keys" do
+      get "/source_monitor/dashboard", params: { schedule_pages: { page_1: "2", malicious_key: "evil" } }
+      assert_response :success
+    end
   end
 end

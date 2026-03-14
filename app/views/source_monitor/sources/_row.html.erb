@@ -21,7 +21,7 @@
      else
        {}
      end %>
-<% delete_query = delete_query.respond_to?(:compact_blank) ? delete_query.compact_blank : delete_query.reject { |_key, value| value.respond_to?(:blank?) ? value.blank? : value.nil? } if delete_query.present? %>
+<% delete_query = compact_blank_hash(delete_query) if delete_query.present? %>
 <% delete_path = delete_query.present? ? source_monitor.source_path(source, q: delete_query) : source_monitor.source_path(source) %>
 
 <tr id="<%= dom_id(source, :row) %>" class="hover:bg-slate-50">

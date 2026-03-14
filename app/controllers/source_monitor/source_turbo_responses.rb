@@ -107,7 +107,7 @@ module SourceMonitor
     end
 
     def bulk_scrape_flash_payload(result)
-      pluralizer = ->(count, word) { view_context.pluralize(count, word) }
+      pluralizer = ->(count, word) { ActionController::Base.helpers.pluralize(count, word) }
       presenter = SourceMonitor::Scraping::BulkResultPresenter.new(result:, pluralizer:)
       presenter.to_flash_payload
     end

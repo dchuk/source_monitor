@@ -62,11 +62,7 @@
           <% if @search_term.present? %>
             <% clear_search_query = @search_params.dup %>
             <% clear_search_query.delete("name_or_feed_url_or_website_url_cont") %>
-            <% clear_search_query = if clear_search_query.respond_to?(:compact_blank)
-              clear_search_query.compact_blank
-            else
-              clear_search_query.reject { |_key, value| value.respond_to?(:blank?) ? value.blank? : value.nil? }
-            end %>
+            <% clear_search_query = compact_blank_hash(clear_search_query) %>
             <% clear_search_path = clear_search_query.empty? ? source_monitor.sources_path : source_monitor.sources_path(q: clear_search_query) %>
             <div>
               Showing results for "<%= @search_term %>".
@@ -98,11 +94,7 @@
               <% active_dropdown_filters.each do |filter_key| %>
                 <% clear_query = @search_params.dup %>
                 <% clear_query.delete(filter_key) %>
-                <% clear_query = if clear_query.respond_to?(:compact_blank)
-                  clear_query.compact_blank
-                else
-                  clear_query.reject { |_k, v| v.respond_to?(:blank?) ? v.blank? : v.nil? }
-                end %>
+                <% clear_query = compact_blank_hash(clear_query) %>
                 <% clear_path = clear_query.empty? ? source_monitor.sources_path : source_monitor.sources_path(q: clear_query) %>
                 <span class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                   <%= filter_labels[filter_key] %>

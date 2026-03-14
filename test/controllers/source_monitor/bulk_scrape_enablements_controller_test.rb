@@ -97,6 +97,19 @@ module SourceMonitor
       assert_equal "No sources selected.", flash[:alert]
     end
 
+    test "POST create sets scraper_adapter to the DB column default" do
+      source = create_source!(name: "Column Default Check", scraping_enabled: false)
+      source.update_columns(scraper_adapter: "custom")
+
+      post source_monitor.bulk_scrape_enablements_path,
+        params: { bulk_scrape_enablement: { source_ids: [ source.id ] } },
+        as: :turbo_stream
+
+      assert_response :success
+      source.reload
+      assert_equal SourceMonitor::Source.column_defaults["scraper_adapter"], source.scraper_adapter
+    end
+
     test "route POST /bulk_scrape_enablements routes correctly" do
       post source_monitor.bulk_scrape_enablements_path,
         params: { bulk_scrape_enablement: { source_ids: [] } }
