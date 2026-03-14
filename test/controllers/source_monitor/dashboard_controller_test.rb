@@ -21,8 +21,6 @@ module SourceMonitor
         url: "https://example.com/dash-#{SecureRandom.hex(4)}",
         content: "short content"
       )
-      SourceMonitor::ItemContent.create!(item: item)
-
       get "/source_monitor/dashboard"
       assert_response :success
       assert_select "h2", text: "Scrape Recommendations"
