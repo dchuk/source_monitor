@@ -62,12 +62,10 @@
                             class: "mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" %>
       </div>
 
-      <div class="flex flex-col">
-        <%= form.label :timeframe, "Timeframe", class: "text-xs font-semibold uppercase tracking-wide text-slate-500" %>
-        <%= form.select :timeframe,
-                        options_for_select([["All time", nil], ["Last 24 hours", "24h"], ["Last 7 days", "7d"], ["Last 30 days", "30d"]], @filter_set.timeframe),
-                        {}, class: "mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" %>
-      </div>
+      <%= render SourceMonitor::FilterDropdownComponent.new(
+        label: "Timeframe", param_name: :timeframe,
+        options: [["All time", ""], ["Last 24 hours", "24h"], ["Last 7 days", "7d"], ["Last 30 days", "30d"]],
+        selected_value: @filter_set.timeframe, form: form) %>
 
       <div class="flex flex-col">
         <%= form.label :started_after, "Started after", class: "text-xs font-semibold uppercase tracking-wide text-slate-500" %>
