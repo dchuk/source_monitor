@@ -171,6 +171,63 @@ module SourceMonitor
       assert item.item_content.images.attached?
     end
 
+    test "re-raises transient errors for job framework retry" do
+      source = create_source!
+      item = create_item!(source: source, content: %(<p><img src="#{IMAGE_URL}"></p>))
+
+      SourceMonitor::Images::Downloader.stub(:new, ->(_url, **_opts) {
+        obj = Object.new
+        def obj.call
+          raise Faraday::TimeoutError, "connection timed out"
+        end
+        obj
+      }) do
+        assert_raises(Faraday::TimeoutError) do
+          DownloadContentImagesJob.perform_now(item.id)
+        end
+      end
+    end
+
+    test "skips individual image on fatal per-image error and continues" do
+      good_url = "https://cdn.example.com/success.png"
+      bad_url = "https://cdn.example.com/bad-uri.png"
+
+      source = create_source!
+      item = create_item!(
+        source: source,
+        content: %(<p><img src="#{bad_url}"><img src="#{good_url}"></p>)
+      )
+
+      stub_request(:get, good_url)
+        .to_return(body: TINY_PNG, headers: { "Content-Type" => "image/png" })
+
+      # The bad_url will return invalid data that causes a non-transient error
+      stub_request(:get, bad_url)
+        .to_return(body: "not-an-image", headers: { "Content-Type" => "text/plain" })
+
+      # Stub Downloader to raise URI::InvalidURIError for the bad URL
+      original_new = SourceMonitor::Images::Downloader.method(:new)
+      SourceMonitor::Images::Downloader.stub(:new, ->(_url, **opts) {
+        if _url == bad_url
+          obj = Object.new
+          def obj.call
+            raise URI::InvalidURIError, "bad URI"
+          end
+          obj
+        else
+          original_new.call(_url, **opts)
+        end
+      }) do
+        assert_nothing_raised do
+          DownloadContentImagesJob.perform_now(item.id)
+        end
+      end
+
+      item.reload
+      # Good image should still be downloaded
+      assert_equal 1, item.item_content.images.count
+    end
+
     test "re-raises ActiveRecord::Deadlocked instead of swallowing it" do
       source = create_source!
       item = create_item!(source: source, content: %(<p><img src="#{IMAGE_URL}"></p>))

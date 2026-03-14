@@ -178,6 +178,42 @@ module SourceMonitor
       assert_nil @source.metadata["favicon_last_attempted_at"]
     end
 
+    test "re-raises transient errors for job framework retry" do
+      SourceMonitor::Favicons::Discoverer.stub(:new, ->(_url, **_opts) {
+        obj = Object.new
+        def obj.call
+          raise Faraday::TimeoutError, "connection timed out"
+        end
+        obj
+      }) do
+        assert_raises(Faraday::TimeoutError) do
+          FaviconFetchJob.new.perform(@source.id)
+        end
+      end
+
+      @source.reload
+      assert_nil @source.metadata["favicon_last_attempted_at"],
+        "transient errors should NOT record a failed attempt"
+    end
+
+    test "handles fatal errors without re-raising" do
+      SourceMonitor::Favicons::Discoverer.stub(:new, ->(_url, **_opts) {
+        obj = Object.new
+        def obj.call
+          raise RuntimeError, "invalid image data"
+        end
+        obj
+      }) do
+        assert_nothing_raised do
+          FaviconFetchJob.new.perform(@source.id)
+        end
+      end
+
+      @source.reload
+      assert_not_nil @source.metadata["favicon_last_attempted_at"],
+        "fatal errors should record a failed attempt"
+    end
+
     test "uses source_monitor_queue :maintenance" do
       assert_equal SourceMonitor.config.queue_name_for(:maintenance), FaviconFetchJob.new.queue_name
     end
