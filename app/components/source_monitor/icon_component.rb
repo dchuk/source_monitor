@@ -66,7 +66,7 @@ module SourceMonitor
 
     def initialize(name, size: :md, css_class: nil)
       @name = name.to_sym
-      @size = size.to_sym
+      @size = size&.to_sym
       @css_class = css_class
     end
 
@@ -74,7 +74,7 @@ module SourceMonitor
       icon = ICONS[@name]
       return "".html_safe unless icon
 
-      size_cls = SIZE_CLASSES.fetch(@size, SIZE_CLASSES[:md])
+      size_cls = @size ? SIZE_CLASSES.fetch(@size, SIZE_CLASSES[:md]) : nil
       classes = [size_cls, @css_class].compact.join(" ")
 
       if icon[:spinner]

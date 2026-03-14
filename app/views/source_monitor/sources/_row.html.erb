@@ -111,10 +111,7 @@
               class="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-slate-600 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               data-action="dropdown#toggle"
               aria-label="Source actions">
-        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94a.75.75 0 0 0-1.093-.332l-.822.548a2.25 2.25 0 0 1-2.287.014l-.856-.506a.75.75 0 0 0-1.087.63l.03.988a2.25 2.25 0 0 1-.639 1.668l-.715.715a.75.75 0 0 0 0 1.06l.715.715a2.25 2.25 0 0 1 .639 1.668l-.03.988a.75.75 0 0 0 1.087.63l.856-.506a2.25 2.25 0 0 1 2.287.014l.822.548a.75.75 0 0 0 1.093-.332l.38-.926a2.25 2.25 0 0 1 1.451-1.297l.964-.258a.75.75 0 0 0 .534-.72v-.946a.75.75 0 0 0-.534-.72l-.964-.258a2.25 2.25 0 0 1-1.45-1.297l-.381-.926Z" />
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z" />
-        </svg>
+        <%= render SourceMonitor::IconComponent.new(:menu_dots) %>
       </button>
       <div data-dropdown-target="menu" class="absolute right-0 z-10 mt-2 w-36 origin-top-right rounded-md border border-slate-200 bg-white shadow-lg transition hidden">
         <div class="py-1 text-sm text-slate-700">
