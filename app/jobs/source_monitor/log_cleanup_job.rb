@@ -41,12 +41,18 @@ module SourceMonitor
 
     def prune_fetch_logs(cutoff)
       SourceMonitor::FetchLog.where(SourceMonitor::FetchLog.arel_table[:started_at].lt(cutoff))
-        .in_batches(of: 500) { |batch| batch.delete_all }
+        .in_batches(of: 500) do |batch|
+          SourceMonitor::LogEntry.where(loggable_type: "SourceMonitor::FetchLog", loggable_id: batch.select(:id)).delete_all
+          batch.delete_all
+        end
     end
 
     def prune_scrape_logs(cutoff)
       SourceMonitor::ScrapeLog.where(SourceMonitor::ScrapeLog.arel_table[:started_at].lt(cutoff))
-        .in_batches(of: 500) { |batch| batch.delete_all }
+        .in_batches(of: 500) do |batch|
+          SourceMonitor::LogEntry.where(loggable_type: "SourceMonitor::ScrapeLog", loggable_id: batch.select(:id)).delete_all
+          batch.delete_all
+        end
     end
   end
 end
