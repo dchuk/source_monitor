@@ -3,20 +3,14 @@
 module SourceMonitor
   class BulkScrapeEnablementsController < ApplicationController
     def create
-      source_ids = Array(params.dig(:bulk_scrape_enablement, :source_ids)).map(&:to_i).reject(&:zero?)
+      source_ids = enablement_params[:source_ids]
 
       if source_ids.empty?
         handle_empty_selection
         return
       end
 
-      sources = Source.where(id: source_ids, scraping_enabled: false)
-      updated_count = sources.update_all(
-        scraping_enabled: true,
-        auto_scrape: true,
-        scraper_adapter: default_adapter,
-        updated_at: Time.current
-      )
+      updated_count = Source.enable_scraping!(source_ids)
 
       respond_to do |format|
         format.turbo_stream do
@@ -37,8 +31,10 @@ module SourceMonitor
 
     private
 
-    def default_adapter
-      Source.column_defaults["scraper_adapter"] || "readability"
+    def enablement_params
+      raw_ids = Array(params.dig(:bulk_scrape_enablement, :source_ids))
+      ids = raw_ids.map(&:to_i).reject(&:zero?)
+      { source_ids: ids }
     end
 
     def handle_empty_selection

@@ -69,6 +69,19 @@ module SourceMonitor
         SourceMonitor::Queries::ScrapeCandidatesQuery.new(threshold:).call
       end
 
+      # Bulk-enable scraping for sources that don't already have it enabled.
+      # Returns the number of records updated.
+      def enable_scraping!(ids)
+        default_adapter = column_defaults["scraper_adapter"] || "readability"
+
+        where(id: ids, scraping_enabled: false).update_all(
+          scraping_enabled: true,
+          auto_scrape: true,
+          scraper_adapter: default_adapter,
+          updated_at: Time.current
+        )
+      end
+
       def ransackable_attributes(_auth_object = nil)
         %w[name feed_url website_url created_at fetch_interval_minutes items_count last_fetched_at
            active health_status feed_format scraper_adapter scraping_enabled
