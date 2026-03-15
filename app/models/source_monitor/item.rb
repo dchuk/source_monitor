@@ -82,6 +82,19 @@ module SourceMonitor
       end
     end
 
+    def restore!
+      return unless deleted?
+
+      self.class.transaction do
+        update_columns(
+          deleted_at: nil,
+          updated_at: Time.current
+        )
+
+        SourceMonitor::Source.increment_counter(:items_count, source_id) if source_id
+      end
+    end
+
     private
 
     # Item content lives in a separate row that we only create when rich content exists.

@@ -193,6 +193,45 @@ module SourceMonitor
       assert item.item_content.present?
     end
 
+    test "restore! clears deleted_at and increments counter cache" do
+      item = Item.create!(source: @source, guid: "restore-test", url: "https://example.com/restore-test")
+      @source.reload
+
+      item.soft_delete!
+      assert item.deleted?
+      count_after_delete = @source.reload.items_count
+
+      item.restore!
+      item.reload
+
+      assert_not item.deleted?
+      assert_nil item.deleted_at
+      assert_equal count_after_delete + 1, @source.reload.items_count
+    end
+
+    test "restore! is idempotent on non-deleted items" do
+      item = Item.create!(source: @source, guid: "restore-noop", url: "https://example.com/restore-noop")
+      @source.reload
+      initial_count = @source.items_count
+
+      item.restore!
+
+      assert_equal initial_count, @source.reload.items_count
+      assert_not item.deleted?
+    end
+
+    test "soft_delete! and restore! maintain counter cache symmetry" do
+      item = Item.create!(source: @source, guid: "symmetry", url: "https://example.com/symmetry")
+      @source.reload
+      original_count = @source.items_count
+
+      item.soft_delete!
+      assert_equal original_count - 1, @source.reload.items_count
+
+      item.restore!
+      assert_equal original_count, @source.reload.items_count
+    end
+
     test "soft_delete! does not double-delete" do
       item = Item.create!(source: @source, guid: "double", url: "https://example.com/double")
       @source.reload
