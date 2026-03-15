@@ -1,10 +1,9 @@
 <% selected = (local_assigns[:selected] || :current).to_sym %>
 <% preview_limit = local_assigns[:preview_limit] || SourceMonitor::Scraping::BulkSourceScraper::DEFAULT_PREVIEW_LIMIT %>
-<% preview_items_relation = SourceMonitor::Item.where(source_id: source.id)
+<% preview_items = local_assigns[:preview_items] || @items&.to_a || SourceMonitor::Item.where(source_id: source.id)
   .order(Arel.sql("published_at DESC NULLS LAST, created_at DESC"))
-  .limit(preview_limit) %>
-<% preview_items = preview_items_relation.to_a %>
-<% counts = SourceMonitor::Scraping::BulkSourceScraper.selection_counts(
+  .limit(preview_limit).to_a %>
+<% counts = local_assigns[:counts] || SourceMonitor::Scraping::BulkSourceScraper.selection_counts(
      source: source,
      preview_items: preview_items,
      preview_limit: preview_limit

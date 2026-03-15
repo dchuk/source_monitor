@@ -184,33 +184,8 @@
     </table>
   </div>
 
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div class="text-xs text-slate-500" data-page-indicator="<%= @query_result.page %>">
-      Page <%= @query_result.page %>
-    </div>
-    <div class="flex gap-2">
-      <% prev_page = @query_result.has_previous_page ? @query_result.page - 1 : @query_result.page %>
-      <% next_page = @query_result.has_next_page ? @query_result.page + 1 : @query_result.page %>
-      <% prev_params = @filter_params.merge(page: prev_page).compact %>
-      <% next_params = @filter_params.merge(page: next_page).compact %>
-      <%= link_to "Previous",
-                  source_monitor.logs_path(prev_params),
-                  class: [
-                    "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium",
-                    @query_result.has_previous_page ? "border-slate-300 text-slate-700 hover:bg-slate-50" : "border-slate-200 text-slate-300 cursor-not-allowed"
-                  ].join(" "),
-                  aria: { disabled: !@query_result.has_previous_page } %>
-      <%= link_to "Next",
-                  source_monitor.logs_path(next_params),
-                  class: [
-                    "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium",
-                    @query_result.has_next_page ? "border-slate-300 text-slate-700 hover:bg-slate-50" : "border-slate-200 text-slate-300 cursor-not-allowed"
-                  ].join(" "),
-                  aria: { disabled: !@query_result.has_next_page } %>
-    </div>
-  </div>
-
-  <p class="text-xs text-slate-500">
-    Showing up to <%= @query_result.per_page %> logs per page.
-  </p>
+  <%= render "source_monitor/shared/pagination",
+        paginator_result: @query_result,
+        base_path: source_monitor.logs_path,
+        extra_params: @filter_params.except(:page) %>
 </div>

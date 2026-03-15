@@ -9,6 +9,7 @@ module SourceMonitor
         :per_page,
         :has_next_page,
         :has_previous_page,
+        :total_count,
         :filter_set,
         keyword_init: true
       ) do
@@ -18,6 +19,24 @@ module SourceMonitor
 
         def has_previous_page?
           !!self[:has_previous_page]
+        end
+
+        def next_page
+          return nil unless has_next_page?
+
+          page + 1
+        end
+
+        def previous_page
+          return nil unless has_previous_page?
+
+          [ page - 1, 1 ].max
+        end
+
+        def total_pages
+          return 1 if total_count.nil? || total_count <= 0
+
+          [ 1, (total_count.to_f / per_page).ceil ].max
         end
       end
 
@@ -38,6 +57,7 @@ module SourceMonitor
           per_page: pagination_result.per_page,
           has_next_page: pagination_result.has_next_page?,
           has_previous_page: pagination_result.has_previous_page?,
+          total_count: pagination_result.total_count,
           filter_set:
         )
       end

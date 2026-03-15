@@ -1,9 +1,9 @@
 <% source = local_assigns.fetch(:source) %>
 <% presenter = SourceMonitor::SourceDetailsPresenter.new(source) %>
-<% recent_fetch_logs = source.fetch_logs.order(started_at: :desc).limit(5) %>
-<% recent_scrape_logs = source.scrape_logs.order(started_at: :desc).limit(5) %>
+<% recent_fetch_logs = @recent_fetch_logs || source.fetch_logs.order(started_at: :desc).limit(5) %>
+<% recent_scrape_logs = @recent_scrape_logs || source.scrape_logs.order(started_at: :desc).limit(5) %>
 <% preview_limit = SourceMonitor::Scraping::BulkSourceScraper::DEFAULT_PREVIEW_LIMIT %>
-<% items = source.items.recent.includes(:item_content).limit(preview_limit) %>
+<% items = @items || source.items.recent.includes(:item_content).limit(preview_limit) %>
 <% health_status_override = local_assigns[:health_status_override] %>
 
 <div class="space-y-8">

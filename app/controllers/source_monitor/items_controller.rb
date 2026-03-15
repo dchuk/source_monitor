@@ -24,6 +24,7 @@ module SourceMonitor
         per_page: PER_PAGE
       ).paginate
 
+      @paginator = paginator
       @items = paginator.records
       @page = paginator.page
       @has_next_page = paginator.has_next_page

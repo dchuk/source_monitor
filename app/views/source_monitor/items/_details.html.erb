@@ -3,8 +3,8 @@
 <% manual_scrape_disabled = !source&.scraping_enabled? %>
 <% scrape_badge = item_scrape_status_badge(item: item, source: source) %>
 <% inflight_scrape = %w[pending processing].include?(scrape_badge[:status]) %>
-<% recent_scrape_logs = item.scrape_logs.order(started_at: :desc).limit(5) %>
-<% latest_scrape_log = recent_scrape_logs.first %>
+<% recent_scrape_logs = local_assigns[:recent_scrape_logs] || @recent_scrape_logs || [] %>
+<% latest_scrape_log = local_assigns[:latest_scrape_log] || @latest_scrape_log || recent_scrape_logs.first %>
 
 <div class="space-y-8">
   <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
