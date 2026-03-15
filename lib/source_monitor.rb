@@ -155,6 +155,7 @@ module SourceMonitor
     autoload :Enqueuer, "source_monitor/scraping/enqueuer"
     autoload :BulkSourceScraper, "source_monitor/scraping/bulk_source_scraper"
     autoload :BulkResultPresenter, "source_monitor/scraping/bulk_result_presenter"
+    autoload :Runner, "source_monitor/scraping/runner"
     autoload :State, "source_monitor/scraping/state"
     autoload :Scheduler, "source_monitor/scraping/scheduler"
     autoload :ItemScraper, "source_monitor/scraping/item_scraper"
