@@ -8,6 +8,8 @@ module SourceMonitor
 
     has_many_attached :images if defined?(ActiveStorage)
 
+    delegate :content, to: :item, prefix: :feed, allow_nil: true
+
     before_save :compute_word_counts
 
     SourceMonitor::ModelExtensions.register(self, :item_content)
@@ -30,7 +32,6 @@ module SourceMonitor
     end
 
     def compute_feed_word_count
-      feed_content = item&.content
       if feed_content.blank?
         self.feed_word_count = nil
       else
