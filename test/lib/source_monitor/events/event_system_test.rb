@@ -20,7 +20,7 @@ module SourceMonitor
         config.events.after_item_created { |event| captured << event }
       end
 
-      source = build_source
+      source = create_source!
       feed = Feedjira.parse(file_fixture("feeds/rss_sample.xml").read)
       fetcher = SourceMonitor::Fetching::FeedFetcher.new(source: source, jitter: ->(_) { 0 })
 
@@ -40,7 +40,7 @@ module SourceMonitor
         config.events.register_item_processor(lambda { |context| processed << context.status })
       end
 
-      source = build_source
+      source = create_source!
       feed = Feedjira.parse(file_fixture("feeds/rss_sample.xml").read)
       fetcher = SourceMonitor::Fetching::FeedFetcher.new(source: source, jitter: ->(_) { 0 })
 
@@ -57,7 +57,7 @@ module SourceMonitor
         config.events.after_fetch_completed { |event| captured << event }
       end
 
-      source = build_source
+      source = create_source!
 
       fetcher_class = Class.new do
         Result = SourceMonitor::Fetching::FeedFetcher::Result
@@ -106,7 +106,7 @@ module SourceMonitor
         config.events.after_item_scraped { |event| captured << event }
       end
 
-      source = build_source(scraper_adapter: "test_adapter")
+      source = create_source!(scraper_adapter: "test_adapter")
       item = SourceMonitor::Item.create!(
         source: source,
         guid: SecureRandom.uuid,
@@ -129,15 +129,6 @@ module SourceMonitor
 
     private
 
-    def build_source(overrides = {})
-      defaults = {
-        name: "Sample Source",
-        feed_url: "https://example.com/feed-#{SecureRandom.hex(4)}.xml",
-        adaptive_fetching_enabled: true
-      }
-
-      create_source!(defaults.merge(overrides))
-    end
 
     class NullScrapeEnqueuer
       def self.enqueue(*)

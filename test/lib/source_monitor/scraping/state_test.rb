@@ -11,8 +11,8 @@ module SourceMonitor
       end
 
       test "mark_pending sets the item to pending without broadcast" do
-        source = create_source
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true, auto_scrape: true)
+        item = create_item!(source:)
 
         SourceMonitor::Realtime.stub(:broadcast_item, ->(_item) { flunk("should not broadcast") }) do
           SourceMonitor::Scraping::State.mark_pending!(item, broadcast: false)
@@ -22,8 +22,8 @@ module SourceMonitor
       end
 
       test "mark_processing sets processing and broadcasts" do
-        source = create_source
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true, auto_scrape: true)
+        item = create_item!(source:)
 
         broadcasted = false
         SourceMonitor::Realtime.stub(:broadcast_item, ->(broadcast_item) { broadcasted = broadcast_item == item }) do
@@ -36,8 +36,8 @@ module SourceMonitor
       end
 
       test "clear_inflight resets status when in flight" do
-        source = create_source
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true, auto_scrape: true)
+        item = create_item!(source:)
         item.update!(scrape_status: "processing")
 
         SourceMonitor::Scraping::State.clear_inflight!(item)
@@ -46,8 +46,8 @@ module SourceMonitor
       end
 
       test "clear_inflight leaves status when not in flight" do
-        source = create_source
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true, auto_scrape: true)
+        item = create_item!(source:)
         item.update!(scrape_status: "success")
 
         SourceMonitor::Scraping::State.clear_inflight!(item)
@@ -56,19 +56,6 @@ module SourceMonitor
       end
 
       private
-
-      def create_source
-        create_source!(scraping_enabled: true, auto_scrape: true)
-      end
-
-      def create_item(source:)
-        SourceMonitor::Item.create!(
-          source: source,
-          guid: SecureRandom.uuid,
-          url: "https://example.com/#{SecureRandom.hex}",
-          title: "Item"
-        )
-      end
     end
   end
 end

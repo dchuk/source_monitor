@@ -41,6 +41,8 @@ require "turbo/broadcastable/test_helper"
 require "securerandom"
 require "minitest/mock"
 
+require_relative "support/model_factories"
+
 require "capybara/rails"
 require "capybara/minitest"
 
@@ -102,21 +104,9 @@ class ActiveSupport::TestCase
     SourceMonitor::Source.delete_all
   end
 
+  include ModelFactories
+
   private
-
-  def create_source!(attributes = {})
-    defaults = {
-      name: "Test Source",
-      feed_url: "https://example.com/feed-#{SecureRandom.hex(4)}.xml",
-      website_url: "https://example.com",
-      fetch_interval_minutes: 60,
-      scraper_adapter: "readability"
-    }
-
-    source = SourceMonitor::Source.new(defaults.merge(attributes))
-    source.save!(validate: false)
-    source
-  end
 
   def with_queue_adapter(adapter)
     previous = ActiveJob::Base.queue_adapter

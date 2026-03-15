@@ -10,7 +10,7 @@ module SourceMonitor
     class ItemCreatorTest < ActiveSupport::TestCase
       setup do
         clean_source_monitor_tables!
-        @source = build_source
+        @source = create_source!
       end
 
       test "creates item from rss entry and computes fingerprint" do
@@ -71,7 +71,7 @@ module SourceMonitor
       end
 
       test "processes feed content with readability when enabled" do
-        source = build_source(feed_content_readability_enabled: true)
+        source = create_source!(feed_content_readability_enabled: true)
         entry = parse_entry("feeds/rss_readability_content.xml")
 
         result = ItemCreator.call(source: source, entry: entry)
@@ -87,7 +87,7 @@ module SourceMonitor
       end
 
       test "preserves raw feed content when readability disabled" do
-        source = build_source(feed_content_readability_enabled: false)
+        source = create_source!(feed_content_readability_enabled: false)
         entry = parse_entry("feeds/rss_readability_content.xml")
 
         result = ItemCreator.call(source: source, entry: entry)
@@ -830,7 +830,7 @@ module SourceMonitor
       # ─── Task 4: Feed content processing error path and readability edge cases ───
 
       test "process_feed_content returns error metadata when parser raises" do
-        source = build_source(feed_content_readability_enabled: true)
+        source = create_source!(feed_content_readability_enabled: true)
         entry = OpenStruct.new(
           title: "Error Content Entry",
           url: "https://example.com/error-content",
@@ -862,7 +862,7 @@ module SourceMonitor
       end
 
       test "should_process_feed_content returns false for plain text" do
-        source = build_source(feed_content_readability_enabled: true)
+        source = create_source!(feed_content_readability_enabled: true)
         entry = OpenStruct.new(
           title: "Plain Text Entry",
           url: "https://example.com/plain-text",
@@ -880,7 +880,7 @@ module SourceMonitor
       end
 
       test "should_process_feed_content returns false for blank content" do
-        source = build_source(feed_content_readability_enabled: true)
+        source = create_source!(feed_content_readability_enabled: true)
         entry = OpenStruct.new(
           title: "Blank Content Entry",
           url: "https://example.com/blank-content",
@@ -897,7 +897,7 @@ module SourceMonitor
       end
 
       test "wrap_content_for_readability escapes HTML in title" do
-        source = build_source(feed_content_readability_enabled: true)
+        source = create_source!(feed_content_readability_enabled: true)
         entry = OpenStruct.new(
           title: '<script>alert("xss")</script>',
           url: "https://example.com/xss-title",
@@ -914,7 +914,7 @@ module SourceMonitor
       end
 
       test "wrap_content_for_readability uses default title when blank" do
-        source = build_source(feed_content_readability_enabled: true)
+        source = create_source!(feed_content_readability_enabled: true)
         entry = OpenStruct.new(
           title: nil,
           url: "https://example.com/no-title",
@@ -930,7 +930,7 @@ module SourceMonitor
       end
 
       test "build_feed_content_metadata includes readability_text_length when present" do
-        source = build_source(feed_content_readability_enabled: true)
+        source = create_source!(feed_content_readability_enabled: true)
         entry = parse_entry("feeds/rss_readability_content.xml")
 
         result = ItemCreator.call(source: source, entry: entry)
@@ -945,7 +945,7 @@ module SourceMonitor
       end
 
       test "build_feed_content_metadata includes title when present" do
-        source = build_source(feed_content_readability_enabled: true)
+        source = create_source!(feed_content_readability_enabled: true)
         entry = parse_entry("feeds/rss_readability_content.xml")
 
         result = ItemCreator.call(source: source, entry: entry)
@@ -1310,16 +1310,6 @@ module SourceMonitor
 
       private
 
-      def build_source(attributes = {})
-        defaults = {
-          name: "Example Source",
-          feed_url: "https://example.com/feed-#{SecureRandom.hex(8)}.xml",
-          website_url: "https://example.com",
-          fetch_interval_minutes: 60
-        }
-
-        create_source!(defaults.merge(attributes))
-      end
 
       def parse_entry(fixture)
         data = File.read(file_fixture(fixture))

@@ -247,14 +247,5 @@ module SourceMonitor
 
     private
 
-    def create_item!(source:, content: nil)
-      SourceMonitor::Item.create!(
-        source: source,
-        guid: SecureRandom.uuid,
-        url: "https://example.com/#{SecureRandom.hex(6)}",
-        title: "Test Article",
-        content: content
-      )
-    end
   end
 end

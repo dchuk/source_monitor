@@ -416,17 +416,6 @@ module SourceMonitor
       end
 
       private
-
-      def create_item!(source:, **attrs)
-        SourceMonitor::Item.create!(
-          {
-            source:,
-            guid: SecureRandom.uuid,
-            url: "https://example.com/#{SecureRandom.hex(6)}",
-            title: "Example Item"
-          }.merge(attrs)
-        )
-      end
     end
   end
 end

@@ -7,8 +7,8 @@ require "minitest/mock"
 module SourceMonitor
   class ScrapeItemJobTest < ActiveJob::TestCase
     test "performs scraping via item scraper and records a log" do
-      source = create_source(scraping_enabled: true)
-      item = create_item(source:)
+      source = create_source!(scraping_enabled: true, auto_scrape: true)
+      item = create_item!(source:)
 
       result = SourceMonitor::Scrapers::Base::Result.new(
         status: :success,
@@ -30,8 +30,8 @@ module SourceMonitor
     end
 
     test "skips scraping when the source has been disabled" do
-      source = create_source(scraping_enabled: false)
-      item = create_item(source:)
+      source = create_source!(scraping_enabled: false, auto_scrape: true)
+      item = create_item!(source:)
 
       assert_no_changes -> { SourceMonitor::ScrapeLog.count } do
         SourceMonitor::ScrapeItemJob.perform_now(item.id)
@@ -41,8 +41,8 @@ module SourceMonitor
     end
 
     test "marks item failed and clears processing when scraper raises unexpectedly" do
-      source = create_source(scraping_enabled: true)
-      item = create_item(source:)
+      source = create_source!(scraping_enabled: true, auto_scrape: true)
+      item = create_item!(source:)
 
       fake_scraper = Class.new do
         def call
@@ -64,13 +64,13 @@ module SourceMonitor
     # -- Time-based rate limiting tests --
 
     test "performs scrape when not rate-limited by time" do
-      source = create_source(scraping_enabled: true)
-      item = create_item(source:)
+      source = create_source!(scraping_enabled: true, auto_scrape: true)
+      item = create_item!(source:)
 
       SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 5.0 }
 
       # Scrape log from 10 seconds ago -- past interval
-      create_scrape_log(source:, item:, started_at: 10.seconds.ago)
+      create_scrape_log!(source:, item:, started_at: 10.seconds.ago)
 
       result = SourceMonitor::Scrapers::Base::Result.new(
         status: :success,
@@ -89,13 +89,13 @@ module SourceMonitor
     end
 
     test "re-enqueues with delay when rate-limited by time" do
-      source = create_source(scraping_enabled: true)
-      item = create_item(source:)
+      source = create_source!(scraping_enabled: true, auto_scrape: true)
+      item = create_item!(source:)
 
       SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 60.0 }
 
       # Scrape log from 5 seconds ago -- well within interval
-      create_scrape_log(source:, item:, started_at: 5.seconds.ago)
+      create_scrape_log!(source:, item:, started_at: 5.seconds.ago)
 
       assert_no_changes -> { SourceMonitor::ScrapeLog.count } do
         SourceMonitor::ScrapeItemJob.perform_now(item.id)
@@ -108,14 +108,14 @@ module SourceMonitor
     end
 
     test "clears in-flight state on time-based deferral" do
-      source = create_source(scraping_enabled: true)
-      item = create_item(source:)
+      source = create_source!(scraping_enabled: true, auto_scrape: true)
+      item = create_item!(source:)
       item.update_columns(scrape_status: "pending")
 
       SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 60.0 }
 
       # Scrape log from just now
-      create_scrape_log(source:, item:, started_at: Time.current)
+      create_scrape_log!(source:, item:, started_at: Time.current)
 
       SourceMonitor::ScrapeItemJob.perform_now(item.id)
 
@@ -125,29 +125,5 @@ module SourceMonitor
 
     private
 
-    def create_source(scraping_enabled:)
-      create_source!(
-        scraping_enabled: scraping_enabled,
-        auto_scrape: true
-      )
-    end
-
-    def create_item(source:)
-      SourceMonitor::Item.create!(
-        source: source,
-        guid: SecureRandom.uuid,
-        url: "https://example.com/#{SecureRandom.hex}",
-        title: "Example Item"
-      )
-    end
-
-    def create_scrape_log(source:, item:, started_at:)
-      SourceMonitor::ScrapeLog.create!(
-        source: source,
-        item: item,
-        started_at: started_at,
-        scraper_adapter: "readability"
-      )
-    end
   end
 end

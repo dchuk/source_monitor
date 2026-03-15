@@ -19,19 +19,19 @@ module SourceMonitor
           config.scrapers.register(:custom, RegisteredAdapter)
         end
 
-        resolver = SourceMonitor::Scraping::ItemScraper::AdapterResolver.new(name: "custom", source: build_source)
+        resolver = SourceMonitor::Scraping::ItemScraper::AdapterResolver.new(name: "custom", source: create_source!)
 
         assert_equal RegisteredAdapter, resolver.resolve!
       end
 
       test "resolves adapter class under SourceMonitor::Scrapers namespace" do
-        resolver = SourceMonitor::Scraping::ItemScraper::AdapterResolver.new(name: "readability", source: build_source)
+        resolver = SourceMonitor::Scraping::ItemScraper::AdapterResolver.new(name: "readability", source: create_source!)
 
         assert_equal SourceMonitor::Scrapers::Readability, resolver.resolve!
       end
 
       test "raises when adapter name contains invalid characters" do
-        resolver = SourceMonitor::Scraping::ItemScraper::AdapterResolver.new(name: "invalid-name!", source: build_source)
+        resolver = SourceMonitor::Scraping::ItemScraper::AdapterResolver.new(name: "invalid-name!", source: create_source!)
 
         assert_raises(SourceMonitor::Scraping::ItemScraper::UnknownAdapterError) { resolver.resolve! }
       end
@@ -39,7 +39,7 @@ module SourceMonitor
       test "raises when adapter constant does not inherit from base class" do
         stub_const("SourceMonitor::Scrapers::Rogue", Class.new)
 
-        resolver = SourceMonitor::Scraping::ItemScraper::AdapterResolver.new(name: "rogue", source: build_source)
+        resolver = SourceMonitor::Scraping::ItemScraper::AdapterResolver.new(name: "rogue", source: create_source!)
 
         assert_raises(SourceMonitor::Scraping::ItemScraper::UnknownAdapterError) { resolver.resolve! }
       ensure
@@ -47,19 +47,13 @@ module SourceMonitor
       end
 
       test "raises when adapter cannot be resolved" do
-        resolver = SourceMonitor::Scraping::ItemScraper::AdapterResolver.new(name: "missing", source: build_source)
+        resolver = SourceMonitor::Scraping::ItemScraper::AdapterResolver.new(name: "missing", source: create_source!)
 
         assert_raises(SourceMonitor::Scraping::ItemScraper::UnknownAdapterError) { resolver.resolve! }
       end
 
       private
 
-      def build_source
-        create_source!(
-          name: "Resolver Source",
-          feed_url: "https://example.com/resolver.xml"
-        )
-      end
 
       def stub_const(name, value)
         names = name.split("::")
