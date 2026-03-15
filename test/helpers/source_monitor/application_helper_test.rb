@@ -166,7 +166,7 @@ module SourceMonitor
       actions = source_health_actions(source)
       keys = actions.map { |action| action[:key] }
 
-      assert_equal %i[full_fetch health_check], keys
+      assert_equal %i[full_fetch health_check reset], keys
       assert actions.all? { |action| action[:data][:testid].present? }
     end
 

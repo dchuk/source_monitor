@@ -40,6 +40,14 @@ module SourceMonitor
             path: helpers.source_health_check_path(source),
             method: :post,
             data: { testid: "source-health-action-health_check" }
+          },
+          {
+            key: :reset,
+            label: "Reset to Active Status",
+            description: "Clears failure count, backoff timers, and auto-pause state so the source resumes normal fetching.",
+            path: helpers.source_health_reset_path(source),
+            method: :post,
+            data: { testid: "source-health-action-reset" }
           }
         ]
       else

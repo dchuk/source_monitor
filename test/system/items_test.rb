@@ -96,12 +96,12 @@ module SourceMonitor
         metadata: { http_status: 200, extraction_strategy: "readability" }
       )
 
+      click_button "Manual Scrape"
+      assert_text "Scrape has been enqueued"
+
       SourceMonitor::Scrapers::Readability.stub(:call, result) do
         assert_difference("SourceMonitor::ScrapeLog.count", 1) do
-          with_inline_jobs do
-            click_button "Manual Scrape"
-            assert_selector "[data-testid='scrape-status-badge']", text: "Pending"
-          end
+          perform_enqueued_jobs
         end
       end
       item.reload
@@ -154,6 +154,5 @@ module SourceMonitor
         assert_text "▼"
       end
     end
-
   end
 end
