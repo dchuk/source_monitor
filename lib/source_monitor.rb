@@ -101,6 +101,7 @@ module SourceMonitor
   module Images
     autoload :ContentRewriter, "source_monitor/images/content_rewriter"
     autoload :Downloader, "source_monitor/images/downloader"
+    autoload :Processor, "source_monitor/images/processor"
   end
 
   module Items
