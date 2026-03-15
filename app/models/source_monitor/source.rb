@@ -11,6 +11,7 @@ module SourceMonitor
     has_one_attached :favicon if defined?(ActiveStorage)
 
     FETCH_STATUS_VALUES = %w[idle queued fetching failed].freeze
+    HEALTH_STATUS_VALUES = %w[working declining improving failing].freeze
 
     has_many :all_items, class_name: "SourceMonitor::Item", inverse_of: :source, dependent: :destroy
     has_many :items, -> { active }, class_name: "SourceMonitor::Item", inverse_of: :source
@@ -28,6 +29,8 @@ module SourceMonitor
       where(failure.or(error_present).or(error_time_present))
     }
     scope :healthy, -> { active.where(failure_count: 0, last_error: nil, last_error_at: nil) }
+    scope :scraping_enabled, -> { where(scraping_enabled: true) }
+    scope :scraping_disabled, -> { where(scraping_enabled: false) }
 
     # Use Rails attribute API for default values instead of after_initialize callbacks
     attribute :scrape_settings, default: -> { {} }
@@ -48,6 +51,7 @@ module SourceMonitor
     validates :items_retention_days, numericality: { allow_nil: true, only_integer: true, greater_than_or_equal_to: 0 }
     validates :max_items, numericality: { allow_nil: true, only_integer: true, greater_than_or_equal_to: 0 }
     validates :fetch_status, inclusion: { in: FETCH_STATUS_VALUES }
+    validates :health_status, inclusion: { in: HEALTH_STATUS_VALUES }
     validates :fetch_retry_attempt, numericality: { greater_than_or_equal_to: 0, only_integer: true }
 
     validate :health_auto_pause_threshold_within_bounds

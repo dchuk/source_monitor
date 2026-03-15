@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_12_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_14_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -197,6 +197,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_120000) do
     t.index ["created_at"], name: "index_sourcemon_fetch_logs_on_created_at"
     t.index ["error_category"], name: "index_sourcemon_fetch_logs_on_error_category"
     t.index ["job_id"], name: "index_sourcemon_fetch_logs_on_job_id"
+    t.index ["source_id", "started_at"], name: "index_fetch_logs_on_source_id_and_started_at"
     t.index ["source_id"], name: "index_sourcemon_fetch_logs_on_source_id"
     t.index ["started_at"], name: "index_sourcemon_fetch_logs_on_started_at"
     t.index ["success"], name: "index_sourcemon_fetch_logs_on_success"
@@ -214,6 +215,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_120000) do
     t.datetime "started_at", null: false
     t.boolean "success", default: false, null: false
     t.datetime "updated_at", null: false
+    t.index ["source_id", "started_at"], name: "index_health_check_logs_on_source_id_and_started_at"
     t.index ["source_id"], name: "index_sourcemon_health_check_logs_on_source_id"
     t.index ["started_at"], name: "index_sourcemon_health_check_logs_on_started_at"
     t.index ["success"], name: "index_sourcemon_health_check_logs_on_success"
@@ -350,7 +352,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_120000) do
     t.boolean "success"
     t.datetime "updated_at", null: false
     t.index ["created_at"], name: "index_sourcemon_scrape_logs_on_created_at"
+    t.index ["item_id", "started_at"], name: "index_scrape_logs_on_item_id_and_started_at"
     t.index ["item_id"], name: "index_sourcemon_scrape_logs_on_item_id"
+    t.index ["source_id", "started_at"], name: "index_scrape_logs_on_source_id_and_started_at"
     t.index ["source_id"], name: "index_sourcemon_scrape_logs_on_source_id"
     t.index ["started_at"], name: "index_sourcemon_scrape_logs_on_started_at"
     t.index ["success"], name: "index_sourcemon_scrape_logs_on_success"
@@ -377,7 +381,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_120000) do
     t.integer "fetch_retry_attempt", default: 0, null: false
     t.string "fetch_status", default: "idle", null: false
     t.decimal "health_auto_pause_threshold", precision: 5, scale: 4
-    t.string "health_status", default: "healthy", null: false
+    t.string "health_status", default: "working", null: false
     t.datetime "health_status_changed_at"
     t.integer "items_count", default: 0, null: false
     t.integer "items_retention_days"

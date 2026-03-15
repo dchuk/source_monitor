@@ -150,10 +150,44 @@ module SourceMonitor
       source = Source.new(
         name: "Test",
         feed_url: "https://example.com/feed",
+        health_status: "failing"
+      )
+
+      assert_equal "failing", source.health_status
+    end
+
+    test "rejects invalid health_status values" do
+      source = Source.new(
+        name: "Test",
+        feed_url: "https://example.com/feed",
         health_status: "degraded"
       )
 
-      assert_equal "degraded", source.health_status
+      assert_not source.valid?
+      assert_includes source.errors[:health_status], "is not included in the list"
+    end
+
+    test "accepts all valid health_status values" do
+      %w[working declining improving failing].each do |status|
+        source = Source.new(name: "Test", feed_url: "https://example.com/feed-#{status}", health_status: status)
+        assert source.valid?, "Expected health_status '#{status}' to be valid"
+      end
+    end
+
+    test "scraping_enabled scope returns sources with scraping enabled" do
+      enabled = Source.create!(name: "Enabled", feed_url: "https://example.com/enabled", scraping_enabled: true)
+      disabled = Source.create!(name: "Disabled", feed_url: "https://example.com/disabled", scraping_enabled: false)
+
+      assert_includes Source.scraping_enabled, enabled
+      assert_not_includes Source.scraping_enabled, disabled
+    end
+
+    test "scraping_disabled scope returns sources with scraping disabled" do
+      enabled = Source.create!(name: "Enabled", feed_url: "https://example.com/enabled-sd", scraping_enabled: true)
+      disabled = Source.create!(name: "Disabled", feed_url: "https://example.com/disabled-sd", scraping_enabled: false)
+
+      assert_includes Source.scraping_disabled, disabled
+      assert_not_includes Source.scraping_disabled, enabled
     end
 
     test "due_for_fetch uses current time by default" do
