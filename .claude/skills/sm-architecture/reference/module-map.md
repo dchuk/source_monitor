@@ -79,6 +79,7 @@ Complete module tree with each module's responsibility.
 |--------|------|----------------|
 | `EntryNormalizer` | `import_sessions/entry_normalizer.rb` | Normalize OPML entries to standard format |
 | `HealthCheckBroadcaster` | `import_sessions/health_check_broadcaster.rb` | Broadcast health check progress via Turbo Streams |
+| `HealthCheckUpdater` | `import_sessions/health_check_updater.rb` | Service delegated to by ImportSessionHealthCheckJob; runs checks and broadcasts |
 
 ### Jobs
 
@@ -104,6 +105,7 @@ Complete module tree with each module's responsibility.
 |--------|------|----------------|
 | `Sanitizable` | `models/sanitizable.rb` | `sanitizes_string_attributes`, `sanitizes_hash_attributes` class methods |
 | `UrlNormalizable` | `models/url_normalizable.rb` | `normalizes_urls`, `validates_url_format` class methods |
+| `SetSource` | `models/set_source.rb` | Controller concern: resolves and assigns `@source` from params before actions |
 
 ### Scrapers (Scraper Adapters)
 
@@ -123,6 +125,7 @@ Complete module tree with each module's responsibility.
 | `ItemScraper` | `scraping/item_scraper.rb` | Scrape a single item |
 | `ItemScraper::AdapterResolver` | `scraping/item_scraper/adapter_resolver.rb` | Select scraper adapter for a source |
 | `ItemScraper::Persistence` | `scraping/item_scraper/persistence.rb` | Save scrape results to ItemContent |
+| `Runner` | `scraping/runner.rb` | Service delegated to by ScrapeItemJob; orchestrates state, scraping, and logging |
 | `BulkSourceScraper` | `scraping/bulk_source_scraper.rb` | Scrape all pending items for a source |
 | `BulkResultPresenter` | `scraping/bulk_result_presenter.rb` | Format bulk scrape results |
 | `State` | `scraping/state.rb` | Track scraping state per source |
@@ -150,6 +153,7 @@ Complete module tree with each module's responsibility.
 |--------|------|----------------|
 | `SourceHealthMonitor` | `health/source_health_monitor.rb` | Calculate rolling success rate, update health_status |
 | `SourceHealthCheck` | `health/source_health_check.rb` | Perform HTTP health check on a source |
+| `SourceHealthCheckOrchestrator` | `health/source_health_check_orchestrator.rb` | Service delegated to by SourceHealthCheckJob; coordinates check, logging, and broadcasting |
 | `SourceHealthReset` | `health/source_health_reset.rb` | Reset health state for a source |
 | `ImportSourceHealthCheck` | `health/import_source_health_check.rb` | Health check for import session sources |
 
@@ -181,6 +185,34 @@ Complete module tree with each module's responsibility.
 | `Verification::SolidQueueVerifier` | `setup/verification/solid_queue_verifier.rb` | Verify Solid Queue setup |
 | `Verification::ActionCableVerifier` | `setup/verification/action_cable_verifier.rb` | Verify Action Cable setup |
 | `Verification::TelemetryLogger` | `setup/verification/telemetry_logger.rb` | Log setup telemetry |
+
+### Favicons
+
+| Module | File | Responsibility |
+|--------|------|----------------|
+| `Favicons::Discoverer` | `favicons/discoverer.rb` | Multi-strategy favicon discovery (direct, HTML parsing, Google API) |
+| `Favicons::Fetcher` | `favicons/fetcher.rb` | Service delegated to by FaviconFetchJob; guards, discovers, and attaches favicon |
+
+### Images
+
+| Module | File | Responsibility |
+|--------|------|----------------|
+| `Images::Processor` | `images/processor.rb` | Service delegated to by DownloadContentImagesJob; downloads and attaches content images via Active Storage |
+
+### ViewComponents
+
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| `StatusBadgeComponent` | `app/components/source_monitor/status_badge_component.rb` | Renders a colored status badge for health_status values |
+| `IconComponent` | `app/components/source_monitor/icon_component.rb` | Renders consistent inline SVG or CSS icons |
+| `FilterDropdownComponent` | `app/components/source_monitor/filter_dropdown_component.rb` | Renders filter dropdown menus for sources/items index |
+
+### Presenters
+
+| Presenter | File | Responsibility |
+|-----------|------|----------------|
+| `SourceDetailsPresenter` | `app/presenters/source_monitor/source_details_presenter.rb` | View-specific formatting for source detail pages (SimpleDelegator over Source) |
+| `SourcesFilterPresenter` | `app/presenters/source_monitor/sources_filter_presenter.rb` | Formats filter state and option lists for the sources index |
 
 ### Other
 

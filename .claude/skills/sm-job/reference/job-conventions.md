@@ -113,7 +113,7 @@ Notable patterns:
 
 ### Worker Job (ScrapeItemJob)
 
-Demonstrates lifecycle logging:
+Demonstrates shallow delegation to a service class:
 
 ```ruby
 class ScrapeItemJob < ApplicationJob
@@ -121,35 +121,18 @@ class ScrapeItemJob < ApplicationJob
   discard_on ActiveJob::DeserializationError
 
   def perform(item_id)
-    log("job:start", item_id: item_id)
     item = Item.includes(:source).find_by(id: item_id)
     return unless item
 
-    source = item.source
-    unless source&.scraping_enabled?
-      log("job:skipped_scraping_disabled", item: item)
-      Scraping::State.clear_inflight!(item)
-      return
-    end
-
-    Scraping::State.mark_processing!(item)
-    Scraping::ItemScraper.new(item:, source:).call
-    log("job:completed", item: item, status: item.scrape_status)
-  rescue StandardError => error
-    log("job:error", item: item, error: error.message)
-    Scraping::State.mark_failed!(item)
-    raise
-  ensure
-    Scraping::State.clear_inflight!(item) if item
+    Scraping::Runner.new(item: item).call
   end
 end
 ```
 
 Notable patterns:
-- `includes(:source)` prevents N+1 query
-- Lifecycle state management (`mark_processing!`, `clear_inflight!`)
-- Error re-raise after state cleanup
-- Structured JSON logging at each stage
+- Job body is deserialization + delegation only
+- All business logic (state management, scraping, logging) lives in `Scraping::Runner`
+- `includes(:source)` prevents N+1 query before handing off to the service
 
 ### Scheduling Job (ScheduleFetchesJob)
 
@@ -168,7 +151,7 @@ end
 
 ### Lightweight Fetch Job (FaviconFetchJob)
 
-Demonstrates multi-strategy cascade with guard clauses:
+Demonstrates shallow delegation with guard clause:
 
 ```ruby
 class FaviconFetchJob < ApplicationJob
@@ -178,23 +161,19 @@ class FaviconFetchJob < ApplicationJob
   def perform(source_id)
     source = Source.find_by(id: source_id)
     return unless source
-    return unless should_fetch?(source)
 
-    result = Favicons::Discoverer.new(source: source).call
-    attach_favicon(source, result) if result.success?
+    Favicons::Fetcher.new(source: source).call
   end
 end
 ```
 
 Notable patterns:
-- Multiple guard clauses: source exists, Active Storage defined, no existing favicon, outside cooldown period
-- Uses `Favicons::Discoverer` service with 3-strategy cascade (direct `/favicon.ico`, HTML parsing, Google API)
-- Failed attempts tracked in source `metadata` JSONB (`favicon_last_attempted_at`) for retry cooldown
+- Job contains only lookup + delegation — guard clauses and discovery strategy cascade live in `Favicons::Fetcher`
 - Graceful degradation: host apps without Active Storage never enqueue this job
 
 ### Broadcast Job (SourceHealthCheckJob)
 
-Demonstrates result broadcasting:
+Demonstrates shallow delegation with result broadcasting:
 
 ```ruby
 class SourceHealthCheckJob < ApplicationJob
@@ -205,21 +184,48 @@ class SourceHealthCheckJob < ApplicationJob
     source = Source.find_by(id: source_id)
     return unless source
 
-    result = Health::SourceHealthCheck.new(source: source).call
-    broadcast_outcome(source, result)
-    result
-  rescue StandardError => error
-    record_unexpected_failure(source, error) if source
-    broadcast_outcome(source, nil, error) if source
-    nil
+    Health::SourceHealthCheckOrchestrator.new(source: source).call
   end
 end
 ```
 
 Notable patterns:
-- Always broadcasts UI update (success or failure)
-- Creates log record even for unexpected failures
-- Returns nil on error instead of re-raising (health checks are non-critical)
+- Job body is lookup + delegation only
+- Broadcasting, logging, and error handling live in `Health::SourceHealthCheckOrchestrator`
+- Returns nil on missing source; orchestrator handles nil-on-error (health checks are non-critical)
+
+## Shallow Delegation Pattern
+
+As of v0.12.0, five maintenance jobs delegate entirely to dedicated service classes. Jobs contain only deserialization and delegation — no business logic.
+
+| Job | Service Class |
+|-----|---------------|
+| `ScrapeItemJob` | `Scraping::Runner` |
+| `DownloadContentImagesJob` | `Images::Processor` |
+| `FaviconFetchJob` | `Favicons::Fetcher` |
+| `SourceHealthCheckJob` | `Health::SourceHealthCheckOrchestrator` |
+| `ImportSessionHealthCheckJob` | `ImportSessions::HealthCheckUpdater` |
+
+**Why this pattern:**
+- Jobs are the transport mechanism, not the behavior container.
+- Service classes are unit-testable without ActiveJob infrastructure.
+- Future pipeline changes (e.g., calling the same logic synchronously) require no job changes.
+
+**Template for new jobs:**
+
+```ruby
+class MyJob < ApplicationJob
+  source_monitor_queue :maintenance
+  discard_on ActiveJob::DeserializationError
+
+  def perform(record_id)
+    record = MyModel.find_by(id: record_id)
+    return unless record
+
+    MyNamespace::MyService.new(record: record).call
+  end
+end
+```
 
 ## _later / _now Naming Convention
 

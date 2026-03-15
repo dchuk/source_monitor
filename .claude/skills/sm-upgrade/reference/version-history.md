@@ -2,6 +2,25 @@
 
 Version-specific migration notes for each major/minor version transition. Agents should reference this file when guiding users through multi-version upgrades.
 
+## 0.11.x to 0.12.0
+
+**Key changes:**
+- 2 new migrations: composite indexes on `sourcemon_fetch_logs`, `sourcemon_scrape_logs`, and `sourcemon_health_check_logs` (on `source_id, created_at`), and `health_status` column default corrected to `"working"`.
+- 5 background jobs extracted to service classes: `ScrapeItemJob` -> `Scraping::Runner`, `DownloadContentImagesJob` -> `Images::Processor`, `FaviconFetchJob` -> `Favicons::Fetcher`, `SourceHealthCheckJob` -> `Health::SourceHealthCheckOrchestrator`, `ImportSessionHealthCheckJob` -> `ImportSessions::HealthCheckUpdater`. Job arguments and queue assignments are unchanged.
+- New ViewComponents: `StatusBadgeComponent`, `IconComponent`, `FilterDropdownComponent`.
+- New presenters: `SourceDetailsPresenter`, `SourcesFilterPresenter`.
+- New model methods: `Source.enable_scraping!(ids)`, `Item#restore!`, `health_status` validation against the 4 permitted values.
+
+**Action items:**
+1. Copy and run migrations:
+   ```bash
+   bin/rails source_monitor:install:migrations
+   bin/rails db:migrate
+   ```
+2. No breaking changes -- all existing initializer configuration and job interfaces remain valid.
+3. No configuration changes required.
+4. ViewComponents and presenters are available for use in custom views but are not required.
+
 ## 0.10.2 to 0.11.0
 
 **Key changes:**
