@@ -215,7 +215,7 @@ module SourceMonitor
         end
 
         test "records feed size and items in feed" do
-          feed = Struct.new(:entries).new([1, 2, 3])
+          feed = Struct.new(:entries).new([ 1, 2, 3 ])
           body = "<rss>sample body</rss>"
 
           log = @updater.create_fetch_log(

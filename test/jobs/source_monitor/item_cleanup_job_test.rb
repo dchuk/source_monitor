@@ -57,6 +57,5 @@ module SourceMonitor
     end
 
     private
-
   end
 end

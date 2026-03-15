@@ -57,24 +57,6 @@ None
 
 None
 
-### Skills
-
-**Installed:**
-- agent-browser (global)
-- flowdeck (global)
-- ralph-tui-create-json (global)
-- ralph-tui-prd (global)
-- vastai (global)
-- find-skills (global)
-
-**Suggested (not installed):**
-- dhh-rails-style (registry) -- DHH-style Rails conventions
-- ruby-rails (registry) -- Ruby on Rails development
-- github-actions (registry) -- GitHub Actions workflow
-
-**Stack detected:** Ruby on Rails 8 engine, Solid Queue, Hotwire (Turbo + Stimulus), Tailwind CSS, PostgreSQL, ESLint, GitHub Actions, Minitest, RuboCop, Brakeman
-**Registry available:** yes
-
 ## Session Continuity
 
 Last session: 2026-02-10

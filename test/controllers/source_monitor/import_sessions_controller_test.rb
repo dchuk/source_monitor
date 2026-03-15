@@ -550,6 +550,5 @@ module SourceMonitor
       assert_includes @response.body, "value=\"45\""
       assert_includes @response.body, "scraping_enabled"
     end
-
   end
 end

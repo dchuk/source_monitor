@@ -53,8 +53,8 @@ module SharedLoggableTests
       newer = build_loggable(started_at: 1.minute.ago)
       newer.save!
 
-      scoped = klass.where(id: [older.id, newer.id]).recent
-      assert_equal [newer, older], scoped.to_a
+      scoped = klass.where(id: [ older.id, newer.id ]).recent
+      assert_equal [ newer, older ], scoped.to_a
     end
 
     test "loggable: successful scope filters by success true" do
@@ -65,7 +65,7 @@ module SharedLoggableTests
       failure_log = build_loggable(success: false, started_at: 1.minute.ago)
       failure_log.save!
 
-      scoped = klass.where(id: [success_log.id, failure_log.id])
+      scoped = klass.where(id: [ success_log.id, failure_log.id ])
       assert_includes scoped.successful, success_log
       assert_not_includes scoped.successful, failure_log
     end
@@ -78,7 +78,7 @@ module SharedLoggableTests
       failure_log = build_loggable(success: false, started_at: 1.minute.ago)
       failure_log.save!
 
-      scoped = klass.where(id: [success_log.id, failure_log.id])
+      scoped = klass.where(id: [ success_log.id, failure_log.id ])
       assert_includes scoped.failed, failure_log
       assert_not_includes scoped.failed, success_log
     end
@@ -91,7 +91,7 @@ module SharedLoggableTests
       recent_log = build_loggable(started_at: 1.hour.ago)
       recent_log.save!
 
-      scoped = klass.where(id: [old_log.id, recent_log.id]).since(1.day.ago)
+      scoped = klass.where(id: [ old_log.id, recent_log.id ]).since(1.day.ago)
       assert_includes scoped, recent_log
       assert_not_includes scoped, old_log
     end
@@ -104,7 +104,7 @@ module SharedLoggableTests
       recent_log = build_loggable(started_at: 1.hour.ago)
       recent_log.save!
 
-      scoped = klass.where(id: [old_log.id, recent_log.id]).before(1.day.ago)
+      scoped = klass.where(id: [ old_log.id, recent_log.id ]).before(1.day.ago)
       assert_includes scoped, old_log
       assert_not_includes scoped, recent_log
     end

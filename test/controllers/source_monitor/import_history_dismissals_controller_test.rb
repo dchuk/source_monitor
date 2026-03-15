@@ -67,6 +67,5 @@ module SourceMonitor
       other_import_history.reload
       assert_nil other_import_history.dismissed_at
     end
-
   end
 end

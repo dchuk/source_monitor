@@ -78,7 +78,6 @@ module SourceMonitor
           assert_equal false, result
         end
       end
-
     end
   end
 end

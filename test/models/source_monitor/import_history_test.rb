@@ -14,17 +14,17 @@ module SourceMonitor
     end
 
     test "imported_count returns size of imported_sources" do
-      history = ImportHistory.new(imported_sources: [{ "id" => 1 }, { "id" => 2 }])
+      history = ImportHistory.new(imported_sources: [ { "id" => 1 }, { "id" => 2 } ])
       assert_equal 2, history.imported_count
     end
 
     test "failed_count returns size of failed_sources" do
-      history = ImportHistory.new(failed_sources: [{ "id" => 1 }])
+      history = ImportHistory.new(failed_sources: [ { "id" => 1 } ])
       assert_equal 1, history.failed_count
     end
 
     test "skipped_count returns size of skipped_duplicates" do
-      history = ImportHistory.new(skipped_duplicates: [{ "id" => 1 }, { "id" => 2 }, { "id" => 3 }])
+      history = ImportHistory.new(skipped_duplicates: [ { "id" => 1 }, { "id" => 2 }, { "id" => 3 } ])
       assert_equal 3, history.skipped_count
     end
 

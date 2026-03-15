@@ -71,6 +71,5 @@ module SourceMonitor
         bulk_settings: {}
       )
     end
-
   end
 end

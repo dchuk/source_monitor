@@ -39,10 +39,6 @@ plugin :tmp_restart
 # In other environments, only set the PID file if requested.
 pidfile ENV["PIDFILE"] if ENV["PIDFILE"]
 
-# -- Performance: GC tuning for development --
-# Ruby 4.0 default GC can cause long pauses in long-running dev servers.
-# Raise the malloc threshold to reduce minor GC frequency and batch frees.
-before_fork do
-  # Enable YJIT if available (Ruby 3.3+ / 4.0+)
-  RubyVM::YJIT.enable if defined?(RubyVM::YJIT) && RubyVM::YJIT.respond_to?(:enable)
-end
+# Enable YJIT if available (Ruby 3.3+ / 4.0+)
+# Must be done at boot, not in before_fork (which only runs in cluster mode).
+RubyVM::YJIT.enable if defined?(RubyVM::YJIT) && RubyVM::YJIT.respond_to?(:enable)

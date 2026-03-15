@@ -85,6 +85,5 @@ module SourceMonitor
       assert history.completed_at.present?
       assert history.started_at.present?
     end
-
   end
 end
