@@ -4,8 +4,8 @@
 
 ## Active Context
 
-**Last shipped:** ui-fixes-and-smart-scraping (5 phases, 22 plans)
-**Next action:** /vbw:vibe to plan Phase 01 (Ultimate Turbo Modal Integration)
+**Last shipped:** rails-audit-and-refactoring (7 phases, 30 plans)
+**Next action:** /vbw:vibe to start new work
 
 ## Key Decisions
 
