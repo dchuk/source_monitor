@@ -18,8 +18,6 @@ module SourceMonitor
 
     SourceMonitor::ModelExtensions.register(self, :scrape_log)
 
-    after_save :sync_log_entry
-
     private
 
     def source_matches_item

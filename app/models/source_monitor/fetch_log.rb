@@ -23,13 +23,5 @@ module SourceMonitor
     scope :by_category, ->(category) { where(error_category: category) }
 
     SourceMonitor::ModelExtensions.register(self, :fetch_log)
-
-    after_save :sync_log_entry
-
-    private
-
-    def sync_log_entry
-      SourceMonitor::Logs::EntrySync.call(self)
-    end
   end
 end

@@ -78,6 +78,15 @@ module SourceMonitor
       end
     end
 
+    test "sync_log_entry creates LogEntry via Loggable concern" do
+      fetch_log = FetchLog.create!(source: @source, started_at: Time.current, success: true)
+
+      log_entry = SourceMonitor::LogEntry.find_by(loggable: fetch_log)
+      assert log_entry.present?, "LogEntry should be created by sync_log_entry callback in Loggable concern"
+      assert_equal @source.id, log_entry.source_id
+      assert_equal "SourceMonitor::FetchLog", log_entry.loggable_type
+    end
+
     test "by_category scope filters logs" do
       network_log = FetchLog.create!(source: @source, success: false, started_at: 3.minutes.ago, error_category: "network")
       blocked_log = FetchLog.create!(source: @source, success: false, started_at: 2.minutes.ago, error_category: "blocked")
