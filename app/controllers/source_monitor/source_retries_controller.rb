@@ -3,6 +3,7 @@
 module SourceMonitor
   class SourceRetriesController < ApplicationController
     include SourceMonitor::SourceTurboResponses
+    include SourceMonitor::SetSource
 
     before_action :set_source
 
@@ -19,12 +20,6 @@ module SourceMonitor
       end
     rescue StandardError => error
       handle_fetch_failure(error)
-    end
-
-    private
-
-    def set_source
-      @source = Source.find(params[:source_id])
     end
   end
 end

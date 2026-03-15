@@ -3,6 +3,7 @@
 module SourceMonitor
   class SourceFaviconFetchesController < ApplicationController
     include SourceMonitor::SourceTurboResponses
+    include SourceMonitor::SetSource
 
     before_action :set_source
 
@@ -22,12 +23,6 @@ module SourceMonitor
       render_fetch_enqueue_response("Favicon fetch has been enqueued.")
     rescue StandardError => error
       handle_fetch_failure(error, prefix: "Favicon fetch")
-    end
-
-    private
-
-    def set_source
-      @source = Source.find(params[:source_id])
     end
   end
 end

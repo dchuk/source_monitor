@@ -2,6 +2,8 @@
 
 module SourceMonitor
   class SourceScrapeTestsController < ApplicationController
+    include SourceMonitor::SetSource
+
     before_action :set_source
 
     def create
@@ -37,10 +39,6 @@ module SourceMonitor
     end
 
     private
-
-    def set_source
-      @source = Source.find(params[:source_id])
-    end
 
     def pick_test_item
       @source.items

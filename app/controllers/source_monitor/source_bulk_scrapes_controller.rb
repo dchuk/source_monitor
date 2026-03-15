@@ -3,6 +3,7 @@
 module SourceMonitor
   class SourceBulkScrapesController < ApplicationController
     include SourceMonitor::SourceTurboResponses
+    include SourceMonitor::SetSource
 
     ITEMS_PREVIEW_LIMIT = SourceMonitor::Scraping::BulkSourceScraper::DEFAULT_PREVIEW_LIMIT
 
@@ -23,10 +24,6 @@ module SourceMonitor
     end
 
     private
-
-    def set_source
-      @source = Source.find(params[:source_id])
-    end
 
     def bulk_scrape_params
       params.fetch(:bulk_scrape, {}).permit(:selection)
