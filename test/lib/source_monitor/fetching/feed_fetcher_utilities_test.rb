@@ -163,9 +163,9 @@ module SourceMonitor
         url = "https://example.com/jitter-zero.xml"
         source = build_source(name: "Jitter Zero", feed_url: url)
 
-        fetcher = FeedFetcher.new(source: source)
-        assert_equal 0, fetcher.send(:jitter_offset, 0)
-        assert_equal 0, fetcher.send(:jitter_offset, -10)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        assert_equal 0, adaptive.jitter_offset(0)
+        assert_equal 0, adaptive.jitter_offset(-10)
       end
 
       test "jitter_offset uses jitter_proc when provided" do
@@ -173,10 +173,10 @@ module SourceMonitor
         source = build_source(name: "Jitter Proc", feed_url: url)
 
         custom_jitter = ->(interval) { interval * 0.5 }
-        fetcher = FeedFetcher.new(source: source, jitter: custom_jitter)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source, jitter_proc: custom_jitter)
 
-        assert_equal 50.0, fetcher.send(:jitter_offset, 100)
-        assert_equal 0.0, fetcher.send(:jitter_offset, 0)
+        assert_equal 50.0, adaptive.jitter_offset(100)
+        assert_equal 0.0, adaptive.jitter_offset(0)
       end
 
       test "adjusted_interval_with_jitter never goes below min_fetch_interval" do
@@ -185,10 +185,10 @@ module SourceMonitor
 
         # Use a jitter proc that always returns a large negative number
         negative_jitter = ->(_) { -999_999 }
-        fetcher = FeedFetcher.new(source: source, jitter: negative_jitter)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source, jitter_proc: negative_jitter)
 
-        min = FeedFetcher::MIN_FETCH_INTERVAL
-        result = fetcher.send(:adjusted_interval_with_jitter, min)
+        min = FeedFetcher::AdaptiveInterval::MIN_FETCH_INTERVAL
+        result = adaptive.adjusted_interval_with_jitter(min)
         assert result >= min
       end
 
@@ -211,15 +211,15 @@ module SourceMonitor
         assert_equal expected, fetcher.send(:body_digest, body)
       end
 
-      # ── Metadata management ──
+      # ── Metadata management (SourceUpdater) ──
 
       test "updated_metadata removes dynamic_fetch_interval_seconds key" do
         url = "https://example.com/metadata-cleanup.xml"
         source = build_source(name: "Metadata Cleanup", feed_url: url)
         source.update!(metadata: { "dynamic_fetch_interval_seconds" => 3600, "other_key" => "keep" })
 
-        fetcher = FeedFetcher.new(source: source)
-        result = fetcher.send(:updated_metadata)
+        updater = build_source_updater(source)
+        result = updater.updated_metadata
 
         refute result.key?("dynamic_fetch_interval_seconds")
         assert_equal "keep", result["other_key"]
@@ -229,8 +229,8 @@ module SourceMonitor
         url = "https://example.com/metadata-sig.xml"
         source = build_source(name: "Metadata Sig", feed_url: url)
 
-        fetcher = FeedFetcher.new(source: source)
-        result = fetcher.send(:updated_metadata, feed_signature: "abc123")
+        updater = build_source_updater(source)
+        result = updater.updated_metadata(feed_signature: "abc123")
 
         assert_equal "abc123", result["last_feed_signature"]
       end
@@ -239,21 +239,21 @@ module SourceMonitor
         url = "https://example.com/metadata-no-sig.xml"
         source = build_source(name: "Metadata No Sig", feed_url: url)
 
-        fetcher = FeedFetcher.new(source: source)
-        result = fetcher.send(:updated_metadata, feed_signature: nil)
+        updater = build_source_updater(source)
+        result = updater.updated_metadata(feed_signature: nil)
 
         refute result.key?("last_feed_signature")
       end
 
-      # ── Feed signature ──
+      # ── Feed signature (SourceUpdater) ──
 
       test "feed_signature_changed? returns false when signature is blank" do
         url = "https://example.com/sig-blank.xml"
         source = build_source(name: "Sig Blank", feed_url: url)
 
-        fetcher = FeedFetcher.new(source: source)
-        refute fetcher.send(:feed_signature_changed?, nil)
-        refute fetcher.send(:feed_signature_changed?, "")
+        updater = build_source_updater(source)
+        refute updater.feed_signature_changed?(nil)
+        refute updater.feed_signature_changed?("")
       end
 
       test "feed_signature_changed? returns true when signature differs from stored" do
@@ -261,8 +261,8 @@ module SourceMonitor
         source = build_source(name: "Sig Changed", feed_url: url)
         source.update!(metadata: { "last_feed_signature" => "old_sig" })
 
-        fetcher = FeedFetcher.new(source: source)
-        assert fetcher.send(:feed_signature_changed?, "new_sig")
+        updater = build_source_updater(source)
+        assert updater.feed_signature_changed?("new_sig")
       end
 
       test "feed_signature_changed? returns false when signature matches stored" do
@@ -270,145 +270,130 @@ module SourceMonitor
         source = build_source(name: "Sig Same", feed_url: url)
         source.update!(metadata: { "last_feed_signature" => "same_sig" })
 
-        fetcher = FeedFetcher.new(source: source)
-        refute fetcher.send(:feed_signature_changed?, "same_sig")
+        updater = build_source_updater(source)
+        refute updater.feed_signature_changed?("same_sig")
       end
 
-      # ── Configuration helpers ──
+      # ── Configuration helpers (AdaptiveInterval) ──
 
       test "configured_seconds returns default when minutes_value is nil" do
-        url = "https://example.com/config-nil.xml"
-        source = build_source(name: "Config Nil", feed_url: url)
+        source = build_source(name: "Config Nil", feed_url: "https://example.com/config-nil.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        result = fetcher.send(:configured_seconds, nil, 999)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        result = adaptive.configured_seconds(nil, 999)
         assert_equal 999, result
       end
 
       test "configured_seconds returns default when minutes_value is zero" do
-        url = "https://example.com/config-zero.xml"
-        source = build_source(name: "Config Zero", feed_url: url)
+        source = build_source(name: "Config Zero", feed_url: "https://example.com/config-zero.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        result = fetcher.send(:configured_seconds, 0, 999)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        result = adaptive.configured_seconds(0, 999)
         assert_equal 999, result
       end
 
       test "configured_seconds converts positive minutes to seconds" do
-        url = "https://example.com/config-positive.xml"
-        source = build_source(name: "Config Positive", feed_url: url)
+        source = build_source(name: "Config Positive", feed_url: "https://example.com/config-positive.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        result = fetcher.send(:configured_seconds, 10, 999)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        result = adaptive.configured_seconds(10, 999)
         assert_equal 600.0, result
       end
 
       test "configured_positive returns default for nil" do
-        url = "https://example.com/config-pos-nil.xml"
-        source = build_source(name: "Config Pos Nil", feed_url: url)
+        source = build_source(name: "Config Pos Nil", feed_url: "https://example.com/config-pos-nil.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        assert_equal 42, fetcher.send(:configured_positive, nil, 42)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        assert_equal 42, adaptive.configured_positive(nil, 42)
       end
 
       test "configured_positive returns default for zero" do
-        url = "https://example.com/config-pos-zero.xml"
-        source = build_source(name: "Config Pos Zero", feed_url: url)
+        source = build_source(name: "Config Pos Zero", feed_url: "https://example.com/config-pos-zero.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        assert_equal 42, fetcher.send(:configured_positive, 0, 42)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        assert_equal 42, adaptive.configured_positive(0, 42)
       end
 
       test "configured_positive returns value when positive" do
-        url = "https://example.com/config-pos-val.xml"
-        source = build_source(name: "Config Pos Val", feed_url: url)
+        source = build_source(name: "Config Pos Val", feed_url: "https://example.com/config-pos-val.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        assert_equal 7.5, fetcher.send(:configured_positive, 7.5, 42)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        assert_equal 7.5, adaptive.configured_positive(7.5, 42)
       end
 
       test "configured_non_negative returns zero for nil since nil.respond_to?(:to_f) is true" do
-        url = "https://example.com/config-nn-nil.xml"
-        source = build_source(name: "Config NN Nil", feed_url: url)
+        source = build_source(name: "Config NN Nil", feed_url: "https://example.com/config-nn-nil.xml")
 
-        fetcher = FeedFetcher.new(source: source)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
         # nil.respond_to?(:to_f) is true, nil.to_f => 0.0, which is non-negative
-        assert_equal 0.0, fetcher.send(:configured_non_negative, nil, 0.1)
+        assert_equal 0.0, adaptive.configured_non_negative(nil, 0.1)
       end
 
       test "configured_non_negative returns zero for negative value" do
-        url = "https://example.com/config-nn-neg.xml"
-        source = build_source(name: "Config NN Neg", feed_url: url)
+        source = build_source(name: "Config NN Neg", feed_url: "https://example.com/config-nn-neg.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        assert_equal 0.0, fetcher.send(:configured_non_negative, -5, 0.1)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        assert_equal 0.0, adaptive.configured_non_negative(-5, 0.1)
       end
 
       test "configured_non_negative returns zero for zero value" do
-        url = "https://example.com/config-nn-zero.xml"
-        source = build_source(name: "Config NN Zero", feed_url: url)
+        source = build_source(name: "Config NN Zero", feed_url: "https://example.com/config-nn-zero.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        assert_equal 0, fetcher.send(:configured_non_negative, 0, 0.1)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        assert_equal 0, adaptive.configured_non_negative(0, 0.1)
       end
 
       test "interval_minutes_for returns minimum of 1" do
-        url = "https://example.com/interval-min.xml"
-        source = build_source(name: "Interval Min", feed_url: url)
+        source = build_source(name: "Interval Min", feed_url: "https://example.com/interval-min.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        assert_equal 1, fetcher.send(:interval_minutes_for, 10)
-        assert_equal 1, fetcher.send(:interval_minutes_for, 30)
-        assert_equal 5, fetcher.send(:interval_minutes_for, 300)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        assert_equal 1, adaptive.interval_minutes_for(10)
+        assert_equal 1, adaptive.interval_minutes_for(30)
+        assert_equal 5, adaptive.interval_minutes_for(300)
       end
 
-      # ── HTTP time parsing ──
+      # ── HTTP time parsing (SourceUpdater) ──
 
       test "parse_http_time returns nil for blank value" do
-        url = "https://example.com/parse-blank.xml"
-        source = build_source(name: "Parse Blank", feed_url: url)
+        source = build_source(name: "Parse Blank", feed_url: "https://example.com/parse-blank.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        assert_nil fetcher.send(:parse_http_time, nil)
-        assert_nil fetcher.send(:parse_http_time, "")
+        updater = build_source_updater(source)
+        assert_nil updater.parse_http_time(nil)
+        assert_nil updater.parse_http_time("")
       end
 
       test "parse_http_time returns nil for invalid date" do
-        url = "https://example.com/parse-invalid.xml"
-        source = build_source(name: "Parse Invalid", feed_url: url)
+        source = build_source(name: "Parse Invalid", feed_url: "https://example.com/parse-invalid.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        assert_nil fetcher.send(:parse_http_time, "not-a-date")
+        updater = build_source_updater(source)
+        assert_nil updater.parse_http_time("not-a-date")
       end
 
       test "parse_http_time parses valid httpdate" do
-        url = "https://example.com/parse-valid.xml"
-        source = build_source(name: "Parse Valid", feed_url: url)
+        source = build_source(name: "Parse Valid", feed_url: "https://example.com/parse-valid.xml")
 
-        fetcher = FeedFetcher.new(source: source)
+        updater = build_source_updater(source)
         time = Time.utc(2024, 3, 15, 10, 30, 0)
-        result = fetcher.send(:parse_http_time, time.httpdate)
+        result = updater.parse_http_time(time.httpdate)
         assert_equal time, result
       end
 
-      # ── Numeric extraction ──
+      # ── Numeric extraction (AdaptiveInterval) ──
 
       test "extract_numeric returns numeric values directly" do
-        url = "https://example.com/extract-num.xml"
-        source = build_source(name: "Extract Num", feed_url: url)
+        source = build_source(name: "Extract Num", feed_url: "https://example.com/extract-num.xml")
 
-        fetcher = FeedFetcher.new(source: source)
-        assert_equal 42, fetcher.send(:extract_numeric, 42)
-        assert_equal 3.14, fetcher.send(:extract_numeric, 3.14)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        assert_equal 42, adaptive.extract_numeric(42)
+        assert_equal 3.14, adaptive.extract_numeric(3.14)
       end
 
       test "extract_numeric returns 0.0 for nil since nil.respond_to?(:to_f) is true" do
-        url = "https://example.com/extract-nil.xml"
-        source = build_source(name: "Extract Nil", feed_url: url)
+        source = build_source(name: "Extract Nil", feed_url: "https://example.com/extract-nil.xml")
 
-        fetcher = FeedFetcher.new(source: source)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
         # nil.respond_to?(:to_f) => true, nil.to_f => 0.0
-        assert_equal 0.0, fetcher.send(:extract_numeric, nil)
+        assert_equal 0.0, adaptive.extract_numeric(nil)
       end
     end
   end

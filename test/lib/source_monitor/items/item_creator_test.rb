@@ -960,98 +960,98 @@ module SourceMonitor
       # ─── Task 5: Utility methods edge cases ───
 
       test "safe_integer returns nil for nil" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_nil creator.send(:safe_integer, nil)
+        parser = build_entry_parser
+        assert_nil parser.send(:safe_integer, nil)
       end
 
       test "safe_integer returns integer as-is" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_equal 42, creator.send(:safe_integer, 42)
+        parser = build_entry_parser
+        assert_equal 42, parser.send(:safe_integer, 42)
       end
 
       test "safe_integer parses string integers" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_equal 123, creator.send(:safe_integer, "123")
+        parser = build_entry_parser
+        assert_equal 123, parser.send(:safe_integer, "123")
       end
 
       test "safe_integer returns nil for non-numeric strings" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_nil creator.send(:safe_integer, "not-a-number")
+        parser = build_entry_parser
+        assert_nil parser.send(:safe_integer, "not-a-number")
       end
 
       test "safe_integer returns nil for blank strings" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_nil creator.send(:safe_integer, "  ")
+        parser = build_entry_parser
+        assert_nil parser.send(:safe_integer, "  ")
       end
 
       test "safe_integer strips whitespace before parsing" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_equal 99, creator.send(:safe_integer, " 99 ")
+        parser = build_entry_parser
+        assert_equal 99, parser.send(:safe_integer, " 99 ")
       end
 
       test "safe_integer returns nil for float strings" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_nil creator.send(:safe_integer, "12.5")
+        parser = build_entry_parser
+        assert_nil parser.send(:safe_integer, "12.5")
       end
 
       test "split_keywords returns empty array for nil" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_equal [], creator.send(:split_keywords, nil)
+        parser = build_entry_parser
+        assert_equal [], parser.send(:split_keywords, nil)
       end
 
       test "split_keywords returns empty array for blank string" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_equal [], creator.send(:split_keywords, "  ")
+        parser = build_entry_parser
+        assert_equal [], parser.send(:split_keywords, "  ")
       end
 
       test "split_keywords splits on commas and semicolons" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_equal [ "ruby", "rails", "testing" ], creator.send(:split_keywords, "ruby, rails; testing")
+        parser = build_entry_parser
+        assert_equal [ "ruby", "rails", "testing" ], parser.send(:split_keywords, "ruby, rails; testing")
       end
 
       test "split_keywords strips whitespace from each keyword" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_equal [ "a", "b", "c" ], creator.send(:split_keywords, " a , b ; c ")
+        parser = build_entry_parser
+        assert_equal [ "a", "b", "c" ], parser.send(:split_keywords, " a , b ; c ")
       end
 
       test "split_keywords removes blank entries" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_equal [ "a", "b" ], creator.send(:split_keywords, "a,,;,b")
+        parser = build_entry_parser
+        assert_equal [ "a", "b" ], parser.send(:split_keywords, "a,,;,b")
       end
 
       test "string_or_nil returns nil for non-string values" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_equal 42, creator.send(:string_or_nil, 42)
-        assert_equal true, creator.send(:string_or_nil, true)
+        parser = build_entry_parser
+        assert_equal 42, parser.send(:string_or_nil, 42)
+        assert_equal true, parser.send(:string_or_nil, true)
       end
 
       test "string_or_nil returns nil for blank strings" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_nil creator.send(:string_or_nil, "")
-        assert_nil creator.send(:string_or_nil, "   ")
+        parser = build_entry_parser
+        assert_nil parser.send(:string_or_nil, "")
+        assert_nil parser.send(:string_or_nil, "   ")
       end
 
       test "string_or_nil strips and returns non-blank strings" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert_equal "hello", creator.send(:string_or_nil, "  hello  ")
+        parser = build_entry_parser
+        assert_equal "hello", parser.send(:string_or_nil, "  hello  ")
       end
 
       test "normalize_metadata round-trips valid hashes through JSON" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
+        parser = build_entry_parser
         input = { "key" => "value", "nested" => { "a" => 1 } }
-        assert_equal input, creator.send(:normalize_metadata, input)
+        assert_equal input, parser.send(:normalize_metadata, input)
       end
 
       test "normalize_metadata returns empty hash for non-serializable values" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
+        parser = build_entry_parser
         # Float::NAN causes JSON::GeneratorError
         bad_value = { "key" => Float::NAN }
-        assert_equal({}, creator.send(:normalize_metadata, bad_value))
+        assert_equal({}, parser.send(:normalize_metadata, bad_value))
       end
 
       test "normalize_metadata converts symbol keys to strings" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        result = creator.send(:normalize_metadata, { foo: "bar" })
+        parser = build_entry_parser
+        result = parser.send(:normalize_metadata, { foo: "bar" })
         assert_equal({ "foo" => "bar" }, result)
       end
 
@@ -1139,9 +1139,9 @@ module SourceMonitor
       end
 
       test "deep_copy handles nested hashes and arrays" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
+        extractor = ItemCreator::ContentExtractor.new(source: @source)
         original = { "a" => [ 1, { "b" => 2 } ] }
-        copy = creator.send(:deep_copy, original)
+        copy = extractor.send(:deep_copy, original)
         assert_equal original, copy
         # Verify it's a deep copy, not a reference
         copy["a"][1]["b"] = 99
@@ -1149,10 +1149,10 @@ module SourceMonitor
       end
 
       test "deep_copy handles TypeError for non-dupable values" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
+        extractor = ItemCreator::ContentExtractor.new(source: @source)
         # Integers are non-dupable in some contexts, but deep_copy should handle them
-        assert_equal 42, creator.send(:deep_copy, 42)
-        assert_equal true, creator.send(:deep_copy, true)
+        assert_equal 42, extractor.send(:deep_copy, 42)
+        assert_equal true, extractor.send(:deep_copy, true)
       end
 
       # ─── Association cache safety ───
@@ -1284,13 +1284,13 @@ module SourceMonitor
       end
 
       test "html_fragment? returns true for HTML and false for plain text" do
-        creator = ItemCreator.new(source: @source, entry: OpenStruct.new)
-        assert creator.send(:html_fragment?, "<p>text</p>")
-        assert creator.send(:html_fragment?, "<div class='x'>content</div>")
-        assert creator.send(:html_fragment?, "text <br> more")
-        refute creator.send(:html_fragment?, "just plain text")
-        refute creator.send(:html_fragment?, "no tags here")
-        refute creator.send(:html_fragment?, "a -> b")
+        extractor = ItemCreator::ContentExtractor.new(source: @source)
+        assert extractor.send(:html_fragment?, "<p>text</p>")
+        assert extractor.send(:html_fragment?, "<div class='x'>content</div>")
+        assert extractor.send(:html_fragment?, "text <br> more")
+        refute extractor.send(:html_fragment?, "just plain text")
+        refute extractor.send(:html_fragment?, "no tags here")
+        refute extractor.send(:html_fragment?, "a -> b")
       end
 
       test "extract_metadata returns empty hash when entry does not respond to to_h" do
@@ -1310,6 +1310,10 @@ module SourceMonitor
 
       private
 
+      def build_entry_parser(source: @source, entry: OpenStruct.new)
+        extractor = ItemCreator::ContentExtractor.new(source: source)
+        ItemCreator::EntryParser.new(source: source, entry: entry, content_extractor: extractor)
+      end
 
       def parse_entry(fixture)
         data = File.read(file_fixture(fixture))

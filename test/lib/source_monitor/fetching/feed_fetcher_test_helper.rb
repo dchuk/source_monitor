@@ -25,6 +25,12 @@ module SourceMonitor
         Digest::SHA256.hexdigest(body)
       end
 
+      # Builds a SourceUpdater for testing SourceUpdater methods directly.
+      def build_source_updater(source)
+        adaptive = FeedFetcher::AdaptiveInterval.new(source: source)
+        FeedFetcher::SourceUpdater.new(source: source, adaptive_interval: adaptive)
+      end
+
       # ---- WebMock Stub Helpers ----
 
       # Stubs a successful feed request. Uses file_fixture for the response body.

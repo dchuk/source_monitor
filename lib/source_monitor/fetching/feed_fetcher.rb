@@ -27,13 +27,6 @@ module SourceMonitor
       )
       ResponseWrapper = Struct.new(:status, :headers, :body, keyword_init: true)
 
-      MIN_FETCH_INTERVAL = AdaptiveInterval::MIN_FETCH_INTERVAL
-      MAX_FETCH_INTERVAL = AdaptiveInterval::MAX_FETCH_INTERVAL
-      INCREASE_FACTOR = AdaptiveInterval::INCREASE_FACTOR
-      DECREASE_FACTOR = AdaptiveInterval::DECREASE_FACTOR
-      FAILURE_INCREASE_FACTOR = AdaptiveInterval::FAILURE_INCREASE_FACTOR
-      JITTER_PERCENT = AdaptiveInterval::JITTER_PERCENT
-
       attr_reader :source, :client, :jitter_proc
 
       def initialize(source:, client: nil, jitter: nil)
@@ -328,7 +321,8 @@ module SourceMonitor
 
         response = perform_request
         handle_response(response, started_at, instrumentation_payload)
-      rescue StandardError
+      rescue StandardError => e
+        Rails.logger.warn("[SourceMonitor] AIA recovery failed for #{source.feed_url}: #{e.class}: #{e.message}") if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
         nil
       end
 
@@ -390,18 +384,6 @@ module SourceMonitor
         @entry_processor ||= EntryProcessor.new(source: source)
       end
 
-      # Forwarding methods for backward compatibility with tests
-      def process_feed_entries(feed) = entry_processor.process_feed_entries(feed)
-      def jitter_offset(interval_seconds) = adaptive_interval.jitter_offset(interval_seconds)
-      def adjusted_interval_with_jitter(interval_seconds) = adaptive_interval.adjusted_interval_with_jitter(interval_seconds)
-      def updated_metadata(feed_signature: nil) = source_updater.updated_metadata(feed_signature: feed_signature)
-      def feed_signature_changed?(feed_signature) = source_updater.feed_signature_changed?(feed_signature)
-      def configured_seconds(minutes_value, default) = adaptive_interval.configured_seconds(minutes_value, default)
-      def configured_positive(value, default) = adaptive_interval.configured_positive(value, default)
-      def configured_non_negative(value, default) = adaptive_interval.configured_non_negative(value, default)
-      def interval_minutes_for(interval_seconds) = adaptive_interval.interval_minutes_for(interval_seconds)
-      def parse_http_time(value) = source_updater.parse_http_time(value)
-      def extract_numeric(value) = adaptive_interval.extract_numeric(value)
     end
   end
 end
