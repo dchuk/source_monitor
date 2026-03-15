@@ -90,11 +90,13 @@ module SourceMonitor
   module ImportSessions
     autoload :EntryNormalizer, "source_monitor/import_sessions/entry_normalizer"
     autoload :HealthCheckBroadcaster, "source_monitor/import_sessions/health_check_broadcaster"
+    autoload :HealthCheckUpdater, "source_monitor/import_sessions/health_check_updater"
     autoload :OPMLImporter, "source_monitor/import_sessions/opml_importer"
   end
 
   module Favicons
     autoload :Discoverer, "source_monitor/favicons/discoverer"
+    autoload :Fetcher, "source_monitor/favicons/fetcher"
     autoload :SvgConverter, "source_monitor/favicons/svg_converter"
   end
 
