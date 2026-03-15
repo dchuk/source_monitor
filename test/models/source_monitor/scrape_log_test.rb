@@ -1,12 +1,19 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require_relative "../../support/shared_loggable_tests"
 
 module SourceMonitor
   class ScrapeLogTest < ActiveSupport::TestCase
+    include SharedLoggableTests
+
     setup do
       @source = create_source!(name: "Example")
-      @item = Item.create!(source: @source, guid: "abc", url: "https://example.com/article")
+      @item = Item.create!(source: @source, guid: "abc-#{SecureRandom.hex(4)}", url: "https://example.com/article")
+    end
+
+    def build_loggable(overrides = {})
+      ScrapeLog.new({ source: @source, item: @item, started_at: Time.current }.merge(overrides))
     end
 
     test "records scrape attempt" do

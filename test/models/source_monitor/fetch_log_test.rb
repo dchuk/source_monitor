@@ -1,11 +1,18 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require_relative "../../support/shared_loggable_tests"
 
 module SourceMonitor
   class FetchLogTest < ActiveSupport::TestCase
+    include SharedLoggableTests
+
     setup do
-      @source = Source.create!(name: "Example", feed_url: "https://example.com/feed")
+      @source = Source.create!(name: "Example", feed_url: "https://example.com/feed-#{SecureRandom.hex(4)}.xml")
+    end
+
+    def build_loggable(overrides = {})
+      FetchLog.new({ source: @source, started_at: Time.current }.merge(overrides))
     end
 
     test "creates log with metrics" do
