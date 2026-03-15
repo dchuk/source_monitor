@@ -41,6 +41,10 @@ module SourceMonitor
       raw = params[:q]
       return {} unless raw
 
+      # Ransack requires a plain Hash, not ActionController::Parameters. Using
+      # to_unsafe_h here is safe because the values are immediately passed through
+      # ParameterSanitizer.sanitize which applies an explicit allowlist, then
+      # stripped and blank-filtered below before reaching Ransack.
       hash =
         if raw.respond_to?(:to_unsafe_h)
           raw.to_unsafe_h
