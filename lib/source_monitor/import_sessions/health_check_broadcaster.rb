@@ -39,7 +39,7 @@ module SourceMonitor
       def progress_data
         entries = health_entries
         total = import_session.health_check_targets.size
-        completed = entries.count { |entry| %w[healthy unhealthy].include?(entry[:health_status].to_s) }
+        completed = entries.count { |entry| %w[working failing].include?(entry[:health_status].to_s) }
 
         {
           completed: completed,

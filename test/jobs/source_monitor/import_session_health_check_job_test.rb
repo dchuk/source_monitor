@@ -23,7 +23,7 @@ module SourceMonitor
       )
 
       result = SourceMonitor::Health::ImportSourceHealthCheck::Result.new(
-        status: "unhealthy",
+        status: "failing",
         error_message: "timeout",
         http_status: 500
       )
@@ -39,7 +39,7 @@ module SourceMonitor
 
       checker.verify
       session.reload
-      assert_equal "unhealthy", session.parsed_sources.first["health_status"] # import health check returns "unhealthy" not "failing"
+      assert_equal "failing", session.parsed_sources.first["health_status"]
       assert_equal "timeout", session.parsed_sources.first["health_error"]
       assert_empty session.selected_source_ids
       assert session.health_check_completed_at.present?

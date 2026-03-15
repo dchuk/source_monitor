@@ -37,7 +37,7 @@ module SourceMonitor
           )
 
           selected_ids = Array(import_session.selected_source_ids).map(&:to_s)
-          selected_ids -= [ entry_id.to_s ] if result.status == "unhealthy"
+          selected_ids -= [ entry_id.to_s ] if result.status == "failing"
 
           attrs = {
             parsed_sources: entries,
@@ -87,7 +87,7 @@ module SourceMonitor
         filtered = normalized.select { |entry| targets.include?(entry[:id]) }
         return nil if filtered.empty?
 
-        completed = filtered.count { |entry| %w[healthy unhealthy].include?(entry[:health_status].to_s) }
+        completed = filtered.count { |entry| %w[working failing].include?(entry[:health_status].to_s) }
         completed >= filtered.size ? Time.current : nil
       end
     end

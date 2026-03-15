@@ -2,6 +2,15 @@
 
 Version-specific migration notes for each major/minor version transition. Agents should reference this file when guiding users through multi-version upgrades.
 
+## 0.12.1 to 0.12.2
+
+**Key changes:**
+- Bug fix: Health check status vocabulary aligned (`working`/`failing`) so progress counter updates correctly during OPML import
+
+**Action items:**
+1. `bundle update source_monitor`
+2. No migrations, config changes, or breaking changes.
+
 ## 0.11.x to 0.12.0
 
 **Key changes:**

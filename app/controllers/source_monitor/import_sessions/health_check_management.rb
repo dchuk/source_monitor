@@ -90,7 +90,7 @@ module SourceMonitor
       end
 
       def health_check_complete?(entry)
-        %w[healthy unhealthy].include?(entry[:health_status].to_s)
+        %w[working failing].include?(entry[:health_status].to_s)
       end
 
       def health_check_targets
