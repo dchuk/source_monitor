@@ -1,12 +1,10 @@
 <div id="source_monitor_dashboard_stats">
   <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
-    <%= render partial: "stat_card", collection: [
-      { label: "Sources", value: stats[:total_sources], caption: "Total registered" },
-      { label: "Active", value: stats[:active_sources], caption: "Fetching on schedule" },
-      { label: "Failures", value: stats[:failed_sources], caption: "Require attention" },
-      { label: "Items", value: stats[:total_items], caption: "Stored entries" },
-      { label: "Fetches Today", value: stats[:fetches_today], caption: "Completed runs" }
-    ], locals: { stats: stats } %>
+    <%= render partial: "stat_card", locals: { stat_card: { key: "total_sources", label: "Sources", value: stats[:total_sources], caption: "Total registered" } } %>
+    <%= render partial: "stat_card", locals: { stat_card: { key: "active_sources", label: "Active", value: stats[:active_sources], caption: "Fetching on schedule" } } %>
+    <%= render partial: "stat_card", locals: { stat_card: { key: "failed_sources", label: "Failures", value: stats[:failed_sources], caption: "Require attention" } } %>
+    <%= render partial: "stat_card", locals: { stat_card: { key: "total_items", label: "Items", value: stats[:total_items], caption: "Stored entries" } } %>
+    <%= render partial: "stat_card", locals: { stat_card: { key: "fetches_today", label: "Fetches Today", value: stats[:fetches_today], caption: "Completed runs" } } %>
   </div>
 
   <% if stats[:health_distribution]&.values&.any? { |v| v > 0 } %>

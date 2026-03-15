@@ -251,6 +251,18 @@ module SourceMonitor
       SourceMonitor::Metrics.reset!
     end
 
+    test "returns 0 and logs warning when scheduler run fails" do
+      now = Time.current
+
+      SourceMonitor::Source.stub(:transaction, ->(&_block) { raise StandardError, "DB connection lost" }) do
+        result = travel_to(now) do
+          SourceMonitor::Scheduler.run(limit: nil, now: now)
+        end
+
+        assert_equal 0, result
+      end
+    end
+
     test "default batch size is 25" do
       SourceMonitor.reset_configuration!
       assert_equal 25, SourceMonitor.config.fetching.scheduler_batch_size

@@ -3,7 +3,7 @@
 module SourceMonitor
   class ImportHistoryDismissalsController < ApplicationController
     def create
-      import_history = ImportHistory.find(params[:import_history_id])
+      import_history = ImportHistory.where(user_id: source_monitor_current_user&.id).find(params[:import_history_id])
       import_history.update!(dismissed_at: Time.current)
 
       respond_to do |format|

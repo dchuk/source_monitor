@@ -7,6 +7,13 @@ module SourceMonitor
     module ParameterSanitizer
       module_function
 
+      def safe_redirect_path(raw_value)
+        return if raw_value.blank?
+
+        sanitized = sanitize(raw_value.to_s)
+        sanitized.start_with?("/") ? sanitized : nil
+      end
+
       def sanitize(value)
         case value
         when ActionController::Parameters

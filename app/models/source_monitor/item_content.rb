@@ -8,6 +8,8 @@ module SourceMonitor
 
     has_many_attached :images if defined?(ActiveStorage)
 
+    delegate :content, to: :item, prefix: :feed, allow_nil: true
+
     before_save :compute_word_counts
 
     SourceMonitor::ModelExtensions.register(self, :item_content)
@@ -30,11 +32,10 @@ module SourceMonitor
     end
 
     def compute_feed_word_count
-      content = item&.content
-      if content.blank?
+      if feed_content.blank?
         self.feed_word_count = nil
       else
-        stripped = ActionView::Base.full_sanitizer.sanitize(content)
+        stripped = ActionView::Base.full_sanitizer.sanitize(feed_content)
         self.feed_word_count = stripped.present? ? stripped.split.size : nil
       end
     end

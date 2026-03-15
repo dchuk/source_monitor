@@ -6,17 +6,17 @@ require "securerandom"
 module SourceMonitor
   class LogCleanupJobTest < ActiveJob::TestCase
     test "removes fetch and scrape logs older than the configured thresholds" do
-      source = create_source
-      item = create_item(source:)
+      source = create_source!
+      item = create_item!(source:)
 
       travel_to Time.zone.local(2025, 7, 1, 8, 0, 0) do
-        create_fetch_log(source:, label: "old")
-        create_scrape_log(source:, item:, label: "old")
+        create_labeled_fetch_log(source:, label: "old")
+        create_labeled_scrape_log(source:, item:, label: "old")
       end
 
       travel_to Time.zone.local(2025, 9, 15, 10, 0, 0) do
-        create_fetch_log(source:, label: "recent")
-        create_scrape_log(source:, item:, label: "recent")
+        create_labeled_fetch_log(source:, label: "recent")
+        create_labeled_scrape_log(source:, item:, label: "recent")
 
         SourceMonitor::LogCleanupJob.perform_now(
           now: Time.current,
@@ -30,12 +30,12 @@ module SourceMonitor
     end
 
     test "skips cleanup when negative thresholds provided" do
-      source = create_source
-      item = create_item(source:)
+      source = create_source!
+      item = create_item!(source:)
 
       travel_to Time.zone.local(2025, 6, 1, 12, 0, 0) do
-        create_fetch_log(source:, label: "old")
-        create_scrape_log(source:, item:, label: "old")
+        create_labeled_fetch_log(source:, label: "old")
+        create_labeled_scrape_log(source:, item:, label: "old")
       end
 
       travel_to Time.zone.local(2025, 10, 10, 12, 0, 0) do
@@ -50,46 +50,70 @@ module SourceMonitor
       end
     end
 
+    test "deletes LogEntry records before deleting fetch logs to prevent orphans" do
+      source = create_source!
+
+      travel_to Time.zone.local(2025, 6, 1, 12, 0, 0) do
+        fetch_log = create_fetch_log!(source: source, metadata: { "label" => "old" })
+        # sync_log_entry callback creates LogEntry automatically
+        assert SourceMonitor::LogEntry.exists?(loggable: fetch_log), "LogEntry should exist after FetchLog save"
+      end
+
+      travel_to Time.zone.local(2025, 10, 10, 12, 0, 0) do
+        SourceMonitor::LogCleanupJob.perform_now(
+          now: Time.current,
+          fetch_logs_older_than_days: 60,
+          scrape_logs_older_than_days: 60
+        )
+
+        assert_equal 0, SourceMonitor::FetchLog.where(source: source).count
+        assert_equal 0, SourceMonitor::LogEntry.where(source: source, loggable_type: "SourceMonitor::FetchLog").count,
+          "LogEntry records should be deleted before their FetchLog records"
+      end
+    end
+
+    test "deletes LogEntry records before deleting scrape logs to prevent orphans" do
+      source = create_source!
+      item = create_item!(source: source)
+
+      travel_to Time.zone.local(2025, 6, 1, 12, 0, 0) do
+        scrape_log = create_scrape_log!(item: item, source: source, success: true, metadata: { "label" => "old" })
+        assert SourceMonitor::LogEntry.exists?(loggable: scrape_log), "LogEntry should exist after ScrapeLog save"
+      end
+
+      travel_to Time.zone.local(2025, 10, 10, 12, 0, 0) do
+        SourceMonitor::LogCleanupJob.perform_now(
+          now: Time.current,
+          fetch_logs_older_than_days: 60,
+          scrape_logs_older_than_days: 60
+        )
+
+        assert_equal 0, SourceMonitor::ScrapeLog.where(source: source).count
+        assert_equal 0, SourceMonitor::LogEntry.where(source: source, loggable_type: "SourceMonitor::ScrapeLog").count,
+          "LogEntry records should be deleted before their ScrapeLog records"
+      end
+    end
+
+    test "retries on ActiveRecord::Deadlocked" do
+      SourceMonitor::FetchLog.stub(:where, ->(*_args) { raise ActiveRecord::Deadlocked, "deadlock detected" }) do
+        assert_enqueued_with(job: SourceMonitor::LogCleanupJob) do
+          SourceMonitor::LogCleanupJob.perform_now(
+            now: Time.current,
+            fetch_logs_older_than_days: 30,
+            scrape_logs_older_than_days: 30
+          )
+        end
+      end
+    end
+
     private
 
-    def create_source
-      create_source!(
-        name: "Source #{SecureRandom.hex(4)}",
-        feed_url: "https://example.com/#{SecureRandom.hex(8)}.xml"
-      )
+    def create_labeled_fetch_log(source:, label:)
+      create_fetch_log!(source: source, metadata: { "label" => label })
     end
 
-    def create_item(source:)
-      source.items.create!(
-        guid: SecureRandom.uuid,
-        url: "https://example.com/items/#{SecureRandom.hex(6)}",
-        title: "Test Item",
-        published_at: Time.current,
-        summary: "Summary"
-      )
-    end
-
-    def create_fetch_log(source:, label:)
-      SourceMonitor::FetchLog.create!(
-        source: source,
-        started_at: Time.current,
-        success: true,
-        items_created: 0,
-        items_updated: 0,
-        items_failed: 0,
-        metadata: { "label" => label }
-      )
-    end
-
-    def create_scrape_log(source:, item:, label:)
-      SourceMonitor::ScrapeLog.create!(
-        source: source,
-        item: item,
-        started_at: Time.current,
-        success: true,
-        scraper_adapter: "readability",
-        metadata: { "label" => label }
-      )
+    def create_labeled_scrape_log(source:, item:, label:)
+      create_scrape_log!(item: item, source: source, success: true, metadata: { "label" => label })
     end
   end
 end

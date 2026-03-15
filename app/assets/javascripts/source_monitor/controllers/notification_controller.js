@@ -6,12 +6,7 @@ export default class extends Controller {
   };
 
   connect() {
-    if (!window.SourceMonitorControllers) {
-      window.SourceMonitorControllers = {};
-    }
-
     this.clearTimeout();
-    this.registerController();
     this.applyLevelDelay();
     this.startTimer();
   }
@@ -26,20 +21,15 @@ export default class extends Controller {
     this.dismiss();
   }
 
-  registerController() {
-    window.SourceMonitorControllers.notification = this;
-  }
-
   startTimer() {
     if (this.delayValue <= 0) return;
     this.timeoutId = window.setTimeout(() => this.dismiss(), this.delayValue);
   }
 
   applyLevelDelay() {
-    const level = this.element.dataset.level;
-    if (level === "error" && this.delayValue === 5000) {
-      this.delayValue = 10000;
-    }
+    // Error delay is set server-side via TOAST_DURATION_ERROR (6000ms) in
+    // ApplicationController and passed as data-notification-delay-value.
+    // No client-side override needed.
   }
 
   dismiss() {

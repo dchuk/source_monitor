@@ -1,5 +1,6 @@
 <% value = (stat_card[:value] || 0) %>
-<div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+<% card_id = stat_card[:key] ? "source_monitor_stat_#{stat_card[:key]}" : nil %>
+<div id="<%= card_id %>" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
   <dt class="text-xs font-medium uppercase tracking-wide text-slate-500"><%= stat_card[:label] %></dt>
   <dd class="mt-2 text-3xl font-semibold text-slate-900"><%= value %></dd>
   <p class="mt-1 text-xs text-slate-500"><%= stat_card[:caption] %></p>

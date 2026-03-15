@@ -3,22 +3,18 @@
 <% manual_scrape_disabled = !source&.scraping_enabled? %>
 <% scrape_badge = item_scrape_status_badge(item: item, source: source) %>
 <% inflight_scrape = %w[pending processing].include?(scrape_badge[:status]) %>
-<% recent_scrape_logs = item.scrape_logs.order(started_at: :desc).limit(5) %>
-<% latest_scrape_log = recent_scrape_logs.first %>
+<% recent_scrape_logs = local_assigns[:recent_scrape_logs] || @recent_scrape_logs || [] %>
+<% latest_scrape_log = local_assigns[:latest_scrape_log] || @latest_scrape_log || recent_scrape_logs.first %>
 
 <div class="space-y-8">
   <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
     <div>
       <h1 class="text-3xl font-semibold text-slate-900"><%= item.title.presence || "(untitled)" %></h1>
       <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-        <span
-          data-testid="scrape-status-badge"
-          data-status="<%= scrape_badge[:status] %>"
-          class="inline-flex items-center gap-1 rounded-full px-3 py-1 font-semibold <%= scrape_badge[:classes] %>"
-        >
-          <%= loading_spinner_svg if scrape_badge[:show_spinner] %>
-          <%= scrape_badge[:label] %>
-        </span>
+        <%= render SourceMonitor::StatusBadgeComponent.new(
+              status: scrape_badge[:status],
+              label: scrape_badge[:label],
+              data: { testid: "scrape-status-badge" }) %>
         <% if item.scraped_at.present? %>
           <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
             Last scraped <%= time_ago_in_words(item.scraped_at) %> ago
@@ -110,9 +106,10 @@
                 <% recent_scrape_logs.first(3).each do |log| %>
                   <li class="flex items-center justify-between">
                     <span><%= log.started_at&.strftime("%b %d, %H:%M") || "Unknown" %></span>
-                    <span class="ml-3 inline-flex items-center rounded-full px-2 py-0.5 font-semibold <%= log.success? ? "bg-green-100 text-green-700" : "bg-rose-100 text-rose-700" %>">
-                      <%= log.success? ? "Success" : "Failure" %>
-                    </span>
+                    <%= render SourceMonitor::StatusBadgeComponent.new(
+                          status: log.success? ? "success" : "failed",
+                          label: log.success? ? "Success" : "Failure",
+                          size: :sm) %>
                   </li>
                 <% end %>
               </ul>
@@ -162,7 +159,7 @@
               <%= link_to "View Original", item.url, target: "_blank", rel: "noopener", class: "inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-blue-500" %>
             <% end %>
             <%= button_to "Manual Scrape",
-                  source_monitor.scrape_item_path(item),
+                  source_monitor.item_scrape_path(item),
                   method: :post,
                   class: [
                     "inline-flex items-center rounded-md px-3 py-2 text-sm font-medium shadow",

@@ -5,11 +5,10 @@ module SourceMonitor
     # Presenter for building flash messages from BulkSourceScraper results
     # Extracts complex message formatting logic from the controller
     class BulkResultPresenter
-      attr_reader :result, :pluralizer
+      attr_reader :result
 
-      def initialize(result:, pluralizer:)
+      def initialize(result:)
         @result = result
-        @pluralizer = pluralizer
       end
 
       def to_flash_payload
@@ -25,14 +24,18 @@ module SourceMonitor
 
       private
 
+      def pluralize(count, word)
+        "#{count} #{count == 1 ? word : word.pluralize}"
+      end
+
       def build_success_payload
         label = BulkSourceScraper.selection_label(result.selection)
-        pluralized_enqueued = pluralizer.call(result.enqueued_count, "item")
+        pluralized_enqueued = pluralize(result.enqueued_count, "item")
 
         message = "Queued scraping for #{pluralized_enqueued} from the #{label}."
 
         if result.already_enqueued_count.positive?
-          pluralized_already = pluralizer.call(result.already_enqueued_count, "item")
+          pluralized_already = pluralize(result.already_enqueued_count, "item")
           message = "#{message} #{pluralized_already.capitalize} already in progress."
         end
 
@@ -44,12 +47,12 @@ module SourceMonitor
         parts = []
 
         if result.enqueued_count.positive?
-          pluralized_enqueued = pluralizer.call(result.enqueued_count, "item")
+          pluralized_enqueued = pluralize(result.enqueued_count, "item")
           parts << "Queued #{pluralized_enqueued} from the #{label}"
         end
 
         if result.already_enqueued_count.positive?
-          pluralized_already = pluralizer.call(result.already_enqueued_count, "item")
+          pluralized_already = pluralize(result.already_enqueued_count, "item")
           parts << "#{pluralized_already.capitalize} already in progress"
         end
 
@@ -62,7 +65,7 @@ module SourceMonitor
         if other_failures.values.sum.positive?
           skipped = other_failures.map do |status, count|
             label_key = status.to_s.tr("_", " ")
-            "#{pluralizer.call(count, label_key)}"
+            "#{pluralize(count, label_key)}"
           end.join(", ")
           parts << "Skipped #{skipped}"
         end

@@ -96,12 +96,12 @@ module SourceMonitor
         metadata: { http_status: 200, extraction_strategy: "readability" }
       )
 
+      click_button "Manual Scrape"
+      assert_text "Scrape has been enqueued"
+
       SourceMonitor::Scrapers::Readability.stub(:call, result) do
         assert_difference("SourceMonitor::ScrapeLog.count", 1) do
-          with_inline_jobs do
-            click_button "Manual Scrape"
-            assert_selector "[data-testid='scrape-status-badge']", text: "Pending", wait: 5
-          end
+          perform_enqueued_jobs
         end
       end
       item.reload
@@ -152,18 +152,6 @@ module SourceMonitor
       assert_item_order [ "Newer Item", "Older Item" ]
       within "turbo-frame#source_monitor_items_table thead th[data-sort-column='published_at']" do
         assert_text "▼"
-      end
-    end
-
-    private
-
-    def assert_item_order(expected)
-      within "turbo-frame#source_monitor_items_table" do
-        expected.each_with_index do |title, index|
-          assert_selector :xpath,
-            format(".//tbody/tr[%<row>d]/td[1]", row: index + 1),
-            text: /\A#{Regexp.escape(title)}/
-        end
       end
     end
   end

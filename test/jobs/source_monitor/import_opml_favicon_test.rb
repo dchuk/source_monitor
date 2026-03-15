@@ -9,7 +9,7 @@ module SourceMonitor
     setup do
       SourceMonitor.reset_configuration!
       @user = users(:admin)
-      configure_authentication(@user)
+      configure_authentication(@user, authorize: true)
     end
 
     test "OPML import enqueues FaviconFetchJob for sources with website_url" do
@@ -70,22 +70,6 @@ module SourceMonitor
         selected_source_ids: selected_ids,
         bulk_settings: {}
       )
-    end
-
-    def configure_authentication(user)
-      SourceMonitor.configure do |config|
-        config.authentication.current_user_method = :current_user
-        config.authentication.user_signed_in_method = :user_signed_in?
-
-        config.authentication.authenticate_with lambda { |controller|
-          controller.singleton_class.define_method(:current_user) { user }
-          controller.singleton_class.define_method(:user_signed_in?) { user.present? }
-        }
-
-        config.authentication.authorize_with lambda { |_controller|
-          true
-        }
-      end
     end
   end
 end

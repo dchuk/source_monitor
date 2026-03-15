@@ -4,6 +4,8 @@ module SourceMonitor
   class ImportSession < ApplicationRecord
     STEP_ORDER = %w[upload preview health_check configure confirm].freeze
 
+    scope :in_step, ->(step) { where(current_step: step) }
+
     validates :current_step, inclusion: { in: STEP_ORDER }
     validates :user_id, presence: true
 

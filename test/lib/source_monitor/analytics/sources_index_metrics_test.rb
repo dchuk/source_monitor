@@ -336,6 +336,43 @@ module SourceMonitor
         assert distribution.all? { |b| b.respond_to?(:label) && b.respond_to?(:count) }
       end
 
+      # === word_count_averages ===
+
+      test "word_count_averages returns feed and scraped averages grouped by source" do
+        item1 = SourceMonitor::Item.find_by(source_id: @fast_source_id, title: "Fast 1")
+        item2 = SourceMonitor::Item.find_by(source_id: @fast_source_id, title: "Fast 2")
+
+        ic1 = SourceMonitor::ItemContent.find_or_create_by!(item: item1)
+        ic1.update_columns(feed_word_count: 100, scraped_word_count: 200)
+        ic2 = SourceMonitor::ItemContent.find_or_create_by!(item: item2)
+        ic2.update_columns(feed_word_count: 200, scraped_word_count: 400)
+
+        scope = SourceMonitor::Source.where(id: @fast_source_id)
+        metrics = SourceMonitor::Analytics::SourcesIndexMetrics.new(
+          base_scope: scope,
+          result_scope: scope,
+          search_params: {}
+        )
+
+        averages = metrics.word_count_averages([ @fast_source_id ])
+
+        assert_in_delta 150.0, averages[:feed][@fast_source_id].to_f, 0.01
+        assert_in_delta 300.0, averages[:scraped][@fast_source_id].to_f, 0.01
+      end
+
+      test "word_count_averages returns empty hashes when source_ids is empty" do
+        scope = SourceMonitor::Source.all
+        metrics = SourceMonitor::Analytics::SourcesIndexMetrics.new(
+          base_scope: scope,
+          result_scope: scope,
+          search_params: {}
+        )
+
+        averages = metrics.word_count_averages([])
+        assert_equal({}, averages[:feed])
+        assert_equal({}, averages[:scraped])
+      end
+
       test "item_activity_rates delegates to SourceActivityRates" do
         scope = SourceMonitor::Source.all
         metrics = SourceMonitor::Analytics::SourcesIndexMetrics.new(

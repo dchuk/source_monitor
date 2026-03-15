@@ -11,6 +11,7 @@ module SourceMonitor
     has_one_attached :favicon if defined?(ActiveStorage)
 
     FETCH_STATUS_VALUES = %w[idle queued fetching failed].freeze
+    HEALTH_STATUS_VALUES = %w[working declining improving failing].freeze
 
     has_many :all_items, class_name: "SourceMonitor::Item", inverse_of: :source, dependent: :destroy
     has_many :items, -> { active }, class_name: "SourceMonitor::Item", inverse_of: :source
@@ -28,6 +29,8 @@ module SourceMonitor
       where(failure.or(error_present).or(error_time_present))
     }
     scope :healthy, -> { active.where(failure_count: 0, last_error: nil, last_error_at: nil) }
+    scope :scraping_enabled, -> { where(scraping_enabled: true) }
+    scope :scraping_disabled, -> { where(scraping_enabled: false) }
 
     # Use Rails attribute API for default values instead of after_initialize callbacks
     attribute :scrape_settings, default: -> { {} }
@@ -48,6 +51,7 @@ module SourceMonitor
     validates :items_retention_days, numericality: { allow_nil: true, only_integer: true, greater_than_or_equal_to: 0 }
     validates :max_items, numericality: { allow_nil: true, only_integer: true, greater_than_or_equal_to: 0 }
     validates :fetch_status, inclusion: { in: FETCH_STATUS_VALUES }
+    validates :health_status, inclusion: { in: HEALTH_STATUS_VALUES }
     validates :fetch_retry_attempt, numericality: { greater_than_or_equal_to: 0, only_integer: true }
 
     validate :health_auto_pause_threshold_within_bounds
@@ -62,21 +66,20 @@ module SourceMonitor
       end
 
       def scrape_candidates(threshold: SourceMonitor.config.scraping.scrape_recommendation_threshold)
-        threshold_value = threshold.to_i
-        return none if threshold_value <= 0
+        SourceMonitor::Queries::ScrapeCandidatesQuery.new(threshold:).call
+      end
 
-        active
-          .where(scraping_enabled: false)
-          .where(
-            "#{table_name}.id IN (
-              SELECT i.source_id
-              FROM #{Item.table_name} i
-              INNER JOIN #{ItemContent.table_name} ic ON ic.item_id = i.id
-              WHERE ic.feed_word_count IS NOT NULL
-              GROUP BY i.source_id
-              HAVING AVG(ic.feed_word_count) < ?
-            )", threshold_value
-          )
+      # Bulk-enable scraping for sources that don't already have it enabled.
+      # Returns the number of records updated.
+      def enable_scraping!(ids)
+        default_adapter = column_defaults["scraper_adapter"] || "readability"
+
+        where(id: ids, scraping_enabled: false).update_all(
+          scraping_enabled: true,
+          auto_scrape: true,
+          scraper_adapter: default_adapter,
+          updated_at: Time.current
+        )
       end
 
       def ransackable_attributes(_auth_object = nil)
@@ -145,14 +148,20 @@ module SourceMonitor
 
     def reset_items_counter!
       # Recalculate items_count from actual active (non-deleted) items
-      actual_count = items.count
-      update_columns(items_count: actual_count)
+      # Use reset_counters which is the Rails-native way to fix counter caches
+      self.class.reset_counters(id, :items)
+      reload
+    end
+
+    def clear_favicon_cooldown!
+      metadata_without_cooldown = (metadata || {}).except("favicon_last_attempted_at")
+      update_column(:metadata, metadata_without_cooldown)
     end
 
     def avg_word_count
       items.joins(:item_content)
-           .where.not(sourcemon_item_contents: { scraped_word_count: nil })
-           .average("sourcemon_item_contents.scraped_word_count")
+           .where.not(ItemContent.table_name => { scraped_word_count: nil })
+           .average("#{ItemContent.table_name}.scraped_word_count")
            &.round
     end
 

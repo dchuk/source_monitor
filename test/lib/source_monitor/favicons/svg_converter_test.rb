@@ -126,7 +126,7 @@ module SourceMonitor
           converter.send(:log_conversion_failure, error)
         end
 
-        mock_logger.verify
+        assert mock_logger.verify
       end
 
       test "log_conversion_failure does nothing when Rails.logger is nil" do

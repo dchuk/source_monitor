@@ -57,11 +57,11 @@ module SourceMonitor
           body: CF_CHALLENGE_HTML
         )
 
-        # First two UAs still blocked, third succeeds
+        # First UA still blocked, second succeeds (within default max_attempts=2)
         call_count = 0
         stub_request(:get, @feed_url).to_return { |_req|
           call_count += 1
-          if call_count <= 2
+          if call_count <= 1
             { status: 200, body: CF_CHALLENGE_HTML, headers: { "Content-Type" => "text/html" } }
           else
             { status: 200, body: @valid_rss, headers: { "Content-Type" => "application/rss+xml" } }

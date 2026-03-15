@@ -16,13 +16,5 @@ module SourceMonitor
     validates :source, presence: true
 
     SourceMonitor::ModelExtensions.register(self, :health_check_log)
-
-    after_save :sync_log_entry
-
-    private
-
-    def sync_log_entry
-      SourceMonitor::Logs::EntrySync.call(self)
-    end
   end
 end

@@ -132,7 +132,8 @@ module SourceMonitor
         title: "Word Count Detail",
         content: "<p>Hello world test</p>"
       )
-      SourceMonitor::ItemContent.create!(item: item, scraped_content: "one two three four five")
+      item.reload
+      item.item_content.update!(scraped_content: "one two three four five")
 
       get "/source_monitor/items/#{item.id}"
 

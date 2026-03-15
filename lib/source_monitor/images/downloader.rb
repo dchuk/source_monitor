@@ -43,13 +43,12 @@ module SourceMonitor
       private
 
       def fetch_image
-        connection = Faraday.new do |f|
-          f.options.timeout = settings.download_timeout
-          f.options.open_timeout = [ settings.download_timeout / 2, 5 ].min
-          f.headers["User-Agent"] = SourceMonitor.config.http.user_agent || "SourceMonitor/#{SourceMonitor::VERSION}"
-          f.headers["Accept"] = "image/*"
-          f.adapter Faraday.default_adapter
-        end
+        connection = SourceMonitor::HTTP.client(
+          timeout: settings.download_timeout,
+          open_timeout: [ settings.download_timeout / 2, 5 ].min,
+          headers: { "Accept" => "image/*" },
+          retry_requests: false
+        )
 
         response = connection.get(url)
         return response if response.status == 200

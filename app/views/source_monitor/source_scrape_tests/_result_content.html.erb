@@ -1,0 +1,33 @@
+<%# Shared scrape test result content used by both show.html.erb and _result.html.erb
+  Locals:
+    test_result - Hash with :feed_word_count, :scraped_word_count, :improvement, :scrape_result
+%>
+<div class="grid grid-cols-2 gap-6">
+  <div>
+    <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Feed Word Count</dt>
+    <dd class="mt-1 text-2xl font-semibold text-slate-900"><%= test_result[:feed_word_count] || "N/A" %></dd>
+  </div>
+  <div>
+    <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Scraped Word Count</dt>
+    <dd class="mt-1 text-2xl font-semibold text-slate-900"><%= test_result[:scraped_word_count] || "N/A" %></dd>
+  </div>
+</div>
+
+<% if test_result[:improvement] && test_result[:improvement] != 0 %>
+  <div class="mt-4">
+    <% color = test_result[:improvement] > 0 ? "text-green-600" : "text-amber-600" %>
+    <span class="text-sm font-medium <%= color %>">
+      <%= test_result[:improvement] > 0 ? "+" : "" %><%= test_result[:improvement] %>% word count change
+    </span>
+  </div>
+<% end %>
+
+<% if test_result[:scrape_result]&.success? %>
+  <div class="mt-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+    Scrape successful. Enabling scraping for this source would capture more content.
+  </div>
+<% else %>
+  <div class="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
+    Scrape had issues: <%= test_result[:scrape_result]&.message || "Unknown error" %>
+  </div>
+<% end %>

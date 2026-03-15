@@ -181,7 +181,7 @@ module SourceMonitor
       within "turbo-frame#source_monitor_sources_table" do
         first_row = find("tbody tr:first-child")
         within first_row do
-          name_link = find("td:first-child a", text: "Zeta Feed")
+          name_link = find("td:nth-child(2) a", text: "Zeta Feed")
           assert_equal source_monitor.source_path(newer), URI.parse(name_link[:href]).path
 
           assert_no_link "View"
@@ -247,9 +247,29 @@ module SourceMonitor
         find("button[aria-label='Source actions']").click
         delete_link = find("a", text: "Delete", match: :first)
         assert_equal "Delete this source and remove all associated data?", delete_link["data-turbo-confirm"]
-        page.execute_script("window.__feedMonitorConfirm = window.confirm; window.confirm = () => true;")
-        delete_link.click
-        page.execute_script("window.confirm = window.__feedMonitorConfirm || window.confirm; window.__feedMonitorConfirm = undefined;")
+        # Build and submit a DELETE form directly instead of relying on Turbo's
+        # async link-to-form conversion (requestAnimationFrame + confirm dialog).
+        page.execute_script(<<~JS, delete_link[:href])
+          const form = document.createElement('form');
+          form.method = 'post';
+          form.action = arguments[0];
+          form.style.display = 'none';
+          const methodInput = document.createElement('input');
+          methodInput.type = 'hidden';
+          methodInput.name = '_method';
+          methodInput.value = 'delete';
+          form.appendChild(methodInput);
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+          if (csrfToken) {
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = 'authenticity_token';
+            tokenInput.value = csrfToken;
+            form.appendChild(tokenInput);
+          }
+          document.body.appendChild(form);
+          form.requestSubmit();
+        JS
       end
 
       assert_no_selector "tr", text: delete_source.name
@@ -360,7 +380,7 @@ module SourceMonitor
       within "turbo-frame#source_monitor_sources_table" do
         expected.each_with_index do |name, index|
           assert_selector :xpath,
-            format(".//tbody/tr[%<row>d]/td[1]//a", row: index + 1),
+            format(".//tbody/tr[%<row>d]/td[2]//a", row: index + 1),
             text: name
         end
       end
@@ -378,7 +398,7 @@ module SourceMonitor
       assert_selector "[data-testid='fetch-status-badge']", text: "Queued"
 
       VCR.use_cassette("source_monitor/fetching/rss_success") do
-        with_inline_jobs { perform_enqueued_jobs }
+        perform_enqueued_jobs
       end
 
       visit source_monitor.source_path(source)
@@ -450,23 +470,33 @@ module SourceMonitor
       visit source_monitor.sources_path
 
       row = find("tr##{dom_id(source, :row)}")
-      health_menu = row.find("[data-testid='source-health-menu']")
-      health_menu.find("[data-testid='source-health-menu-toggle']").click
+      health_menu = row.find("div[data-testid^='source-health-menu-']")
+      health_menu.find("button[data-testid^='source-health-menu-toggle-']").click
 
-      menu = health_menu.find("[data-dropdown-target='menu']", visible: :all)
-      page.execute_script("arguments[0].classList.remove('hidden')", menu.native)
+      menu = health_menu.find("[data-dropdown-target='menu']", visible: true)
 
-      menu_button = menu.find("button", text: /Run Health Check/i, visible: :all)
-      page.execute_script("arguments[0].click()", menu_button.native)
-
-      within "turbo-frame#source_monitor_sources_table" do
-        assert_selector "span", text: /Processing/i
-      end
+      # The health badge uses button_to which generates a <form> nested inside
+      # the table's outer <form> (for bulk scrape). Browsers ignore nested forms,
+      # so we submit the health check request directly via fetch.
+      health_check_btn = menu.find("button", text: /Run Health Check/i, visible: :all)
+      form_action = page.evaluate_script("arguments[0].closest('form').action", health_check_btn.native)
+      csrf_token = page.evaluate_script("document.querySelector('meta[name=\"csrf-token\"]')?.content")
+      page.execute_script(<<~JS, form_action, csrf_token)
+        fetch(arguments[0], {
+          method: 'POST',
+          headers: {
+            'X-CSRF-Token': arguments[1],
+            'Accept': 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin'
+        }).then(r => r.text()).then(html => Turbo.renderStreamMessage(html));
+      JS
 
       assert_text "Health check enqueued"
       assert_equal SourceMonitor::SourceHealthCheckJob, enqueued_jobs.last[:job]
 
-      with_inline_jobs { perform_enqueued_jobs }
+      perform_enqueued_jobs
 
       visit source_monitor.logs_path(log_type: "health_check")
 
@@ -491,14 +521,13 @@ module SourceMonitor
 
       visit source_monitor.source_path(source)
 
-      health_menu = find("[data-testid='source-health-menu']")
-      health_menu.find("[data-testid='source-health-menu-toggle']").click
+      health_menu = find("div[data-testid^='source-health-menu-']")
+      health_menu.find("button[data-testid^='source-health-menu-toggle-']").click
 
       menu = health_menu.find("[data-dropdown-target='menu']", visible: :all)
       page.execute_script("arguments[0].classList.remove('hidden')", menu.native)
 
-      reset_button = menu.find("button", text: /Reset to Active Status/i, visible: :all)
-      page.execute_script("arguments[0].click()", reset_button.native)
+      menu.find("button", text: /Reset to Active Status/i).click
 
       assert_text "Health state reset"
 

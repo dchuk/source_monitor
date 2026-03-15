@@ -59,13 +59,13 @@ module SourceMonitor
         lock.with_lock do
           mark_fetching!
           result = fetcher_class.new(source: source).call
-          retention_handler.call(source:, result:)
-          follow_up_handler.call(source:, result:)
+          log_handler_result("RetentionHandler", retention_handler.call(source:, result:))
+          log_handler_result("FollowUpHandler", follow_up_handler.call(source:, result:))
           schedule_retry_if_needed(result)
           mark_complete!(result)
         end
 
-        event_publisher.call(source:, result:)
+        log_handler_result("EventPublisher", event_publisher.call(source:, result:))
         result
       rescue SourceMonitor::Fetching::AdvisoryLock::NotAcquiredError => error
         raise ConcurrencyError, error.message
@@ -136,6 +136,15 @@ module SourceMonitor
 
       def update_source_state(attrs)
         self.class.send(:update_source_state!, source, attrs)
+      end
+
+      def log_handler_result(handler_name, handler_result)
+        return unless handler_result.respond_to?(:success?) && !handler_result.success?
+
+        error_detail = handler_result.respond_to?(:error) && handler_result.error ? ": #{handler_result.error.message}" : ""
+        Rails.logger.warn(
+          "[SourceMonitor::Fetching::FetchRunner] #{handler_name} failed for source #{source.id}#{error_detail}"
+        ) if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
       end
 
       def schedule_retry_if_needed(result)

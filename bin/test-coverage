@@ -10,6 +10,7 @@ fi
 
 TARGETED_TESTS=(
   "test/lib/source_monitor/health/source_health_check_test.rb"
+  "test/lib/source_monitor/health/source_health_check_orchestrator_test.rb"
   "test/lib/source_monitor/health/source_health_monitor_test.rb"
   "test/lib/source_monitor/health/source_health_reset_test.rb"
   "test/lib/source_monitor/health/health_module_test.rb"

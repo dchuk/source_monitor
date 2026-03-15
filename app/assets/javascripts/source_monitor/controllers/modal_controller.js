@@ -1,3 +1,4 @@
+/* global Node, requestAnimationFrame */
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
@@ -7,6 +8,7 @@ export default class extends Controller {
 
   connect() {
     this.handleEscape = this.handleEscape.bind(this);
+    this._inertElements = [];
     if (this.autoOpenValue) {
       this.open();
     }
@@ -27,6 +29,12 @@ export default class extends Controller {
 
     document.body.classList.add("overflow-hidden");
     document.addEventListener("keydown", this.handleEscape);
+
+    // Focus trap: set inert on sibling elements so Tab stays inside the modal
+    this._setInert(true);
+
+    // Move focus to the first focusable element inside the modal
+    this._focusFirstElement();
   }
 
   close(event) {
@@ -38,6 +46,8 @@ export default class extends Controller {
       this.panelTarget.classList.remove(this.openClass);
     }
 
+    // Remove inert from background elements
+    this._setInert(false);
     this.teardown();
 
     if (this.removeOnCloseValue) {
@@ -60,5 +70,51 @@ export default class extends Controller {
   teardown() {
     document.body.classList.remove("overflow-hidden");
     document.removeEventListener("keydown", this.handleEscape);
+  }
+
+  // -- Private helpers --
+
+  _setInert(inert) {
+    if (inert) {
+      // Find the modal panel's topmost parent that is a direct child of body,
+      // then mark all its siblings as inert
+      const modalRoot = this._findModalRoot();
+      if (!modalRoot) return;
+
+      this._inertElements = [];
+      for (const sibling of document.body.children) {
+        if (sibling === modalRoot || sibling === this.element) continue;
+        if (sibling.nodeType !== Node.ELEMENT_NODE) continue;
+        if (!sibling.hasAttribute("inert")) {
+          sibling.setAttribute("inert", "");
+          this._inertElements.push(sibling);
+        }
+      }
+    } else {
+      for (const el of this._inertElements) {
+        el.removeAttribute("inert");
+      }
+      this._inertElements = [];
+    }
+  }
+
+  _findModalRoot() {
+    // Walk up from the panel target to find the element that is a direct child of body
+    let el = this.hasPanelTarget ? this.panelTarget : this.element;
+    while (el && el.parentElement !== document.body) {
+      el = el.parentElement;
+    }
+    return el;
+  }
+
+  _focusFirstElement() {
+    // Defer to next frame so the panel is visible
+    requestAnimationFrame(() => {
+      if (!this.hasPanelTarget) return;
+      const focusable = this.panelTarget.querySelector(
+        'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable) focusable.focus();
+    });
   }
 }

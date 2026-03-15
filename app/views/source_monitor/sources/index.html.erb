@@ -28,45 +28,37 @@
       </div>
     </div>
     <div class="flex flex-wrap items-end gap-2">
-      <div>
-        <%= form.label :active_eq, "Status", class: "block text-xs font-medium text-slate-500 mb-1" %>
-        <%= form.select :active_eq, options_for_select([["All Statuses", ""], ["Active", "true"], ["Paused", "false"]], @search_params["active_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
-      </div>
-      <div>
-        <%= form.label :health_status_eq, "Health", class: "block text-xs font-medium text-slate-500 mb-1" %>
-        <%= form.select :health_status_eq, options_for_select([["All Health", ""], ["Working", "working"], ["Declining", "declining"], ["Improving", "improving"], ["Failing", "failing"]], @search_params["health_status_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
-      </div>
-      <div>
-        <%= form.label :feed_format_eq, "Format", class: "block text-xs font-medium text-slate-500 mb-1" %>
-        <%= form.select :feed_format_eq, options_for_select([["All Formats", ""], ["RSS", "rss"], ["Atom", "atom"], ["JSON", "json"]], @search_params["feed_format_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
-      </div>
-      <div>
-        <% adapter_options = SourceMonitor::Source.distinct.where.not(scraper_adapter: [nil, ""]).order(:scraper_adapter).pluck(:scraper_adapter) %>
-        <%= form.label :scraper_adapter_eq, "Adapter", class: "block text-xs font-medium text-slate-500 mb-1" %>
-        <%= form.select :scraper_adapter_eq, options_for_select([["All Adapters", ""]] + adapter_options.map { |a| [a.titleize, a] }, @search_params["scraper_adapter_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
-      </div>
-      <div>
-        <%= form.label :scraping_enabled_eq, "Scrape", class: "block text-xs font-medium text-slate-500 mb-1" %>
-        <%= form.select :scraping_enabled_eq, options_for_select([["All Sources", ""], ["Scraping Enabled", "true"], ["Scraping Disabled", "false"], ["Recommendations", "recommend"]], @search_params["scraping_enabled_eq"].to_s), {}, class: "rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500", onchange: "this.form.requestSubmit()" %>
-      </div>
+      <%= render SourceMonitor::FilterDropdownComponent.new(
+        label: "Status", param_name: :active_eq,
+        options: [["All Statuses", ""], ["Active", "true"], ["Paused", "false"]],
+        selected_value: @search_params["active_eq"].to_s, form: form) %>
+      <%= render SourceMonitor::FilterDropdownComponent.new(
+        label: "Health", param_name: :health_status_eq,
+        options: [["All Health", ""], ["Working", "working"], ["Declining", "declining"], ["Improving", "improving"], ["Failing", "failing"]],
+        selected_value: @search_params["health_status_eq"].to_s, form: form) %>
+      <%= render SourceMonitor::FilterDropdownComponent.new(
+        label: "Format", param_name: :feed_format_eq,
+        options: [["All Formats", ""], ["RSS", "rss"], ["Atom", "atom"], ["JSON", "json"]],
+        selected_value: @search_params["feed_format_eq"].to_s, form: form) %>
+      <%= render SourceMonitor::FilterDropdownComponent.new(
+        label: "Adapter", param_name: :scraper_adapter_eq,
+        options: [["All Adapters", ""]] + @filter_presenter.adapter_options.map { |a| [a.titleize, a] },
+        selected_value: @search_params["scraper_adapter_eq"].to_s, form: form) %>
+      <%= render SourceMonitor::FilterDropdownComponent.new(
+        label: "Scrape", param_name: :scraping_enabled_eq,
+        options: [["All Sources", ""], ["Scraping Enabled", "true"], ["Scraping Disabled", "false"], ["Recommendations", "recommend"]],
+        selected_value: @search_params["scraping_enabled_eq"].to_s, form: form) %>
     </div>
   <% end %>
 
   <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
     <%= turbo_frame_tag "source_monitor_sources_table" do %>
-      <% dropdown_filter_keys = %w[active_eq health_status_eq feed_format_eq scraper_adapter_eq scraping_enabled_eq avg_feed_words_lt] %>
-      <% active_dropdown_filters = dropdown_filter_keys.select { |k| @search_params[k].present? } %>
-      <% has_any_filter = @search_term.present? || @fetch_interval_filter.present? || active_dropdown_filters.any? %>
-      <% if has_any_filter %>
+      <% if @filter_presenter.has_any_filter? %>
         <div class="rounded-t-lg border-b border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-700">
           <% if @search_term.present? %>
             <% clear_search_query = @search_params.dup %>
             <% clear_search_query.delete("name_or_feed_url_or_website_url_cont") %>
-            <% clear_search_query = if clear_search_query.respond_to?(:compact_blank)
-              clear_search_query.compact_blank
-            else
-              clear_search_query.reject { |_key, value| value.respond_to?(:blank?) ? value.blank? : value.nil? }
-            end %>
+            <% clear_search_query = compact_blank_hash(clear_search_query) %>
             <% clear_search_path = clear_search_query.empty? ? source_monitor.sources_path : source_monitor.sources_path(q: clear_search_query) %>
             <div>
               Showing results for "<%= @search_term %>".
@@ -84,28 +76,16 @@
             </div>
           <% end %>
 
-          <% if active_dropdown_filters.any? %>
+          <% if @filter_presenter.active_filter_keys.any? %>
             <div class="mt-1 flex flex-wrap items-center gap-2">
               <span>Filtered by</span>
-              <% filter_labels = {
-                "active_eq" => @search_params["active_eq"] == "true" ? "Status: Active" : "Status: Paused",
-                "health_status_eq" => "Health: #{@search_params['health_status_eq']&.titleize}",
-                "feed_format_eq" => "Format: #{@search_params['feed_format_eq']&.upcase}",
-                "scraper_adapter_eq" => "Adapter: #{@search_params['scraper_adapter_eq']&.titleize}",
-                "scraping_enabled_eq" => @search_params["scraping_enabled_eq"] == "true" ? "Scraping: Enabled" : "Scraping: Disabled",
-                "avg_feed_words_lt" => "Avg Feed Words: < #{@search_params['avg_feed_words_lt']}"
-              } %>
-              <% active_dropdown_filters.each do |filter_key| %>
+              <% @filter_presenter.active_filter_keys.each do |filter_key| %>
                 <% clear_query = @search_params.dup %>
                 <% clear_query.delete(filter_key) %>
-                <% clear_query = if clear_query.respond_to?(:compact_blank)
-                  clear_query.compact_blank
-                else
-                  clear_query.reject { |_k, v| v.respond_to?(:blank?) ? v.blank? : v.nil? }
-                end %>
+                <% clear_query = compact_blank_hash(clear_query) %>
                 <% clear_path = clear_query.empty? ? source_monitor.sources_path : source_monitor.sources_path(q: clear_query) %>
                 <span class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                  <%= filter_labels[filter_key] %>
+                  <%= @filter_presenter.filter_labels[filter_key] %>
                   <%= link_to "×", clear_path, class: "ml-0.5 font-bold text-blue-500 hover:text-blue-700", data: { turbo_frame: "source_monitor_sources_table" } %>
                 </span>
               <% end %>

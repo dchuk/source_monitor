@@ -626,6 +626,10 @@ video {
   pointer-events: auto;
 }
 
+.fm-admin .visible {
+  visibility: visible;
+}
+
 .fm-admin .static {
   position: static;
 }
@@ -705,24 +709,12 @@ video {
   margin-bottom: 0.25rem;
 }
 
-.fm-admin .mb-1 {
-  margin-bottom: 0.25rem;
-}
-
 .fm-admin .ml-0\.5 {
   margin-left: 0.125rem;
 }
 
 .fm-admin .ml-2 {
   margin-left: 0.5rem;
-}
-
-.fm-admin .ml-3 {
-  margin-left: 0.75rem;
-}
-
-.fm-admin .ml-4 {
-  margin-left: 1rem;
 }
 
 .fm-admin .mr-1 {
@@ -809,10 +801,6 @@ video {
   height: 1rem;
 }
 
-.fm-admin .h-5 {
-  height: 1.25rem;
-}
-
 .fm-admin .h-8 {
   height: 2rem;
 }
@@ -859,10 +847,6 @@ video {
 
 .fm-admin .w-40 {
   width: 10rem;
-}
-
-.fm-admin .w-5 {
-  width: 1.25rem;
 }
 
 .fm-admin .w-8 {
@@ -1883,10 +1867,6 @@ video {
 
 .fm-admin .opacity-0 {
   opacity: 0;
-}
-
-.fm-admin .opacity-25 {
-  opacity: 0.25;
 }
 
 .fm-admin .opacity-60 {

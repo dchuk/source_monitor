@@ -1,16 +1,7 @@
 <div class="mx-auto max-w-2xl py-10">
   <h1 class="text-3xl font-semibold">New Source</h1>
 
-  <% if @source.errors.any? %>
-    <div class="mt-4 rounded border border-red-300 bg-red-50 p-4">
-      <h2 class="font-medium text-red-700">Please fix the following:</h2>
-      <ul class="mt-2 list-disc space-y-1 pl-5 text-red-700">
-        <% @source.errors.full_messages.each do |message| %>
-          <li><%= message %></li>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
+  <%= render "source_monitor/shared/form_errors", record: @source %>
 
   <div class="mt-6">
     <%= render "form", source: @source %>

@@ -1,11 +1,18 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require_relative "../../support/shared_loggable_tests"
 
 module SourceMonitor
   class FetchLogTest < ActiveSupport::TestCase
+    include SharedLoggableTests
+
     setup do
-      @source = Source.create!(name: "Example", feed_url: "https://example.com/feed")
+      @source = Source.create!(name: "Example", feed_url: "https://example.com/feed-#{SecureRandom.hex(4)}.xml")
+    end
+
+    def build_loggable(overrides = {})
+      FetchLog.new({ source: @source, started_at: Time.current }.merge(overrides))
     end
 
     test "creates log with metrics" do
@@ -69,6 +76,15 @@ module SourceMonitor
         log = FetchLog.new(source: @source, started_at: Time.current, error_category: category)
         assert log.valid?, "Expected error_category '#{category}' to be valid"
       end
+    end
+
+    test "sync_log_entry creates LogEntry via Loggable concern" do
+      fetch_log = FetchLog.create!(source: @source, started_at: Time.current, success: true)
+
+      log_entry = SourceMonitor::LogEntry.find_by(loggable: fetch_log)
+      assert log_entry.present?, "LogEntry should be created by sync_log_entry callback in Loggable concern"
+      assert_equal @source.id, log_entry.source_id
+      assert_equal "SourceMonitor::FetchLog", log_entry.loggable_type
     end
 
     test "by_category scope filters logs" do

@@ -24,6 +24,8 @@ module SourceMonitor
     validates :content_fingerprint, uniqueness: { scope: :source_id }, allow_blank: true
     validates :url, presence: true
 
+    after_create_commit :ensure_feed_content_record, if: -> { content.present? }
+
     scope :recent, -> { active.order(Arel.sql("published_at DESC NULLS LAST, created_at DESC")) }
     scope :published, -> { active.where.not(published_at: nil) }
     scope :pending_scrape, -> { active.where(scraped_at: nil) }
@@ -77,6 +79,19 @@ module SourceMonitor
         )
 
         SourceMonitor::Source.decrement_counter(:items_count, source_id) if source_id
+      end
+    end
+
+    def restore!
+      return unless deleted?
+
+      self.class.transaction do
+        update_columns(
+          deleted_at: nil,
+          updated_at: Time.current
+        )
+
+        SourceMonitor::Source.increment_counter(:items_count, source_id) if source_id
       end
     end
 

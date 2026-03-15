@@ -50,5 +50,28 @@ module SourceMonitor
 
       assert_equal 5000, controller.send(:toast_delay_for, :unknown)
     end
+
+    test "rescue_from RecordNotFound returns 404 for HTML requests" do
+      get "/source_monitor/sources/999999999"
+
+      assert_response :not_found
+      assert_equal "Record not found", response.body
+    end
+
+    test "rescue_from RecordNotFound returns 404 with toast for turbo_stream requests" do
+      get "/source_monitor/sources/999999999", as: :turbo_stream
+
+      assert_response :not_found
+      assert_includes response.body, "Record not found"
+      assert_includes response.body, "turbo-stream"
+    end
+
+    test "rescue_from RecordNotFound returns 404 JSON for JSON requests" do
+      get "/source_monitor/sources/999999999", as: :json
+
+      assert_response :not_found
+      json = JSON.parse(response.body)
+      assert_equal "Record not found", json["error"]
+    end
   end
 end

@@ -35,6 +35,10 @@ default: &default
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
 
+  clear_solid_queue_failed_jobs:
+    command: "SolidQueue::FailedExecution.where(created_at: ...7.days.ago).find_each { |fe| fe.job&.destroy }; nil"
+    schedule: at 4am every day
+
 development:
   <<: *default
 

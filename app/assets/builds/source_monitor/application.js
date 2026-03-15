@@ -2483,11 +2483,7 @@ var notification_controller_default = class extends Controller {
     delay: { default: 5e3, type: Number }
   };
   connect() {
-    if (!window.SourceMonitorControllers) {
-      window.SourceMonitorControllers = {};
-    }
     this.clearTimeout();
-    this.registerController();
     this.applyLevelDelay();
     this.startTimer();
   }
@@ -2499,18 +2495,11 @@ var notification_controller_default = class extends Controller {
     this.clearTimeout();
     this.dismiss();
   }
-  registerController() {
-    window.SourceMonitorControllers.notification = this;
-  }
   startTimer() {
     if (this.delayValue <= 0) return;
     this.timeoutId = window.setTimeout(() => this.dismiss(), this.delayValue);
   }
   applyLevelDelay() {
-    const level = this.element.dataset.level;
-    if (level === "error" && this.delayValue === 5e3) {
-      this.delayValue = 1e4;
-    }
   }
   dismiss() {
     if (!this.element) return;
@@ -2651,91 +2640,24 @@ var notification_container_controller_default = class extends Controller {
 var dropdown_controller_default = class extends Controller {
   static targets = ["menu"];
   static values = {
-    transitionModule: { type: String, default: "stimulus-use" },
     hiddenClass: { type: String, default: "hidden" }
   };
   connect() {
-    this.element.dataset.dropdownState = "initializing";
-    this.transitionEnabled = false;
-    if (typeof this.toggleTransition !== "function") {
-      this.toggleTransition = this.toggleVisibility.bind(this);
-    }
-    if (typeof this.leave !== "function") {
-      this.leave = this.hideMenu.bind(this);
-    }
-    this.loadTransitions().catch(() => null).finally(() => {
-      this.element.dataset.dropdownState = "ready";
-    });
+    this._hideOnClickOutside = this.hide.bind(this);
+    document.addEventListener("click", this._hideOnClickOutside);
   }
   disconnect() {
-    delete this.element.dataset.dropdownState;
-  }
-  // Dynamic import provides progressive enhancement: smooth transitions when stimulus-use
-  // is available, graceful fallback to CSS class toggling when not. This complexity is
-  // justified as it allows the engine to work without requiring stimulus-use as a dependency.
-  // Evaluated for simplification in Phase 20.05.07 - Decision: Keep current implementation.
-  async loadTransitions() {
-    if (!this.hasMenuTarget || this.transitionModuleValue === "") {
-      this.logFallback();
-      return;
-    }
-    try {
-      const module = await import(this.transitionModuleValue);
-      const useTransition = module?.useTransition || module?.default?.useTransition;
-      if (typeof useTransition === "function") {
-        useTransition(this, {
-          element: this.menuTarget,
-          hiddenClass: this.hiddenClassValue
-        });
-        this.transitionEnabled = true;
-      } else {
-        this.logFallback();
-      }
-    } catch (error2) {
-      this.logFallback(error2);
-    }
+    document.removeEventListener("click", this._hideOnClickOutside);
   }
   toggle(event) {
-    if (this.transitionEnabled && typeof this.toggleTransition === "function") {
-      this.toggleTransition();
-    } else {
-      this.toggleVisibility();
-    }
+    if (event) event.stopPropagation();
+    if (!this.hasMenuTarget) return;
+    this.menuTarget.classList.toggle(this.hiddenClassValue);
   }
   hide(event) {
     if (!this.hasMenuTarget) return;
     if (event && this.element.contains(event.target)) return;
-    if (this.transitionEnabled && typeof this.leave === "function") {
-      this.leave();
-    } else {
-      this.hideMenu();
-    }
-  }
-  toggleVisibility() {
-    this.isOpen() ? this.hideMenu() : this.showMenu();
-  }
-  showMenu() {
-    if (!this.hasMenuTarget) return;
-    this.menuTarget.classList.remove(this.hiddenClassValue);
-  }
-  hideMenu() {
-    if (!this.hasMenuTarget) return;
     this.menuTarget.classList.add(this.hiddenClassValue);
-  }
-  isOpen() {
-    return this.hasMenuTarget && !this.menuTarget.classList.contains(this.hiddenClassValue);
-  }
-  logFallback(error2 = null) {
-    this.transitionEnabled = false;
-    if (!this._fallbackLogged && typeof window !== "undefined" && window.console) {
-      window.console.warn(
-        "SourceMonitor dropdown transitions unavailable; using CSS class toggling instead."
-      );
-      if (error2 && typeof window.console.debug === "function") {
-        window.console.debug(error2);
-      }
-    }
-    this._fallbackLogged = true;
   }
 };
 
@@ -2746,6 +2668,7 @@ var modal_controller_default = class extends Controller {
   static values = { autoOpen: Boolean, removeOnClose: Boolean };
   connect() {
     this.handleEscape = this.handleEscape.bind(this);
+    this._inertElements = [];
     if (this.autoOpenValue) {
       this.open();
     }
@@ -2762,6 +2685,8 @@ var modal_controller_default = class extends Controller {
     }
     document.body.classList.add("overflow-hidden");
     document.addEventListener("keydown", this.handleEscape);
+    this._setInert(true);
+    this._focusFirstElement();
   }
   close(event) {
     if (event) event.preventDefault();
@@ -2770,6 +2695,7 @@ var modal_controller_default = class extends Controller {
     if (this.hasOpenClass) {
       this.panelTarget.classList.remove(this.openClass);
     }
+    this._setInert(false);
     this.teardown();
     if (this.removeOnCloseValue) {
       this.element.remove();
@@ -2788,6 +2714,43 @@ var modal_controller_default = class extends Controller {
   teardown() {
     document.body.classList.remove("overflow-hidden");
     document.removeEventListener("keydown", this.handleEscape);
+  }
+  // -- Private helpers --
+  _setInert(inert) {
+    if (inert) {
+      const modalRoot = this._findModalRoot();
+      if (!modalRoot) return;
+      this._inertElements = [];
+      for (const sibling of document.body.children) {
+        if (sibling === modalRoot || sibling === this.element) continue;
+        if (sibling.nodeType !== Node.ELEMENT_NODE) continue;
+        if (!sibling.hasAttribute("inert")) {
+          sibling.setAttribute("inert", "");
+          this._inertElements.push(sibling);
+        }
+      }
+    } else {
+      for (const el of this._inertElements) {
+        el.removeAttribute("inert");
+      }
+      this._inertElements = [];
+    }
+  }
+  _findModalRoot() {
+    let el = this.hasPanelTarget ? this.panelTarget : this.element;
+    while (el && el.parentElement !== document.body) {
+      el = el.parentElement;
+    }
+    return el;
+  }
+  _focusFirstElement() {
+    requestAnimationFrame(() => {
+      if (!this.hasPanelTarget) return;
+      const focusable = this.panelTarget.querySelector(
+        'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable) focusable.focus();
+    });
   }
 };
 
@@ -2878,6 +2841,14 @@ var select_all_controller_default = class extends Controller {
   }
 };
 
+// app/assets/javascripts/source_monitor/controllers/filter_submit_controller.js
+var filter_submit_controller_default = class extends Controller {
+  submit(event) {
+    const form = event.target.closest("form");
+    if (form) form.requestSubmit();
+  }
+};
+
 // app/assets/javascripts/source_monitor/turbo_actions.js
 if (window.Turbo && window.Turbo.StreamActions) {
   window.Turbo.StreamActions.redirect = function() {
@@ -2890,11 +2861,7 @@ if (window.Turbo && window.Turbo.StreamActions) {
 }
 
 // app/assets/javascripts/source_monitor/application.js
-var existingApplication = window.SourceMonitorStimulus;
-var application = existingApplication || Application.start();
-if (!existingApplication) {
-  window.SourceMonitorStimulus = application;
-}
+var application = Application.start();
 application.register("notification", notification_controller_default);
 application.register("notification-container", notification_container_controller_default);
 application.register("async-submit", async_submit_controller_default);
@@ -2902,6 +2869,7 @@ application.register("dropdown", dropdown_controller_default);
 application.register("modal", modal_controller_default);
 application.register("confirm-navigation", confirm_navigation_controller_default);
 application.register("select-all", select_all_controller_default);
+application.register("filter-submit", filter_submit_controller_default);
 var application_default = application;
 export {
   application_default as default

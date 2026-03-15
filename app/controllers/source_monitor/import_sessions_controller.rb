@@ -12,11 +12,30 @@ module SourceMonitor
     include SourceMonitor::ImportSessions::HealthCheckManagement
     include SourceMonitor::ImportSessions::BulkConfiguration
 
+    STEP_HANDLERS = {
+      "upload" => :handle_upload_step,
+      "preview" => :handle_preview_step,
+      "health_check" => :handle_health_check_step,
+      "configure" => :handle_configure_step,
+      "confirm" => :handle_confirm_step
+    }.freeze
+
+    STEP_CONTEXTS = {
+      "preview" => :prepare_preview_context,
+      "health_check" => :prepare_health_check_context,
+      "configure" => :prepare_configure_context,
+      "confirm" => :prepare_confirm_context
+    }.freeze
+
     before_action :ensure_current_user!
     before_action :set_import_session, only: %i[show update destroy]
     before_action :authorize_import_session!, only: %i[show update destroy]
     before_action :set_wizard_step, only: %i[show update]
 
+    # The OPML import wizard requires a persisted ImportSession record to track
+    # state across steps (file upload, preview, health check, configure, confirm).
+    # Visiting "new" immediately creates a session and redirects to the first step,
+    # so there is no separate form -- the wizard IS the form.
     def new
       create
     end
@@ -31,20 +50,15 @@ module SourceMonitor
     end
 
     def show
-      prepare_preview_context if @current_step == "preview"
-      prepare_health_check_context if @current_step == "health_check"
-      prepare_configure_context if @current_step == "configure"
-      prepare_confirm_context if @current_step == "confirm"
+      context_method = STEP_CONTEXTS[@current_step]
+      send(context_method) if context_method
       persist_step!
       render :show
     end
 
     def update
-      return handle_upload_step if @current_step == "upload"
-      return handle_preview_step if @current_step == "preview"
-      return handle_health_check_step if @current_step == "health_check"
-      return handle_configure_step if @current_step == "configure"
-      return handle_confirm_step if @current_step == "confirm"
+      handler = STEP_HANDLERS[@current_step]
+      return send(handler) if handler
 
       @import_session.update!(session_attributes)
       @current_step = target_step
@@ -242,6 +256,13 @@ module SourceMonitor
       existing = ::User.first
       if existing
         @fallback_user_id = existing.id
+        return @fallback_user_id
+      end
+
+      # Only create guest users in development/test. An engine should never
+      # create records in host-app tables in production.
+      unless Rails.env.local?
+        @fallback_user_id = nil
         return @fallback_user_id
       end
 

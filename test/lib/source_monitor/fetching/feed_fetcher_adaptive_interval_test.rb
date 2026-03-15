@@ -104,9 +104,9 @@ module SourceMonitor
         FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
 
         source.reload
-        expected_minutes = (45 * SourceMonitor::Fetching::FeedFetcher::INCREASE_FACTOR).round
+        expected_minutes = (45 * SourceMonitor::Fetching::FeedFetcher::AdaptiveInterval::INCREASE_FACTOR).round
         assert_equal expected_minutes, source.fetch_interval_minutes
-        expected_seconds = 45 * 60 * SourceMonitor::Fetching::FeedFetcher::INCREASE_FACTOR
+        expected_seconds = 45 * 60 * SourceMonitor::Fetching::FeedFetcher::AdaptiveInterval::INCREASE_FACTOR
         assert_in_delta expected_seconds, source.next_fetch_at - Time.current, 1e-6
       ensure
         travel_back
@@ -126,7 +126,7 @@ module SourceMonitor
         FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
         source.reload
 
-        min_minutes = (SourceMonitor::Fetching::FeedFetcher::MIN_FETCH_INTERVAL / 60.0).round
+        min_minutes = (SourceMonitor::Fetching::FeedFetcher::AdaptiveInterval::MIN_FETCH_INTERVAL / 60.0).round
         assert_equal min_minutes, source.fetch_interval_minutes
 
         source.update!(fetch_interval_minutes: 200 * 60)
@@ -137,7 +137,7 @@ module SourceMonitor
         FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
         source.reload
 
-        max_minutes = (SourceMonitor::Fetching::FeedFetcher::MAX_FETCH_INTERVAL / 60.0).round
+        max_minutes = (SourceMonitor::Fetching::FeedFetcher::AdaptiveInterval::MAX_FETCH_INTERVAL / 60.0).round
         assert_equal max_minutes, source.fetch_interval_minutes
       ensure
         travel_back
@@ -155,7 +155,7 @@ module SourceMonitor
 
         source.reload
         assert_equal 1, source.failure_count
-        expected_minutes = (60 * SourceMonitor::Fetching::FeedFetcher::FAILURE_INCREASE_FACTOR).round
+        expected_minutes = (60 * SourceMonitor::Fetching::FeedFetcher::AdaptiveInterval::FAILURE_INCREASE_FACTOR).round
         assert_equal expected_minutes, source.fetch_interval_minutes
         assert_equal source.next_fetch_at, source.backoff_until
       ensure

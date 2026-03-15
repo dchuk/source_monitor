@@ -1,0 +1,14 @@
+<%# Shared form validation error display
+  Locals:
+    record - ActiveRecord model instance with potential errors
+%>
+<% if record.errors.any? %>
+  <div class="mt-4 rounded border border-red-300 bg-red-50 p-4">
+    <h2 class="font-medium text-red-700">Please fix the following:</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-red-700">
+      <% record.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

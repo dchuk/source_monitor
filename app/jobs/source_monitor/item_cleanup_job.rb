@@ -6,6 +6,11 @@ module SourceMonitor
 
     source_monitor_queue :maintenance
 
+    rescue_from ActiveRecord::Deadlocked do |error|
+      Rails.logger&.warn("[SourceMonitor::ItemCleanupJob] Deadlock: #{error.message}")
+      retry_job(wait: 2.seconds + rand(3).seconds)
+    end
+
     def perform(options = nil)
       options = SourceMonitor::Jobs::CleanupOptions.normalize(options)
 

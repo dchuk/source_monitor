@@ -106,11 +106,10 @@ module SourceMonitor
       )
       item.save!(validate: false)
 
-      item_content = SourceMonitor::ItemContent.new(item: item)
-      item_content.feed_word_count = feed_word_count
-      item_content.save!
-
+      # Callback auto-creates ItemContent; override feed_word_count if needed
       item.reload
+      item.item_content.update_columns(feed_word_count: feed_word_count)
+
       item
     end
 

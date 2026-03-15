@@ -166,7 +166,7 @@ module SourceMonitor
       actions = source_health_actions(source)
       keys = actions.map { |action| action[:key] }
 
-      assert_equal %i[full_fetch health_check], keys
+      assert_equal %i[full_fetch health_check reset], keys
       assert actions.all? { |action| action[:data][:testid].present? }
     end
 
@@ -284,6 +284,40 @@ module SourceMonitor
 
     test "domain_from_url returns nil for invalid URL" do
       assert_nil domain_from_url("not a url %%%")
+    end
+
+    test "compact_blank_hash removes blank and nil values" do
+      result = compact_blank_hash({ "a" => "keep", "b" => "", "c" => nil, "d" => "also keep" })
+
+      assert_equal({ "a" => "keep", "d" => "also keep" }, result)
+    end
+
+    test "compact_blank_hash returns empty hash for blank input" do
+      assert_equal({}, compact_blank_hash(nil))
+      assert_equal({}, compact_blank_hash({}))
+    end
+
+    test "compact_blank_hash works with hash lacking compact_blank" do
+      plain_hash = { "x" => "value", "y" => "" }
+      # Plain hashes in Ruby 4 have compact_blank, but test the fallback logic
+      result = compact_blank_hash(plain_hash)
+
+      assert_equal({ "x" => "value" }, result)
+    end
+
+    test "compact_blank_hash uses fallback when compact_blank is unavailable" do
+      # Create a hash-like object that doesn't respond to compact_blank
+      hash_without_compact = { "keep" => "yes", "empty" => "", "nil_val" => nil, "zero" => 0 }
+      hash_without_compact.define_singleton_method(:respond_to?) do |method, *args|
+        return false if method == :compact_blank
+        super(method, *args)
+      end
+
+      result = compact_blank_hash(hash_without_compact)
+
+      assert_equal "yes", result["keep"]
+      assert_nil result["empty"]
+      assert_nil result["nil_val"]
     end
   end
 end

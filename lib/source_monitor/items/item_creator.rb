@@ -120,7 +120,6 @@ module SourceMonitor
         new_item = SourceMonitor::Item.new(source_id: source.id)
         apply_attributes(new_item, attributes)
         new_item.save!
-        new_item.ensure_feed_content_record
         Result.new(item: new_item, status: :created)
       rescue ActiveRecord::RecordNotUnique
         handle_concurrent_duplicate(attributes, raw_guid_present:)
@@ -176,26 +175,6 @@ module SourceMonitor
       def content_extractor
         @content_extractor ||= ContentExtractor.new(source: source)
       end
-
-      # Forwarding methods for backward compatibility with tests
-      def process_feed_content(raw_content, title:) = content_extractor.process_feed_content(raw_content, title: title)
-      def should_process_feed_content?(raw_content) = content_extractor.should_process_feed_content?(raw_content)
-      def feed_content_parser_class = content_extractor.feed_content_parser_class
-      def wrap_content_for_readability(content, title:) = content_extractor.wrap_content_for_readability(content, title: title)
-      def default_feed_readability_options = content_extractor.default_feed_readability_options
-      def build_feed_content_metadata(result:, raw_content:, processed_content:)
-        content_extractor.build_feed_content_metadata(result: result, raw_content: raw_content, processed_content: processed_content)
-      end
-      def html_fragment?(value) = content_extractor.html_fragment?(value)
-      def deep_copy(value) = content_extractor.deep_copy(value)
-      def string_or_nil(value) = entry_parser.string_or_nil(value)
-      def sanitize_string_array(values) = entry_parser.sanitize_string_array(values)
-      def split_keywords(value) = entry_parser.split_keywords(value)
-      def safe_integer(value) = entry_parser.safe_integer(value)
-      def json_entry? = entry_parser.json_entry?
-      def atom_entry? = entry_parser.atom_entry?
-      def normalize_metadata(value) = entry_parser.normalize_metadata(value)
-      def generate_fingerprint(title, url, content) = entry_parser.generate_fingerprint(title, url, content)
     end
   end
 end

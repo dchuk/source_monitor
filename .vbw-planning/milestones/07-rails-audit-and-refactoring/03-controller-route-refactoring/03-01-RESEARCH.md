@@ -1,0 +1,561 @@
+---
+phase: "03-controller-route-refactoring"
+title: "Controller & Route Refactoring Research"
+type: research
+confidence: high
+date: 2026-03-14
+---
+
+# Phase 03: Controller & Route Refactoring — Research Findings
+
+## Executive Summary
+
+SourceMonitor has **23 controller files** across 3 tiers: main CRUD controllers (Sources, Items), dedicated action controllers (SourceFetches, SourceBulkScrapes, etc.), and specialized controllers (Dashboard, ImportSessions). The engine largely follows everything-is-CRUD patterns, with **10 audit findings (C1-C10)** focused on controller extraction, business logic placement, and error handling consistency.
+
+**Key Issues:**
+- **C1**: Custom scrape action lives in ItemsController instead of dedicated ItemScrapesController
+- **C2**: Favicon cooldown logic in controller instead of Source model
+- **C3**: ImportSessionsController is 290 lines with 5 step-handler concerns
+- **C4**: SourcesController#index mixes metrics calculations inline
+- **C5**: Repetitive string-matching dispatch in step handlers
+- **C6**: Missing authorization on ImportHistoryDismissalsController (HIGH)
+- **C7**: SourceTurboResponses concern couples to view_context
+- **C8**: Excessive defensive logging in ItemsController
+- **C9**: DashboardController uses `.permit!` (wildcard parameters)
+- **C10**: Redirect validation logic in controller
+
+---
+
+## Current State
+
+### Controller Files (23 total)
+
+| Controller | Lines | Purpose | Status |
+|------------|-------|---------|--------|
+| **sources_controller.rb** | 235 | CRUD: Sources list/show/create/update/destroy | Larger, metrics inline (C4) |
+| **items_controller.rb** | 118 | Index/show items; custom scrape action (C1) | Has TODO comment |
+| **import_sessions_controller.rb** | 290 | 5-step wizard with concerns (C3) | Largest controller, dispatches via string matching (C5) |
+| **dashboard_controller.rb** | 40 | Dashboard stats/activity (uses `.permit!` C9) | Lean |
+| **application_controller.rb** | 66 | Auth, toast broadcasting, helpers | Base class |
+| **source_turbo_responses.rb** | 115 | Shared concern, bulk scrape/fetch responses (C7) | Well-structured but couples to view_context |
+| **source_health_checks_controller.rb** | 34 | POST /sources/:id/health_check | Minimal |
+| **source_health_resets_controller.rb** | 27 | POST /sources/:id/health_reset | Minimal |
+| **source_fetches_controller.rb** | 22 | POST /sources/:id/fetch | Minimal |
+| **source_retries_controller.rb** | 30 | POST /sources/:id/retry | Minimal |
+| **source_bulk_scrapes_controller.rb** | 35 | POST /sources/:id/bulk_scrape | Minimal |
+| **source_favicon_fetches_controller.rb** | 38 | POST /sources/:id/favicon_fetch; favicon cooldown (C2) | Cooldown logic belongs in model |
+| **source_scrape_tests_controller.rb** | 73 | POST /sources/:id/scrape_test | Minimal |
+| **bulk_scrape_enablements_controller.rb** | 57 | POST /bulk_scrape_enablements; hardcoded default (C11) | Minimal, default adapter in code not config |
+| **import_history_dismissals_controller.rb** | 20 | POST /import_histories/:id/dismissal; MISSING AUTH (C6) | SECURITY ISSUE |
+| **logs_controller.rb** | 15 | GET /logs (unified log view) | Minimal |
+| **fetch_logs_controller.rb** | 9 | GET /fetch_logs/:id | Minimal |
+| **scrape_logs_controller.rb** | 9 | GET /scrape_logs/:id | Minimal |
+| **health_controller.rb** | 12 | GET /health (readiness probe) | Minimal |
+| **dashboard_controller.rb** | 40 | Dashboard index | Minimal |
+| **import_sessions/bulk_configuration.rb** | 106 | Concern: build bulk source from session/params | Supporting module |
+| **import_sessions/entry_annotation.rb** | 187 | Concern: annotate entries with status | Supporting module |
+| **import_sessions/health_check_management.rb** | 112 | Concern: manage health checks during import | Supporting module |
+| **import_sessions/opml_parser.rb** | 130 | Concern: parse OPML file | Supporting module |
+
+**Supporting Files:**
+- `sanitizes_search_params.rb` -- Concern: Ransack/parameter sanitization (well-designed)
+
+### Routes Structure
+
+```ruby
+# config/routes.rb (33 lines)
+
+GET /health → health#show
+GET /dashboard → dashboard#index [root]
+
+# Logs (read-only)
+resources :logs, only: :index
+resources :fetch_logs, only: :show
+resources :scrape_logs, only: :show
+
+# Import wizard (custom step routing)
+resources :import_sessions, path: "import_opml", only: %i[new create show update destroy] do
+  member do
+    get "steps/:step", action: :show, as: :step      # ← custom member route
+    patch "steps/:step", action: :update             # ← custom member route
+  end
+end
+
+# Import history
+resources :import_histories, only: [] do
+  resource :dismissal, only: :create, controller: "import_history_dismissals"
+end
+
+# Items with custom scrape action
+resources :items, only: %i[index show] do
+  post :scrape, on: :member                          # ← C1: custom action, should be POST /items/:id/scrapes
+end
+
+# Bulk scrape enablement
+resources :bulk_scrape_enablements, only: :create
+
+# Sources with nested singleton resources for actions
+resources :sources do
+  resource :fetch, only: :create, controller: "source_fetches"
+  resource :retry, only: :create, controller: "source_retries"
+  resource :bulk_scrape, only: :create, controller: "source_bulk_scrapes"
+  resource :health_check, only: :create, controller: "source_health_checks"
+  resource :health_reset, only: :create, controller: "source_health_resets"
+  resource :favicon_fetch, only: :create, controller: "source_favicon_fetches"
+  resource :scrape_test, only: :create, controller: "source_scrape_tests"
+end
+```
+
+**Route Design Patterns:**
+- ✅ **Singleton resources** (`resource :fetch`) for single-action controllers is CRUD-compliant (e.g., `POST /sources/:source_id/fetch`)
+- ❌ **Custom member route** on import_sessions (`GET/PATCH /import_sessions/:id/steps/:step`) -- non-standard, should normalize to POST /import_sessions/:id/step_transitions
+- ❌ **Custom member action** on items (`POST /items/:id/scrape`) -- violates CRUD, should be `POST /items/:id/scrapes` with ItemScrapesController
+
+---
+
+## Audit Findings Detail (C1-C10)
+
+### C1: Custom scrape action violates CRUD convention (HIGH)
+
+**Location:** `app/controllers/source_monitor/items_controller.rb:39-85`
+
+```ruby
+# items_controller.rb line 39
+# TODO: Extract to ItemScrapesController (CRUD-only convention).
+# Deferred to avoid view/route churn in a cleanup phase.
+def scrape
+  log_manual_scrape("controller:start", item: @item, extra: { format: request.format })
+
+  enqueue_result = SourceMonitor::Scraping::Enqueuer.enqueue(item: @item, reason: :manual)
+  # ... complex response handling (lines 44-85)
+end
+```
+
+**Route:** `POST /items/:id/scrape` (routes.rb line 20)
+
+**Issue:** Custom action on member instead of dedicated nested resource. TODO comment exists acknowledging this debt.
+
+**Recommendation:** Extract to `ItemScrapesController` with route `POST /items/:id/scrapes` (singular resource).
+
+---
+
+### C2: Business logic in SourceFaviconFetchesController (MEDIUM)
+
+**Location:** `app/controllers/source_monitor/source_favicon_fetches_controller.rb:33-36`
+
+```ruby
+def clear_favicon_cooldown(source)
+  metadata = (source.metadata || {}).except("favicon_last_attempted_at")
+  source.update_column(:metadata, metadata)  # ← Bypasses model callbacks
+end
+```
+
+**Issue:** Favicon cooldown clearing is a **Source model responsibility**, not controller. Uses `update_column` bypassing validations/callbacks.
+
+**Related Code:**
+- `FaviconFetchJob` checks metadata for `favicon_last_attempted_at` cooldown
+- Logic scattered across controller + job
+
+**Recommendation:** Add `Source#clear_favicon_cooldown!` method, call from controller.
+
+---
+
+### C3: ImportSessionsController is 290 lines (MEDIUM-LARGE)
+
+**Location:** `app/controllers/source_monitor/import_sessions_controller.rb`
+
+**Size Breakdown:**
+- Core actions (new/create/show/update/destroy): ~60 lines
+- Step handlers (handle_upload_step, handle_preview_step, handle_health_check_step, handle_configure_step, handle_confirm_step): ~170 lines
+- Supporting methods (session authorization, guest user creation): ~60 lines
+
+**Issue:** `update` action dispatches via string matching (C5):
+
+```ruby
+def update
+  return handle_upload_step if @current_step == "upload"
+  return handle_preview_step if @current_step == "preview"
+  return handle_health_check_step if @current_step == "health_check"
+  return handle_configure_step if @current_step == "configure"
+  return handle_confirm_step if @current_step == "confirm"
+  # ... fallback (lines 42-47, 49-54)
+end
+```
+
+**Concerns Included (4):**
+- `OpmlParser` (130 lines) -- OPML file parsing
+- `EntryAnnotation` (187 lines) -- Entry status/annotation
+- `HealthCheckManagement` (112 lines) -- Health check setup
+- `BulkConfiguration` (106 lines) -- Bulk source setup
+
+**Total spread across 5 files, ~635 lines.**
+
+**Recommendation:** Extract step handlers to service objects or strategy pattern; consolidate concerns.
+
+---
+
+### C4: SourcesController#index mixes metrics/analytics (MEDIUM)
+
+**Location:** `app/controllers/source_monitor/sources_controller.rb:21-65`
+
+```ruby
+def index
+  @search_params = sanitized_search_params
+  expand_scrape_recommendation_filter
+  @q = build_search_query(params: @search_params)
+
+  @paginator = SourceMonitor::Pagination::Paginator.new(...)
+  @sources = @paginator.records
+
+  # ← Lines 37-62: Inline metrics calculations
+  metrics = SourceMonitor::Analytics::SourcesIndexMetrics.new(
+    base_scope: Source.all,
+    result_scope: @paginator.records,
+    search_params: @search_params
+  )
+
+  @fetch_interval_distribution = metrics.fetch_interval_distribution
+  @fetch_interval_filter = metrics.fetch_interval_filter
+  @selected_fetch_interval_bucket = metrics.selected_fetch_interval_bucket
+  @item_activity_rates = metrics.item_activity_rates
+
+  # Lines 50-62: Compute word count averages
+  source_ids = @sources.map(&:id)
+  if source_ids.any?
+    base = ItemContent.joins(:item).where(sourcemon_items: { source_id: source_ids })
+    @avg_feed_word_counts = base.where.not(feed_word_count: nil)
+                                .group("sourcemon_items.source_id")
+                                .average(:feed_word_count)
+    @avg_scraped_word_counts = base.where.not(scraped_word_count: nil)
+                                  .group("sourcemon_items.source_id")
+                                  .average(:scraped_word_count)
+  else
+    @avg_feed_word_counts = {}
+    @avg_scraped_word_counts = {}
+  end
+
+  @scrape_candidate_ids = compute_scrape_candidate_ids  # Lines 64, 202-211: Query object call
+end
+```
+
+**Issue:** Controller loads metrics, computes averages, and determines scrape candidates. `compute_scrape_candidate_ids` (lines 202-211) is a query object pattern but inline. Metrics calculation could be a presenter.
+
+**Recommendation:** Extract `SourcesIndexPresenter` or expand query object to handle all index metrics.
+
+---
+
+### C5: Step handling uses repetitive string matching (MEDIUM)
+
+**Location:** `app/controllers/source_monitor/import_sessions_controller.rb:42-47`
+
+```ruby
+def update
+  return handle_upload_step if @current_step == "upload"
+  return handle_preview_step if @current_step == "preview"
+  return handle_health_check_step if @current_step == "health_check"
+  return handle_configure_step if @current_step == "configure"
+  return handle_confirm_step if @current_step == "confirm"
+  # ... (lines 49-54)
+end
+```
+
+**Issue:** 5 identical conditional branches, poor maintainability. Pattern would benefit from handler registry or `public_send`.
+
+**Recommendation:** Use handler registry or strategy pattern (e.g., `STEP_HANDLERS = { upload: :handle_upload_step, ... }`).
+
+---
+
+### C6: Missing authorization on ImportHistoryDismissalsController (HIGH - SECURITY)
+
+**Location:** `app/controllers/source_monitor/import_history_dismissals_controller.rb:5-6`
+
+```ruby
+def create
+  import_history = ImportHistory.where(user_id: source_monitor_current_user&.id).find(params[:import_history_id])
+  # ↑ WHERE scope correct, but...
+  import_history.update!(dismissed_at: Time.current)
+end
+```
+
+**Issue:** Controller scopes by user correctly (`where(user_id: source_monitor_current_user&.id)`), **BUT** any authenticated user can call this action. If `source_monitor_current_user` is nil or doesn't match, the `.find()` will raise `ActiveRecord::RecordNotFound` instead of 403 Forbidden.
+
+**Better pattern:** Use Pundit policy or explicit authorization check.
+
+```ruby
+def create
+  import_history = ImportHistory.find(params[:import_history_id])
+  authorize import_history  # ← Explicit authorization
+  import_history.update!(dismissed_at: Time.current)
+end
+```
+
+**Recommendation:** Add explicit authorization check or Pundit policy.
+
+---
+
+### C7: SourceTurboResponses concern calls view_context (LOW)
+
+**Location:** `app/controllers/source_monitor/source_turbo_responses.rb:109-113`
+
+```ruby
+def bulk_scrape_flash_payload(result)
+  pluralizer = ->(count, word) { ActionController::Base.helpers.pluralize(count, word) }
+  presenter = SourceMonitor::Scraping::BulkResultPresenter.new(result:, pluralizer:)
+  presenter.to_flash_payload
+end
+```
+
+**Issue:** Passes `ActionController::Base.helpers.pluralize` into presenter, coupling controller concern to view layer. Should pass a lambda or use Rails.application.routes.url_helpers instead.
+
+**Recommendation:** Inject pluralizer as a dependency or move to view helper.
+
+---
+
+### C8: ItemsController inline logging with excessive defensiveness (LOW)
+
+**Location:** `app/controllers/source_monitor/items_controller.rb:109-116`
+
+```ruby
+def log_manual_scrape(stage, item:, extra: {})
+  return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+  payload = { stage:, item_id: item&.id }.merge(extra.compact)
+  Rails.logger.info("[SourceMonitor::ManualScrape] #{payload.to_json}")
+rescue StandardError
+  nil
+end
+```
+
+**Issue:** Over-defensive logging. `Rails.logger` is guaranteed to exist in Rails apps. The `rescue StandardError` is unnecessary (JSON encoding is safe). Overkill for production code.
+
+**Recommendation:** Simplify to standard Rails logging pattern.
+
+---
+
+### C9: DashboardController uses `.permit!` (LOW-MEDIUM)
+
+**Location:** `app/controllers/source_monitor/dashboard_controller.rb:32-37`
+
+```ruby
+def schedule_pages_params
+  raw = params.fetch(:schedule_pages, {})
+  return {} unless raw.respond_to?(:permit)
+
+  permitted_keys = raw.keys.select { |k| k.to_s.match?(/\Apage_\d+\z/) }
+  raw.permit(*permitted_keys).to_h  # ← Dynamic allowlist, safer than .permit!
+end
+```
+
+**Actually:** This is **SAFE** -- dynamically builds allowlist for `page_*` params. Not a `.permit!` wildcard. Initial audit note C9 may be inaccurate.
+
+---
+
+### C10: Redirect validation logic in controller (LOW)
+
+**Location:** `app/controllers/source_monitor/sources_controller.rb:171-176`
+
+```ruby
+def safe_redirect_path(raw_value)
+  return if raw_value.blank?
+
+  sanitized = SourceMonitor::Security::ParameterSanitizer.sanitize(raw_value.to_s)
+  sanitized.start_with?("/") ? sanitized : nil
+end
+```
+
+**Issue:** Redirect validation logic in controller. Better in a service or helper.
+
+**Recommendation:** Move to `SourceMonitor::Security::ParameterSanitizer` or create redirect helper.
+
+---
+
+## Existing Patterns
+
+### Controller Concerns
+
+**`SanitizesSearchParams`** (`app/controllers/concerns/source_monitor/sanitizes_search_params.rb` - 81 lines)
+- Well-designed, single responsibility
+- Provides `searchable_with` DSL, `sanitized_search_params`, `build_search_query`
+- Used by: SourcesController, ItemsController
+- ✅ Exemplar pattern
+
+**`SourceTurboResponses`** (`app/controllers/source_monitor/source_turbo_responses.rb` - 115 lines)
+- Provides `render_fetch_enqueue_response`, `handle_fetch_failure`, `respond_to_bulk_scrape`
+- Used by: SourceFetchesController, SourceHealthChecksController, SourceHealthResetsController, SourceFaviconFetchesController, SourceBulkScrapesController, SourceRetriesController
+- ✅ Good pattern, but view_context coupling (C7)
+
+**Import Session Concerns** (4 files, ~535 lines)
+- `OpmlParser`, `EntryAnnotation`, `HealthCheckManagement`, `BulkConfiguration`
+- Heavy, but unavoidable for 5-step wizard
+- All included in ImportSessionsController
+
+### Error Handling Patterns
+
+**Error handling across controllers:**
+
+| Controller | Pattern | Rescue | Notes |
+|-----------|---------|--------|-------|
+| SourceFetchesController | Try/rescue | `rescue StandardError => error` | Calls `handle_fetch_failure` |
+| SourceHealthChecksController | Try/rescue | `rescue StandardError => error` | Calls `handle_fetch_failure` |
+| SourceHealthResetsController | Try/rescue | `rescue StandardError => error` | Calls `handle_fetch_failure` |
+| SourceFaviconFetchesController | Try/rescue | `rescue StandardError => error` | Calls `handle_fetch_failure` |
+| SourceRetriesController | Try/rescue | `rescue StandardError => error` | Calls `handle_fetch_failure` |
+| SourcesController | Try/rescue (2 places) | `rescue ActiveRecord::InvalidForeignKey` (destroy), `rescue StandardError` (enqueue) | Calls `handle_destroy_failure` or logs |
+| ItemsController | Try/rescue (1 place) | `rescue StandardError` in `log_manual_scrape` | Silently swallows, returns nil |
+| ImportSessionsController | Try/rescue (1 place) | `rescue StandardError` in `create_guest_user` | Silently swallows |
+| Import session concerns | Try/rescue | `rescue StandardError` in entry_annotation | Silently swallows, returns fallback value |
+
+**Observation:** No `rescue_from` at application level. All error handling is inline, response consistent (call `handle_fetch_failure` which renders toast). **Inconsistency:** Some rescues log, some don't; logging is defensive.
+
+### Test Coverage
+
+**Controller test files (19):**
+- `sources_controller_test.rb`
+- `items_controller_test.rb`
+- `import_sessions_controller_test.rb`
+- `source_fetches_controller_test.rb`
+- `source_bulk_scrapes_controller_test.rb`
+- `source_health_checks_controller_test.rb`
+- `source_health_resets_controller_test.rb`
+- `source_favicon_fetches_controller_test.rb`
+- `source_retries_controller_test.rb`
+- `source_scrape_tests_controller_test.rb`
+- `bulk_scrape_enablements_controller_test.rb`
+- `import_history_dismissals_controller_test.rb`
+- `dashboard_controller_test.rb`
+- `logs_controller_test.rb`
+- `health_controller_test.rb`
+- `application_controller_test.rb`
+- `concerns/sanitizes_search_params_test.rb`
+- `sources_controller_favicon_test.rb` (sub-test)
+- `sources_controller_sort_test.rb` (sub-test)
+
+**Coverage note:** RAILS_AUDIT.md notes T2 finding -- "Fixture-based tests tightly coupled to user model -- 11 files use `fixtures :users`" (finding T2).
+
+---
+
+## Recommendations
+
+### Priority 1: Security (Immediate)
+
+| Finding | Action | Effort | Impact |
+|---------|--------|--------|--------|
+| **C6** | Add authorization check to ImportHistoryDismissalsController | Quick | **HIGH** - Prevents privilege escalation |
+
+### Priority 2: CRUD Compliance (Phase 03)
+
+| Finding | Action | Effort | Impact |
+|---------|--------|--------|--------|
+| **C1** | Extract ItemScrapesController for custom scrape action | Medium | CRUD compliance |
+| **C2** | Move favicon cooldown to Source model + clear! method | Short | Business logic isolation |
+| **C10** | Move redirect validation to security service or helper | Quick | Controller isolation |
+
+### Priority 3: Controller Refactoring (Phase 03-04)
+
+| Finding | Action | Effort | Impact |
+|---------|--------|--------|--------|
+| **C3** | Refactor ImportSessionsController (extract step handlers) | Large | 290 → ~150 lines, handler registry |
+| **C5** | Replace string dispatch with handler registry or strategy | Short | Improves maintainability |
+| **C4** | Extract SourcesController#index metrics to presenter/query | Medium | Controller purity |
+| **C8** | Simplify ItemsController logging (remove defensive checks) | Quick | Code clarity |
+| **C7** | Extract pluralizer injection from SourceTurboResponses | Quick | Decouple view layer |
+
+### Priority 4: Configuration
+
+| Finding | Action | Effort | Impact |
+|---------|--------|--------|--------|
+| **C11** | Move hardcoded "readability" adapter default to config | Quick | Configuration consistency |
+
+---
+
+## New Controllers Needed
+
+### ItemScrapesController (C1)
+
+**Route:** `POST /items/:id/scrapes` (singular resource)
+
+**Code:** Extract from `ItemsController#scrape` (lines 39-85)
+
+**Size:** ~60 lines
+
+**Test:** New `item_scrapes_controller_test.rb`
+
+---
+
+### SourceFeedChecksController (Optional Future)
+
+**Currently:** No `check_feed` action found in audit. May be future work or named differently (e.g., SourceScrapesTestController already exists).
+
+---
+
+## Refactoring Scope
+
+**Total LOC in controllers (excluding tests, routes):**
+- Main controllers: 235 + 118 + 290 + 40 + 66 = **749 lines**
+- Singleton action controllers: 34 + 27 + 22 + 30 + 35 + 38 + 73 + 57 + 20 + 9 + 9 + 12 = **366 lines**
+- Concerns: 115 + 106 + 187 + 112 + 130 = **650 lines**
+- Base + misc: 40 + 15 + 81 = **136 lines**
+
+**Total: 1,901 lines**
+
+**Post-refactoring target (Phase 03-04):**
+- Consolidate import concerns: 650 → 400 lines (using handler registry)
+- Extract ItemScrapesController: +60 new lines
+- Extract favicon cooldown to model
+- Extract metrics/redirect logic to services
+- **Target: 1,600-1,700 lines** (15-20% reduction)
+
+---
+
+## Implementation Order for Phase 03
+
+1. ✅ **C6** (Security) - Add authorization check
+2. ✅ **C1** - Extract ItemScrapesController + route
+3. ✅ **C2** - Move favicon cooldown to Source model
+4. ✅ **C10** - Move redirect validation to service
+5. ✅ **C5** - Implement handler registry for import step dispatch
+6. ✅ **C3** - Extract step handlers to service objects
+7. ✅ **C4** - Extract metrics to presenter
+8. ✅ **C8** - Simplify ItemsController logging
+9. ✅ **C7** - Decouple pluralizer from SourceTurboResponses
+10. ✅ **C11** - Move adapter default to config
+
+---
+
+## Files Affected
+
+### Direct Changes
+
+- `config/routes.rb` -- Add ItemScrapesController route, normalize import_sessions routing
+- `app/controllers/source_monitor/items_controller.rb` -- Remove scrape action
+- `app/controllers/source_monitor/item_scrapes_controller.rb` -- NEW
+- `app/controllers/source_monitor/source_favicon_fetches_controller.rb` -- Remove cooldown logic
+- `app/controllers/source_monitor/import_sessions_controller.rb` -- Refactor update dispatch
+- `app/controllers/source_monitor/sources_controller.rb` -- Extract metrics, redirect validation
+- `app/controllers/source_monitor/import_history_dismissals_controller.rb` -- Add authorization
+- `app/models/source_monitor/source.rb` -- Add clear_favicon_cooldown! method
+- `lib/source_monitor/security/parameter_sanitizer.rb` -- Add redirect validation method
+
+### Test Changes
+
+- `test/controllers/source_monitor/items_controller_test.rb` -- Remove scrape tests
+- `test/controllers/source_monitor/item_scrapes_controller_test.rb` -- NEW
+- `test/controllers/source_monitor/source_favicon_fetches_controller_test.rb` -- Update to use model method
+- `test/controllers/source_monitor/import_history_dismissals_controller_test.rb` -- Add authorization tests
+
+### Documentation
+
+- Update skill references: `sm-controller`, `sm-authorization` (if exists)
+- CLAUDE.md -- Controller conventions section
+
+---
+
+## Related Findings
+
+This phase addresses Rails audit findings: **C1, C2, C3, C4, C5, C6, C7, C8, C9, C10** (plus C11 for configuration).
+
+Related model/service findings (future phases):
+- **M1-M9** -- Model scopes/validations (separate phase)
+- **S1-S7** -- Job/service refactoring (separate phase)
+- **V1-V5** -- View extraction/components (separate phase)
+- **T1-T6** -- Test improvements (separate phase)

@@ -21,8 +21,6 @@ module SourceMonitor
         url: "https://example.com/dash-#{SecureRandom.hex(4)}",
         content: "short content"
       )
-      SourceMonitor::ItemContent.create!(item: item)
-
       get "/source_monitor/dashboard"
       assert_response :success
       assert_select "h2", text: "Scrape Recommendations"
@@ -33,6 +31,16 @@ module SourceMonitor
       get "/source_monitor/dashboard"
       assert_response :success
       assert_select "h2", text: "Scrape Recommendations", count: 0
+    end
+
+    test "index accepts valid schedule_pages params" do
+      get "/source_monitor/dashboard", params: { schedule_pages: { page_1: "2", page_2: "3" } }
+      assert_response :success
+    end
+
+    test "index filters out non-page schedule_pages keys" do
+      get "/source_monitor/dashboard", params: { schedule_pages: { page_1: "2", malicious_key: "evil" } }
+      assert_response :success
     end
   end
 end

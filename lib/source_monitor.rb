@@ -50,6 +50,7 @@ require "source_monitor/feedjira_extensions"
 
 module SourceMonitor
   autoload :HTTP, "source_monitor/http"
+  autoload :Queries, "source_monitor/queries"
   autoload :Scheduler, "source_monitor/scheduler"
   autoload :Assets, "source_monitor/assets"
 
@@ -79,6 +80,7 @@ module SourceMonitor
     autoload :UnexpectedResponseError, "source_monitor/fetching/fetch_error"
     autoload :FeedFetcher, "source_monitor/fetching/feed_fetcher"
     autoload :FetchRunner, "source_monitor/fetching/fetch_runner"
+    autoload :RetryOrchestrator, "source_monitor/fetching/retry_orchestrator"
     autoload :RetryPolicy, "source_monitor/fetching/retry_policy"
     autoload :StalledFetchReconciler, "source_monitor/fetching/stalled_fetch_reconciler"
     autoload :AdvisoryLock, "source_monitor/fetching/advisory_lock"
@@ -88,16 +90,20 @@ module SourceMonitor
   module ImportSessions
     autoload :EntryNormalizer, "source_monitor/import_sessions/entry_normalizer"
     autoload :HealthCheckBroadcaster, "source_monitor/import_sessions/health_check_broadcaster"
+    autoload :HealthCheckUpdater, "source_monitor/import_sessions/health_check_updater"
+    autoload :OPMLImporter, "source_monitor/import_sessions/opml_importer"
   end
 
   module Favicons
     autoload :Discoverer, "source_monitor/favicons/discoverer"
+    autoload :Fetcher, "source_monitor/favicons/fetcher"
     autoload :SvgConverter, "source_monitor/favicons/svg_converter"
   end
 
   module Images
     autoload :ContentRewriter, "source_monitor/images/content_rewriter"
     autoload :Downloader, "source_monitor/images/downloader"
+    autoload :Processor, "source_monitor/images/processor"
   end
 
   module Items
@@ -152,6 +158,7 @@ module SourceMonitor
     autoload :Enqueuer, "source_monitor/scraping/enqueuer"
     autoload :BulkSourceScraper, "source_monitor/scraping/bulk_source_scraper"
     autoload :BulkResultPresenter, "source_monitor/scraping/bulk_result_presenter"
+    autoload :Runner, "source_monitor/scraping/runner"
     autoload :State, "source_monitor/scraping/state"
     autoload :Scheduler, "source_monitor/scraping/scheduler"
     autoload :ItemScraper, "source_monitor/scraping/item_scraper"

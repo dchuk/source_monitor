@@ -150,10 +150,44 @@ module SourceMonitor
       source = Source.new(
         name: "Test",
         feed_url: "https://example.com/feed",
+        health_status: "failing"
+      )
+
+      assert_equal "failing", source.health_status
+    end
+
+    test "rejects invalid health_status values" do
+      source = Source.new(
+        name: "Test",
+        feed_url: "https://example.com/feed",
         health_status: "degraded"
       )
 
-      assert_equal "degraded", source.health_status
+      assert_not source.valid?
+      assert_includes source.errors[:health_status], "is not included in the list"
+    end
+
+    test "accepts all valid health_status values" do
+      %w[working declining improving failing].each do |status|
+        source = Source.new(name: "Test", feed_url: "https://example.com/feed-#{status}", health_status: status)
+        assert source.valid?, "Expected health_status '#{status}' to be valid"
+      end
+    end
+
+    test "scraping_enabled scope returns sources with scraping enabled" do
+      enabled = Source.create!(name: "Enabled", feed_url: "https://example.com/enabled", scraping_enabled: true)
+      disabled = Source.create!(name: "Disabled", feed_url: "https://example.com/disabled", scraping_enabled: false)
+
+      assert_includes Source.scraping_enabled, enabled
+      assert_not_includes Source.scraping_enabled, disabled
+    end
+
+    test "scraping_disabled scope returns sources with scraping disabled" do
+      enabled = Source.create!(name: "Enabled", feed_url: "https://example.com/enabled-sd", scraping_enabled: true)
+      disabled = Source.create!(name: "Disabled", feed_url: "https://example.com/disabled-sd", scraping_enabled: false)
+
+      assert_includes Source.scraping_disabled, disabled
+      assert_not_includes Source.scraping_disabled, enabled
     end
 
     test "due_for_fetch uses current time by default" do
@@ -254,8 +288,8 @@ module SourceMonitor
         source: source, guid: SecureRandom.uuid,
         url: "https://example.com/b-#{SecureRandom.hex(4)}", title: "B"
       )
-      SourceMonitor::ItemContent.create!(item: item1, scraped_content: "one two three four") # 4 words
-      SourceMonitor::ItemContent.create!(item: item2, scraped_content: "one two three four five six") # 6 words
+      item1.create_item_content!(scraped_content: "one two three four") # 4 words
+      item2.create_item_content!(scraped_content: "one two three four five six") # 6 words
 
       assert_equal 5, source.avg_word_count # (4 + 6) / 2 = 5
     end
@@ -271,8 +305,7 @@ module SourceMonitor
 
     test "scrape_candidates returns sources below threshold with scraping disabled" do
       source = create_source!(scraping_enabled: false)
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
 
       candidates = SourceMonitor::Source.scrape_candidates(threshold: 500)
       assert_includes candidates, source
@@ -280,8 +313,7 @@ module SourceMonitor
 
     test "scrape_candidates excludes sources with scraping already enabled" do
       source = create_source!(scraping_enabled: true)
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
 
       candidates = SourceMonitor::Source.scrape_candidates(threshold: 500)
       assert_not_includes candidates, source
@@ -289,8 +321,7 @@ module SourceMonitor
 
     test "scrape_candidates excludes inactive sources" do
       source = create_source!(active: false, scraping_enabled: false)
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content here")
 
       candidates = SourceMonitor::Source.scrape_candidates(threshold: 500)
       assert_not_includes candidates, source
@@ -306,8 +337,7 @@ module SourceMonitor
     test "scrape_candidates excludes sources above threshold" do
       source = create_source!(scraping_enabled: false)
       words = Array.new(300) { "word" }.join(" ")
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: words)
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: words)
 
       candidates = SourceMonitor::Source.scrape_candidates(threshold: 200)
       assert_not_includes candidates, source
@@ -315,8 +345,7 @@ module SourceMonitor
 
     test "scrape_candidates respects custom threshold parameter" do
       source = create_source!(scraping_enabled: false)
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "one two three")
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "one two three")
 
       assert_includes SourceMonitor::Source.scrape_candidates(threshold: 10), source
       assert_not_includes SourceMonitor::Source.scrape_candidates(threshold: 2), source
@@ -324,8 +353,7 @@ module SourceMonitor
 
     test "scrape_candidates returns empty when threshold is zero or negative" do
       source = create_source!(scraping_enabled: false)
-      item = SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content")
-      SourceMonitor::ItemContent.create!(item: item)
+      SourceMonitor::Item.create!(source: source, guid: SecureRandom.uuid, url: "https://example.com/sc-#{SecureRandom.hex(4)}", content: "short content")
 
       assert_empty SourceMonitor::Source.scrape_candidates(threshold: 0)
       assert_empty SourceMonitor::Source.scrape_candidates(threshold: -1)
@@ -333,6 +361,53 @@ module SourceMonitor
 
     test "scraping_enabled is in ransackable_attributes" do
       assert_includes SourceMonitor::Source.ransackable_attributes, "scraping_enabled"
+    end
+
+    # =========================================================================
+    # Source#clear_favicon_cooldown! (Plan 03-02)
+    # =========================================================================
+
+    test "clear_favicon_cooldown! removes favicon_last_attempted_at from metadata" do
+      source = create_source!(metadata: { "favicon_last_attempted_at" => 1.hour.ago.iso8601, "other_key" => "value" })
+
+      source.clear_favicon_cooldown!
+      source.reload
+
+      assert_nil source.metadata["favicon_last_attempted_at"]
+      assert_equal "value", source.metadata["other_key"]
+    end
+
+    test "clear_favicon_cooldown! is a no-op when key is absent" do
+      source = create_source!(metadata: { "some_key" => "some_value" })
+
+      assert_nothing_raised { source.clear_favicon_cooldown! }
+
+      source.reload
+      assert_equal({ "some_key" => "some_value" }, source.metadata)
+    end
+
+    test "clear_favicon_cooldown! handles empty metadata gracefully" do
+      source = create_source!(metadata: {})
+
+      assert_nothing_raised { source.clear_favicon_cooldown! }
+
+      source.reload
+      assert_equal({}, source.metadata)
+    end
+
+    test "clear_favicon_cooldown! preserves other metadata keys" do
+      source = create_source!(metadata: {
+        "favicon_last_attempted_at" => Time.current.iso8601,
+        "last_health_check" => "2026-01-01",
+        "custom_flag" => true
+      })
+
+      source.clear_favicon_cooldown!
+      source.reload
+
+      assert_nil source.metadata["favicon_last_attempted_at"]
+      assert_equal "2026-01-01", source.metadata["last_health_check"]
+      assert_equal true, source.metadata["custom_flag"]
     end
   end
 end

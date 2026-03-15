@@ -1,7 +1,7 @@
 PATH
   remote: ../..
   specs:
-    source_monitor (0.10.2)
+    source_monitor (0.11.1)
       cssbundling-rails (~> 1.4)
       faraday (~> 2.9)
       faraday-follow_redirects (~> 0.4)
@@ -16,6 +16,7 @@ PATH
       solid_cable (>= 3.0, < 4.0)
       solid_queue (>= 0.3, < 3.0)
       turbo-rails (~> 2.0)
+      view_component (>= 3.0, < 4.0)
 
 GEM
   remote: https://rubygems.org/
@@ -181,6 +182,7 @@ GEM
       net-smtp
     marcel (1.1.0)
     matrix (0.4.3)
+    method_source (1.1.0)
     mini_magick (5.3.1)
       logger
     mini_mime (1.1.5)
@@ -365,6 +367,10 @@ GEM
     uri (1.1.1)
     useragent (0.16.11)
     vcr (6.4.0)
+    view_component (3.24.0)
+      activesupport (>= 5.2.0, < 8.2)
+      concurrent-ruby (~> 1)
+      method_source (~> 1.0)
     webmock (3.26.1)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)

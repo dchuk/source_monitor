@@ -1,0 +1,8 @@
+<span class="<%= badge_classes %>"
+      data-testid="<%= data_attributes[:testid] %>"
+      data-status="<%= data_attributes[:status] %>">
+  <% if show_spinner? %>
+    <%= render SourceMonitor::IconComponent.new(:spinner, size: nil, css_class: "mr-1 #{spinner_size_class} animate-spin text-blue-500") %>
+  <% end %>
+  <%= display_label %>
+</span>

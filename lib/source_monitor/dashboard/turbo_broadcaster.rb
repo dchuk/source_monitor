@@ -22,17 +22,33 @@ module SourceMonitor
         @item_callback ||= lambda { |_event| broadcast_dashboard_updates }
       end
 
+      STAT_CARDS = [
+        { key: "total_sources", label: "Sources", stat: :total_sources, caption: "Total registered" },
+        { key: "active_sources", label: "Active", stat: :active_sources, caption: "Fetching on schedule" },
+        { key: "failed_sources", label: "Failures", stat: :failed_sources, caption: "Require attention" },
+        { key: "total_items", label: "Items", stat: :total_items, caption: "Stored entries" },
+        { key: "fetches_today", label: "Fetches Today", stat: :fetches_today, caption: "Completed runs" }
+      ].freeze
+
       def broadcast_dashboard_updates
         return unless turbo_streams_available?
 
         queries = SourceMonitor::Dashboard::Queries.new
         url_helpers = SourceMonitor::Engine.routes.url_helpers
+        stats = queries.stats
 
-        Turbo::StreamsChannel.broadcast_replace_to(
-          STREAM_NAME,
-          target: "source_monitor_dashboard_stats",
-          html: render_partial("source_monitor/dashboard/stats", stats: queries.stats)
-        )
+        STAT_CARDS.each do |card|
+          Turbo::StreamsChannel.broadcast_replace_to(
+            STREAM_NAME,
+            target: "source_monitor_stat_#{card[:key]}",
+            html: render_partial("source_monitor/dashboard/stat_card", stat_card: {
+              key: card[:key],
+              label: card[:label],
+              value: stats[card[:stat]],
+              caption: card[:caption]
+            })
+          )
+        end
 
         Turbo::StreamsChannel.broadcast_replace_to(
           STREAM_NAME,

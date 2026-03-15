@@ -8,6 +8,7 @@
 
   <% base_params = @filter_params.except(:page) %>
 
+  <%= turbo_frame_tag "source_monitor_logs" do %>
   <div class="flex flex-wrap items-center gap-3">
     <div class="flex overflow-hidden rounded-md border border-slate-200">
       <% status_options = [
@@ -24,7 +25,8 @@
                       "px-4 py-2 text-sm font-medium border-slate-200",
                       active ? "bg-slate-800 text-white" : "bg-white text-slate-600 hover:bg-slate-50",
                       value.present? ? "border-l" : ""
-                    ].join(" ") %>
+                    ].join(" "),
+                    data: { turbo_frame: "source_monitor_logs" } %>
       <% end %>
     </div>
 
@@ -44,12 +46,13 @@
                       "px-4 py-2 text-sm font-medium border-slate-200",
                       active ? "bg-slate-800 text-white" : "bg-white text-slate-600 hover:bg-slate-50",
                       value.present? ? "border-l" : ""
-                    ].join(" ") %>
+                    ].join(" "),
+                    data: { turbo_frame: "source_monitor_logs" } %>
       <% end %>
     </div>
   </div>
 
-  <%= form_with url: source_monitor.logs_path, method: :get, local: true, html: { class: "rounded-lg border border-slate-200 bg-white p-4 shadow-sm" } do |form| %>
+  <%= form_with url: source_monitor.logs_path, method: :get, html: { class: "rounded-lg border border-slate-200 bg-white p-4 shadow-sm", data: { turbo_frame: "source_monitor_logs" } } do |form| %>
     <%= form.hidden_field :status, value: @filter_set.status %>
     <%= form.hidden_field :log_type, value: @filter_set.log_type %>
 
@@ -62,12 +65,10 @@
                             class: "mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" %>
       </div>
 
-      <div class="flex flex-col">
-        <%= form.label :timeframe, "Timeframe", class: "text-xs font-semibold uppercase tracking-wide text-slate-500" %>
-        <%= form.select :timeframe,
-                        options_for_select([["All time", nil], ["Last 24 hours", "24h"], ["Last 7 days", "7d"], ["Last 30 days", "30d"]], @filter_set.timeframe),
-                        {}, class: "mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" %>
-      </div>
+      <%= render SourceMonitor::FilterDropdownComponent.new(
+        label: "Timeframe", param_name: :timeframe,
+        options: [["All time", ""], ["Last 24 hours", "24h"], ["Last 7 days", "7d"], ["Last 30 days", "30d"]],
+        selected_value: @filter_set.timeframe, form: form) %>
 
       <div class="flex flex-col">
         <%= form.label :started_after, "Started after", class: "text-xs font-semibold uppercase tracking-wide text-slate-500" %>
@@ -100,7 +101,7 @@
 
     <div class="mt-4 flex flex-wrap items-center gap-3">
       <%= form.submit "Search", class: "inline-flex items-center rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700" %>
-      <%= link_to "Clear", source_monitor.logs_path, class: "text-sm font-medium text-blue-600 hover:text-blue-500" %>
+      <%= link_to "Clear", source_monitor.logs_path, class: "text-sm font-medium text-blue-600 hover:text-blue-500", data: { turbo_frame: "source_monitor_logs" } %>
     </div>
   <% end %>
 
@@ -155,8 +156,9 @@
               <span class="font-medium"><%= row.http_summary %></span>
             </td>
             <td class="px-6 py-4 text-sm">
-              <% status_classes = row.success? ? "bg-green-100 text-green-700" : "bg-rose-100 text-rose-700" %>
-              <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold <%= status_classes %>"><%= row.status_label %></span>
+              <%= render SourceMonitor::StatusBadgeComponent.new(
+                    status: row.success? ? "success" : "failed",
+                    label: row.status_label) %>
               <% if row.error_message.present? %>
                 <p class="mt-2 text-xs text-slate-500"><%= row.error_message %></p>
               <% end %>
@@ -185,33 +187,10 @@
     </table>
   </div>
 
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div class="text-xs text-slate-500" data-page-indicator="<%= @query_result.page %>">
-      Page <%= @query_result.page %>
-    </div>
-    <div class="flex gap-2">
-      <% prev_page = @query_result.has_previous_page ? @query_result.page - 1 : @query_result.page %>
-      <% next_page = @query_result.has_next_page ? @query_result.page + 1 : @query_result.page %>
-      <% prev_params = @filter_params.merge(page: prev_page).compact %>
-      <% next_params = @filter_params.merge(page: next_page).compact %>
-      <%= link_to "Previous",
-                  source_monitor.logs_path(prev_params),
-                  class: [
-                    "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium",
-                    @query_result.has_previous_page ? "border-slate-300 text-slate-700 hover:bg-slate-50" : "border-slate-200 text-slate-300 cursor-not-allowed"
-                  ].join(" "),
-                  aria: { disabled: !@query_result.has_previous_page } %>
-      <%= link_to "Next",
-                  source_monitor.logs_path(next_params),
-                  class: [
-                    "inline-flex items-center rounded-md border px-3 py-1 text-sm font-medium",
-                    @query_result.has_next_page ? "border-slate-300 text-slate-700 hover:bg-slate-50" : "border-slate-200 text-slate-300 cursor-not-allowed"
-                  ].join(" "),
-                  aria: { disabled: !@query_result.has_next_page } %>
-    </div>
-  </div>
-
-  <p class="text-xs text-slate-500">
-    Showing up to <%= @query_result.per_page %> logs per page.
-  </p>
+  <%= render "source_monitor/shared/pagination",
+        paginator_result: @query_result,
+        base_path: source_monitor.logs_path,
+        extra_params: @filter_params.except(:page),
+        turbo_frame: "source_monitor_logs" %>
+  <% end %>
 </div>

@@ -24,6 +24,11 @@ module SourceMonitor
           result = SourceMonitor::Scraping::Enqueuer.enqueue(item: item, source: item.source, reason: :auto)
           result.enqueued? ? 1 : 0
         end
+      rescue StandardError => error
+        Rails.logger.warn(
+          "[SourceMonitor::Scraping::Scheduler] Scheduler run failed: #{error.class} - #{error.message}"
+        ) if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+        0
       end
 
       private

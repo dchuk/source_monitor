@@ -7,7 +7,7 @@ module SourceMonitor
     test "dropdown gracefully toggles when transition module is unavailable" do
       visit "/test_support/dropdown_without_dependency"
 
-      assert_selector "[data-controller='dropdown'][data-dropdown-state]"
+      assert_selector "[data-controller='dropdown']"
 
       within "[data-controller='dropdown']" do
         menu = find("[data-dropdown-target='menu']", visible: :all)

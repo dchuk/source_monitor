@@ -14,8 +14,8 @@ module SourceMonitor
       end
 
       test "enqueues scrape job and marks item pending" do
-        source = create_source(scraping_enabled: true)
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true)
+        item = create_item!(source:)
 
         result = nil
 
@@ -28,8 +28,8 @@ module SourceMonitor
       end
 
       test "does not enqueue when scraping is disabled" do
-        source = create_source(scraping_enabled: false)
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: false)
+        item = create_item!(source:)
 
         result = Enqueuer.enqueue(item: item, reason: :manual)
 
@@ -41,8 +41,8 @@ module SourceMonitor
       end
 
       test "deduplicates when item already pending or processing" do
-        source = create_source(scraping_enabled: true)
-        item = create_item(source:, scrape_status: "pending")
+        source = create_source!(scraping_enabled: true)
+        item = create_item!(source:, scrape_status: "pending")
 
         result = Enqueuer.enqueue(item: item, reason: :manual)
 
@@ -58,8 +58,8 @@ module SourceMonitor
       end
 
       test "respects automatic scraping configuration" do
-        source = create_source(scraping_enabled: true, auto_scrape: false)
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true, auto_scrape: false)
+        item = create_item!(source:)
 
         result = Enqueuer.enqueue(item: item, reason: :auto)
 
@@ -69,9 +69,9 @@ module SourceMonitor
       end
 
       test "enforces per-source in-flight rate limit" do
-        source = create_source(scraping_enabled: true)
-        create_item(source:, scrape_status: "pending")
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true)
+        create_item!(source:, scrape_status: "pending")
+        item = create_item!(source:)
 
         SourceMonitor.configure do |config|
           config.scraping.max_in_flight_per_source = 1
@@ -87,9 +87,9 @@ module SourceMonitor
       end
 
       test "does not rate-limit when max_in_flight_per_source is nil (default)" do
-        source = create_source(scraping_enabled: true)
-        30.times { create_item(source:, scrape_status: "pending") }
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true)
+        30.times { create_item!(source:, scrape_status: "pending") }
+        item = create_item!(source:)
 
         # Default is nil -- no limit should apply even with 30 in-flight items
         assert_nil SourceMonitor.config.scraping.max_in_flight_per_source
@@ -102,8 +102,8 @@ module SourceMonitor
       # -- Time-based rate limiting tests --
 
       test "allows scrape when no prior scrape exists" do
-        source = create_source(scraping_enabled: true)
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true)
+        item = create_item!(source:)
 
         SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 60.0 }
 
@@ -113,13 +113,13 @@ module SourceMonitor
       end
 
       test "allows scrape when elapsed time exceeds interval" do
-        source = create_source(scraping_enabled: true)
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true)
+        item = create_item!(source:)
 
         SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 5.0 }
 
         # Create a scrape log from 10 seconds ago
-        create_scrape_log(source:, item:, started_at: 10.seconds.ago)
+        create_scrape_log!(source:, item:, started_at: 10.seconds.ago)
 
         result = Enqueuer.enqueue(item: item, reason: :manual)
 
@@ -127,13 +127,13 @@ module SourceMonitor
       end
 
       test "returns deferred status when elapsed time is less than interval" do
-        source = create_source(scraping_enabled: true)
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true)
+        item = create_item!(source:)
 
         SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 60.0 }
 
         # Create a scrape log from 5 seconds ago
-        create_scrape_log(source:, item:, started_at: 5.seconds.ago)
+        create_scrape_log!(source:, item:, started_at: 5.seconds.ago)
 
         result = Enqueuer.enqueue(item: item, reason: :manual)
 
@@ -142,15 +142,15 @@ module SourceMonitor
       end
 
       test "per-source min_scrape_interval overrides global setting" do
-        source = create_source(scraping_enabled: true)
+        source = create_source!(scraping_enabled: true)
         source.update_columns(min_scrape_interval: 120.0)
-        item = create_item(source:)
+        item = create_item!(source:)
 
         # Global is 5 seconds, but source overrides to 120 seconds
         SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 5.0 }
 
         # Scrape log from 10 seconds ago -- past global but within source override
-        create_scrape_log(source:, item:, started_at: 10.seconds.ago)
+        create_scrape_log!(source:, item:, started_at: 10.seconds.ago)
 
         result = Enqueuer.enqueue(item: item, reason: :manual)
 
@@ -158,14 +158,14 @@ module SourceMonitor
       end
 
       test "nil or zero interval disables time rate limiting" do
-        source = create_source(scraping_enabled: true)
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true)
+        item = create_item!(source:)
 
         # Set global interval to nil
         SourceMonitor.configure { |c| c.scraping.min_scrape_interval = nil }
 
         # Scrape log from just now
-        create_scrape_log(source:, item:, started_at: Time.current)
+        create_scrape_log!(source:, item:, started_at: Time.current)
 
         result = Enqueuer.enqueue(item: item, reason: :manual)
 
@@ -174,20 +174,20 @@ module SourceMonitor
         # Also test zero
         SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 0 }
 
-        item2 = create_item(source:)
+        item2 = create_item!(source:)
         result2 = Enqueuer.enqueue(item: item2, reason: :manual)
 
         assert result2.enqueued?, "expected zero interval to disable limiting, got #{result2.status}"
       end
 
       test "deferred result re-enqueues job with delay" do
-        source = create_source(scraping_enabled: true)
-        item = create_item(source:)
+        source = create_source!(scraping_enabled: true)
+        item = create_item!(source:)
 
         SourceMonitor.configure { |c| c.scraping.min_scrape_interval = 60.0 }
 
         # Scrape log from 5 seconds ago -- 55 seconds remaining
-        create_scrape_log(source:, item:, started_at: 5.seconds.ago)
+        create_scrape_log!(source:, item:, started_at: 5.seconds.ago)
 
         assert_enqueued_jobs 0
 
@@ -201,32 +201,6 @@ module SourceMonitor
       end
 
       private
-
-      def create_source(scraping_enabled:, auto_scrape: false)
-        create_source!(
-          scraping_enabled: scraping_enabled,
-          auto_scrape: auto_scrape
-        )
-      end
-
-      def create_item(source:, scrape_status: nil)
-        SourceMonitor::Item.create!(
-          source: source,
-          guid: SecureRandom.uuid,
-          url: "https://example.com/#{SecureRandom.hex}",
-          title: "Example Item",
-          scrape_status: scrape_status
-        )
-      end
-
-      def create_scrape_log(source:, item:, started_at:)
-        SourceMonitor::ScrapeLog.create!(
-          source: source,
-          item: item,
-          started_at: started_at,
-          scraper_adapter: "readability"
-        )
-      end
     end
   end
 end

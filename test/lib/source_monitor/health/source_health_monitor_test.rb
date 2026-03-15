@@ -199,8 +199,7 @@ module SourceMonitor
 
       def create_fetch_log(success:, minutes_ago: 0)
         started_at = Time.current - minutes_ago.minutes
-
-        SourceMonitor::FetchLog.create!(
+        create_fetch_log!(
           source: @source,
           success: success,
           started_at: started_at,

@@ -135,16 +135,10 @@ module SourceMonitor
       assert_equal initial_count - 1, @source.reload.items_count
     end
 
-    # ─── ensure_feed_content_record ───
+    # ─── ensure_feed_content_record callback ───
 
-    test "ensure_feed_content_record creates ItemContent when content present" do
+    test "creating item with content auto-creates ItemContent" do
       item = Item.create!(source: @source, guid: "feed-content", url: "https://example.com/feed-content", content: "<p>Some feed content</p>")
-
-      assert_nil item.item_content
-
-      assert_difference("SourceMonitor::ItemContent.count", 1) do
-        item.ensure_feed_content_record
-      end
 
       item.reload
       assert item.item_content.present?
@@ -152,9 +146,18 @@ module SourceMonitor
       assert_equal 3, item.item_content.feed_word_count
     end
 
-    test "ensure_feed_content_record no-ops when ItemContent already exists" do
+    test "creating item without content does not create ItemContent" do
+      item = Item.create!(source: @source, guid: "no-content", url: "https://example.com/no-content")
+
+      item.reload
+      assert_nil item.item_content
+    end
+
+    test "ensure_feed_content_record is idempotent" do
       item = Item.create!(source: @source, guid: "has-content", url: "https://example.com/has-content", content: "<p>Feed text</p>")
-      item.ensure_feed_content_record
+      item.reload
+
+      assert item.item_content.present?
 
       assert_no_difference("SourceMonitor::ItemContent.count") do
         item.ensure_feed_content_record
@@ -162,7 +165,7 @@ module SourceMonitor
     end
 
     test "ensure_feed_content_record no-ops when content is blank" do
-      item = Item.create!(source: @source, guid: "no-content", url: "https://example.com/no-content")
+      item = Item.create!(source: @source, guid: "no-content-manual", url: "https://example.com/no-content-manual")
 
       assert_no_difference("SourceMonitor::ItemContent.count") do
         item.ensure_feed_content_record
@@ -188,6 +191,45 @@ module SourceMonitor
 
       item.reload
       assert item.item_content.present?
+    end
+
+    test "restore! clears deleted_at and increments counter cache" do
+      item = Item.create!(source: @source, guid: "restore-test", url: "https://example.com/restore-test")
+      @source.reload
+
+      item.soft_delete!
+      assert item.deleted?
+      count_after_delete = @source.reload.items_count
+
+      item.restore!
+      item.reload
+
+      assert_not item.deleted?
+      assert_nil item.deleted_at
+      assert_equal count_after_delete + 1, @source.reload.items_count
+    end
+
+    test "restore! is idempotent on non-deleted items" do
+      item = Item.create!(source: @source, guid: "restore-noop", url: "https://example.com/restore-noop")
+      @source.reload
+      initial_count = @source.items_count
+
+      item.restore!
+
+      assert_equal initial_count, @source.reload.items_count
+      assert_not item.deleted?
+    end
+
+    test "soft_delete! and restore! maintain counter cache symmetry" do
+      item = Item.create!(source: @source, guid: "symmetry", url: "https://example.com/symmetry")
+      @source.reload
+      original_count = @source.items_count
+
+      item.soft_delete!
+      assert_equal original_count - 1, @source.reload.items_count
+
+      item.restore!
+      assert_equal original_count, @source.reload.items_count
     end
 
     test "soft_delete! does not double-delete" do

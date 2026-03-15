@@ -35,6 +35,16 @@ module SourceMonitor
       end
     end
 
+    def compact_blank_hash(hash)
+      return {} if hash.blank?
+
+      if hash.respond_to?(:compact_blank)
+        hash.compact_blank
+      else
+        hash.reject { |_key, value| value.respond_to?(:blank?) ? value.blank? : value.nil? }
+      end
+    end
+
     def fetch_interval_bucket_path(bucket, search_params, selected: false)
       query = fetch_interval_bucket_query(bucket, search_params, selected: selected)
       route_helpers = SourceMonitor::Engine.routes.url_helpers
@@ -62,11 +72,7 @@ module SourceMonitor
         updated
       end
 
-      if query.respond_to?(:compact_blank)
-        query.compact_blank
-      else
-        query.reject { |_key, value| value.respond_to?(:blank?) ? value.blank? : value.nil? }
-      end
+      compact_blank_hash(query)
     end
 
     def fetch_interval_filter_label(bucket, filter)
@@ -181,18 +187,10 @@ module SourceMonitor
       async_status_badge(status)
     end
 
-    # Helper to render the loading spinner SVG
+    # Helper to render the loading spinner SVG via IconComponent.
+    # Accepts a custom css_class to override the default spinner styling.
     def loading_spinner_svg(css_class: "mr-1 h-4 w-4 animate-spin text-blue-500")
-      tag.svg(
-        class: css_class,
-        xmlns: "http://www.w3.org/2000/svg",
-        fill: "none",
-        viewBox: "0 0 24 24",
-        aria: { hidden: "true" }
-      ) do
-        concat tag.circle(class: "opacity-25", cx: "12", cy: "12", r: "10", stroke: "currentColor", stroke_width: "4")
-        concat tag.path(class: "opacity-75", fill: "currentColor", d: "M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z")
-      end
+      render SourceMonitor::IconComponent.new(:spinner, size: nil, css_class: css_class)
     end
 
     def formatted_setting_value(value)
@@ -276,21 +274,7 @@ module SourceMonitor
     private
 
     def external_link_icon
-      tag.svg(
-        class: "inline-block h-3 w-3 text-slate-400",
-        xmlns: "http://www.w3.org/2000/svg",
-        fill: "none",
-        viewBox: "0 0 24 24",
-        stroke_width: "2",
-        stroke: "currentColor",
-        aria: { hidden: "true" }
-      ) do
-        tag.path(
-          stroke_linecap: "round",
-          stroke_linejoin: "round",
-          d: "M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-        )
-      end
+      render SourceMonitor::IconComponent.new(:external_link, size: nil, css_class: "inline-block h-3 w-3 text-slate-400")
     end
 
     def derive_item_scrape_status(item:, source: nil)

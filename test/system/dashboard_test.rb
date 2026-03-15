@@ -8,16 +8,11 @@ module SourceMonitor
   class DashboardTest < ApplicationSystemTestCase
     def setup
       super
-      SourceMonitor.reset_configuration!
-      SourceMonitor::Jobs::Visibility.reset!
-      SourceMonitor::Jobs::Visibility.setup!
       purge_solid_queue_tables
       SourceMonitor::Dashboard::TurboBroadcaster.setup!
     end
 
     def teardown
-      SourceMonitor.reset_configuration!
-      SourceMonitor::Jobs::Visibility.reset!
       purge_solid_queue_tables
       super
     end
@@ -83,7 +78,7 @@ module SourceMonitor
 
       visit source_monitor.dashboard_path
       connect_turbo_cable_stream_sources
-      assert_selector "turbo-cable-stream-source", visible: :all, wait: 5
+      assert_selector "turbo-cable-stream-source", visible: :all
 
       initial_item_count = Item.count
       streamable = SourceMonitor::Dashboard::TurboBroadcaster::STREAM_NAME
@@ -103,13 +98,12 @@ module SourceMonitor
       within "#source_monitor_dashboard_stats" do
         assert_selector :xpath,
           ".//dt[text()='Items']/following-sibling::dd[1]",
-          text: (initial_item_count + 1).to_s,
-          wait: 5
+          text: (initial_item_count + 1).to_s
       end
 
       within "#source_monitor_dashboard_recent_activity" do
-        assert_text "Turbo Arrival", wait: 5
-        assert_text "ITEM", wait: 5
+        assert_text "Turbo Arrival"
+        assert_text "ITEM"
       end
 
       fetch_log = FetchLog.create!(
@@ -127,121 +121,12 @@ module SourceMonitor
       apply_turbo_stream_messages(fetch_messages)
 
       within "#source_monitor_dashboard_recent_activity" do
-        assert_text "Fetch ##{fetch_log.id}", wait: 5
+        assert_text "Fetch ##{fetch_log.id}"
       end
 
       within "#source_monitor_dashboard_fetch_schedule" do
-        assert_text "Upcoming Fetch Schedule", wait: 5
+        assert_text "Upcoming Fetch Schedule"
       end
-    end
-
-    private
-
-    def seed_queue_activity
-      fetch_queue = SourceMonitor.queue_name(:fetch)
-
-      SolidQueue::Job.create!(
-        queue_name: fetch_queue,
-        class_name: "SourceMonitor::FetchFeedJob",
-        arguments: []
-      )
-
-      SolidQueue::Job.create!(
-        queue_name: fetch_queue,
-        class_name: "SourceMonitor::FetchFeedJob",
-        arguments: [],
-        scheduled_at: 10.minutes.from_now
-      )
-
-      failed_job = SolidQueue::Job.create!(
-        queue_name: fetch_queue,
-        class_name: "SourceMonitor::FetchFeedJob",
-        arguments: []
-      )
-      failed_job.ready_execution&.destroy!
-      SolidQueue::FailedExecution.create!(job: failed_job, error: "RuntimeError: boom")
-
-      SolidQueue::Pause.create!(queue_name: fetch_queue)
-    end
-
-    def purge_solid_queue_tables
-      [
-        ::SolidQueue::RecurringExecution,
-        ::SolidQueue::RecurringTask,
-        ::SolidQueue::ClaimedExecution,
-        ::SolidQueue::FailedExecution,
-        ::SolidQueue::BlockedExecution,
-        ::SolidQueue::ScheduledExecution,
-        ::SolidQueue::ReadyExecution,
-        ::SolidQueue::Process,
-        ::SolidQueue::Pause,
-        ::SolidQueue::Job
-      ].each do |model|
-        next unless model.table_exists?
-
-        model.delete_all
-      end
-    end
-
-    def apply_turbo_stream_messages(messages)
-      Array(messages).each do |payload|
-        turbo_nodes =
-          case payload
-          when Nokogiri::XML::Node
-            [ payload ]
-          else
-            message = payload.is_a?(Hash) ? payload["message"] : payload
-            next if message.blank?
-
-            parse_turbo_streams(message)
-          end
-
-        turbo_nodes.each do |node|
-          action = node.attributes["action"]&.value
-          target = node.attributes["target"]&.value
-          html = node.at_css("template")&.children&.map(&:to_s)&.join
-          next if action.blank? || target.blank? || html.blank?
-
-          case action
-          when "replace"
-            page.execute_script(
-              "const target = document.getElementById(arguments[0]); if (target) { target.outerHTML = arguments[1]; }",
-              target,
-              html
-            )
-          when "append"
-            page.execute_script(
-              "const target = document.getElementById(arguments[0]); if (target) { target.insertAdjacentHTML('beforeend', arguments[1]); }",
-              target,
-              html
-            )
-          when "prepend"
-            page.execute_script(
-              "const target = document.getElementById(arguments[0]); if (target) { target.insertAdjacentHTML('afterbegin', arguments[1]); }",
-              target,
-              html
-            )
-          end
-        end
-      end
-    end
-
-    def parse_turbo_streams(message)
-      document = Nokogiri::XML(message)
-      document.css("turbo-stream").map do |node|
-        action = node.attributes["action"]&.value
-        target = node.attributes["target"]&.value
-        html = node.at_css("template")&.children&.map(&:to_s)&.join
-        next if action.blank? || target.blank? || html.blank?
-
-        transformed = Nokogiri::XML::Element.new("turbo-stream", document)
-        transformed["action"] = action
-        transformed["target"] = target
-        template = Nokogiri::XML::Element.new("template", document)
-        template.inner_html = html
-        transformed.add_child(template)
-        transformed
-      end.compact
     end
   end
 end
