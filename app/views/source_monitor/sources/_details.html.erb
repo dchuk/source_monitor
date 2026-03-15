@@ -4,7 +4,6 @@
 <% recent_scrape_logs = source.scrape_logs.order(started_at: :desc).limit(5) %>
 <% preview_limit = SourceMonitor::Scraping::BulkSourceScraper::DEFAULT_PREVIEW_LIMIT %>
 <% items = source.items.recent.includes(:item_content).limit(preview_limit) %>
-<% fetch_status = async_status_badge(source.fetch_status) %>
 <% health_status_override = local_assigns[:health_status_override] %>
 
 <div class="space-y-8">
@@ -33,9 +32,8 @@
             <% end %>
           <% end %>
         </div>
-        <span data-testid="fetch-status-badge" class="mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold <%= fetch_status[:classes] %>">
-          <%= loading_spinner_svg if fetch_status[:show_spinner] %>
-          <%= fetch_status[:label] %>
+        <span class="mt-2" data-testid="fetch-status-badge">
+          <%= render SourceMonitor::StatusBadgeComponent.new(status: source.fetch_status) %>
         </span>
       </div>
       <div>
@@ -222,9 +220,10 @@
               <div class="px-5 py-3 text-sm text-slate-700">
                 <div class="flex items-center justify-between">
                   <span>Started <%= log.started_at&.strftime("%b %d, %H:%M") || "Unknown" %></span>
-                  <span class="ml-4 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold <%= log.success? ? "bg-green-100 text-green-700" : "bg-rose-100 text-rose-700" %>">
-                    <%= log.success? ? "Success" : "Failure" %>
-                  </span>
+                  <%= render SourceMonitor::StatusBadgeComponent.new(
+                        status: log.success? ? "success" : "failed",
+                        label: log.success? ? "Success" : "Failure",
+                        size: :sm) %>
                 </div>
                 <p class="mt-1 text-xs text-slate-500"><%= log.items_created %> created · <%= log.items_updated %> updated · <%= log.items_failed %> failed</p>
               </div>
@@ -245,9 +244,10 @@
               <div class="px-5 py-3 text-sm text-slate-700">
                 <div class="flex items-center justify-between">
                   <span>Started <%= log.started_at&.strftime("%b %d, %H:%M") || "Unknown" %></span>
-                  <span class="ml-4 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold <%= log.success? ? "bg-green-100 text-green-700" : "bg-rose-100 text-rose-700" %>">
-                    <%= log.success? ? "Success" : "Failure" %>
-                  </span>
+                  <%= render SourceMonitor::StatusBadgeComponent.new(
+                        status: log.success? ? "success" : "failed",
+                        label: log.success? ? "Success" : "Failure",
+                        size: :sm) %>
                 </div>
                 <p class="mt-1 text-xs text-slate-500"><%= log.scraper_adapter || "—" %></p>
               </div>
@@ -303,14 +303,10 @@
                     </td>
                     <td class="px-5 py-4 text-xs">
                       <% scrape_badge = item_scrape_status_badge(item: item, source: source) %>
-                      <span
-                        class="inline-flex items-center gap-1 rounded-full px-3 py-1 font-semibold <%= scrape_badge[:classes] %>"
-                        data-testid="item-scrape-status-badge"
-                        data-status="<%= scrape_badge[:status] %>"
-                      >
-                        <%= loading_spinner_svg(css_class: "h-3.5 w-3.5 animate-spin text-blue-500") if scrape_badge[:show_spinner] %>
-                        <%= scrape_badge[:label] %>
-                      </span>
+                      <%= render SourceMonitor::StatusBadgeComponent.new(
+                            status: scrape_badge[:status],
+                            label: scrape_badge[:label],
+                            data: { testid: "item-scrape-status-badge" }) %>
                     </td>
                     <td class="px-5 py-4 text-xs text-slate-500">
                       <%= item.item_content&.feed_word_count || "\u2014" %>

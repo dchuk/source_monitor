@@ -153,8 +153,9 @@
               <span class="font-medium"><%= row.http_summary %></span>
             </td>
             <td class="px-6 py-4 text-sm">
-              <% status_classes = row.success? ? "bg-green-100 text-green-700" : "bg-rose-100 text-rose-700" %>
-              <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold <%= status_classes %>"><%= row.status_label %></span>
+              <%= render SourceMonitor::StatusBadgeComponent.new(
+                    status: row.success? ? "success" : "failed",
+                    label: row.status_label) %>
               <% if row.error_message.present? %>
                 <p class="mt-2 text-xs text-slate-500"><%= row.error_message %></p>
               <% end %>

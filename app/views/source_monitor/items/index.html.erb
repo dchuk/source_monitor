@@ -101,7 +101,10 @@
               </td>
               <td class="px-6 py-4 text-xs">
                 <% badge = item_scrape_status_badge(item: item, source: @source, show_spinner: false) %>
-                <span class="inline-flex items-center rounded-full px-3 py-1 font-semibold <%= badge[:classes] %>"><%= badge[:label] %></span>
+                <%= render SourceMonitor::StatusBadgeComponent.new(
+                      status: badge[:status],
+                      label: badge[:label],
+                      show_spinner: false) %>
               </td>
               <td class="px-6 py-4 text-xs text-slate-500">
                 <%= item.item_content&.feed_word_count || "\u2014" %>

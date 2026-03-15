@@ -10,7 +10,22 @@ module SourceMonitor
     helper_method :source_monitor_current_user, :source_monitor_user_signed_in?
     after_action :broadcast_flash_toasts
 
+    rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
+
     private
+
+    def record_not_found
+      respond_to do |format|
+        format.html { render plain: "Record not found", status: :not_found }
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.append("flash",
+            partial: "source_monitor/shared/toast",
+            locals: { message: "Record not found", level: :error }),
+            status: :not_found
+        end
+        format.json { render json: { error: "Record not found" }, status: :not_found }
+      end
+    end
 
     FLASH_LEVELS = {
       notice: :success,
