@@ -383,7 +383,6 @@ module SourceMonitor
       def entry_processor
         @entry_processor ||= EntryProcessor.new(source: source)
       end
-
     end
   end
 end

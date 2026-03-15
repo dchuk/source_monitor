@@ -175,7 +175,6 @@ module SourceMonitor
       def content_extractor
         @content_extractor ||= ContentExtractor.new(source: source)
       end
-
     end
   end
 end
