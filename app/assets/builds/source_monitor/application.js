@@ -2841,6 +2841,14 @@ var select_all_controller_default = class extends Controller {
   }
 };
 
+// app/assets/javascripts/source_monitor/controllers/filter_submit_controller.js
+var filter_submit_controller_default = class extends Controller {
+  submit(event) {
+    const form = event.target.closest("form");
+    if (form) form.requestSubmit();
+  }
+};
+
 // app/assets/javascripts/source_monitor/turbo_actions.js
 if (window.Turbo && window.Turbo.StreamActions) {
   window.Turbo.StreamActions.redirect = function() {
@@ -2861,6 +2869,7 @@ application.register("dropdown", dropdown_controller_default);
 application.register("modal", modal_controller_default);
 application.register("confirm-navigation", confirm_navigation_controller_default);
 application.register("select-all", select_all_controller_default);
+application.register("filter-submit", filter_submit_controller_default);
 var application_default = application;
 export {
   application_default as default

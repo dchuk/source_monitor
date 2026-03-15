@@ -39,20 +39,22 @@ module SourceMonitor
     end
 
     def render_select
+      stimulus_attrs = { action: "change->filter-submit#submit" }
+
       if @form
         @form.select(
           @param_name,
           options_for_select(@options, @selected_value),
           {},
           class: SELECT_CLASSES,
-          onchange: "this.form.requestSubmit()"
+          data: stimulus_attrs
         )
       else
         select_tag(
           @param_name,
           options_for_select(@options, @selected_value),
           class: SELECT_CLASSES,
-          onchange: "this.form.requestSubmit()"
+          data: stimulus_attrs
         )
       end
     end
