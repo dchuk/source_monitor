@@ -27,17 +27,18 @@ module SourceMonitor
         key = next_lock_key
         lock = SourceMonitor::Fetching::AdvisoryLock.new(namespace: LOCK_NAMESPACE, key:)
 
+        # Stub the connection pool to inject a fake connection that always
+        # returns false for pg_try_advisory_lock. Class.new is used here
+        # because .stub cannot express conditional return values based on
+        # the SQL argument passed to exec_query.
         fake_connection = Class.new do
           def exec_query(sql)
-            if sql.include?("pg_try_advisory_lock")
-              ActiveRecord::Result.new([], [ [ false ] ])
-            else
-              ActiveRecord::Result.new([], [ [ true ] ])
-            end
+            locked = !sql.include?("pg_try_advisory_lock")
+            ActiveRecord::Result.new([], [ [ locked ] ])
           end
         end.new
 
-        ActiveRecord::Base.connection_pool.stub :with_connection, ->(&block) { block.call(fake_connection) } do
+        ActiveRecord::Base.connection_pool.stub(:with_connection, ->(&block) { block.call(fake_connection) }) do
           assert_raises(SourceMonitor::Fetching::AdvisoryLock::NotAcquiredError) do
             lock.with_lock { flunk "should not yield when lock is busy" }
           end
