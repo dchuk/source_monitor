@@ -12,12 +12,15 @@ module SourceMonitor
 
       CLOUDFLARE_MARKERS = FeedFetcher::CLOUDFLARE_MARKERS
       SNIFF_LIMIT = FeedFetcher::SNIFF_LIMIT
+      DEFAULT_MAX_ATTEMPTS = 2
+      BYPASS_TIMEOUT = 10
 
-      attr_reader :response, :feed_url
+      attr_reader :response, :feed_url, :max_attempts
 
-      def initialize(response:, feed_url:)
+      def initialize(response:, feed_url:, max_attempts: DEFAULT_MAX_ATTEMPTS)
         @response = response
         @feed_url = feed_url
+        @max_attempts = max_attempts
       end
 
       def call
@@ -36,7 +39,7 @@ module SourceMonitor
       end
 
       def attempt_ua_rotation
-        USER_AGENTS.each do |ua|
+        USER_AGENTS.first(max_attempts).each do |ua|
           headers = {
             "User-Agent" => ua,
             "Cache-Control" => "no-cache",
@@ -50,9 +53,15 @@ module SourceMonitor
       end
 
       def fetch_with_headers(headers)
-        client = SourceMonitor::HTTP.client(headers: headers, retry_requests: false)
+        client = SourceMonitor::HTTP.client(
+          headers: headers,
+          timeout: BYPASS_TIMEOUT,
+          open_timeout: [ BYPASS_TIMEOUT / 2, 5 ].min,
+          retry_requests: false
+        )
         client.get(feed_url)
-      rescue StandardError
+      rescue StandardError => e
+        Rails.logger.warn("[SourceMonitor] CloudflareBypass request failed for #{feed_url}: #{e.class}: #{e.message}") if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
         nil
       end
 
