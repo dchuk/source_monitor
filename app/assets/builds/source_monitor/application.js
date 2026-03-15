@@ -2668,6 +2668,7 @@ var modal_controller_default = class extends Controller {
   static values = { autoOpen: Boolean, removeOnClose: Boolean };
   connect() {
     this.handleEscape = this.handleEscape.bind(this);
+    this._inertElements = [];
     if (this.autoOpenValue) {
       this.open();
     }
@@ -2684,6 +2685,8 @@ var modal_controller_default = class extends Controller {
     }
     document.body.classList.add("overflow-hidden");
     document.addEventListener("keydown", this.handleEscape);
+    this._setInert(true);
+    this._focusFirstElement();
   }
   close(event) {
     if (event) event.preventDefault();
@@ -2692,6 +2695,7 @@ var modal_controller_default = class extends Controller {
     if (this.hasOpenClass) {
       this.panelTarget.classList.remove(this.openClass);
     }
+    this._setInert(false);
     this.teardown();
     if (this.removeOnCloseValue) {
       this.element.remove();
@@ -2710,6 +2714,43 @@ var modal_controller_default = class extends Controller {
   teardown() {
     document.body.classList.remove("overflow-hidden");
     document.removeEventListener("keydown", this.handleEscape);
+  }
+  // -- Private helpers --
+  _setInert(inert) {
+    if (inert) {
+      const modalRoot = this._findModalRoot();
+      if (!modalRoot) return;
+      this._inertElements = [];
+      for (const sibling of document.body.children) {
+        if (sibling === modalRoot || sibling === this.element) continue;
+        if (sibling.nodeType !== Node.ELEMENT_NODE) continue;
+        if (!sibling.hasAttribute("inert")) {
+          sibling.setAttribute("inert", "");
+          this._inertElements.push(sibling);
+        }
+      }
+    } else {
+      for (const el of this._inertElements) {
+        el.removeAttribute("inert");
+      }
+      this._inertElements = [];
+    }
+  }
+  _findModalRoot() {
+    let el = this.hasPanelTarget ? this.panelTarget : this.element;
+    while (el && el.parentElement !== document.body) {
+      el = el.parentElement;
+    }
+    return el;
+  }
+  _focusFirstElement() {
+    requestAnimationFrame(() => {
+      if (!this.hasPanelTarget) return;
+      const focusable = this.panelTarget.querySelector(
+        'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable) focusable.focus();
+    });
   }
 };
 

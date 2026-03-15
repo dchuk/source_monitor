@@ -24,12 +24,15 @@
     data-modal-target="panel"
     class="hidden fixed inset-0 z-50 items-center justify-center"
     data-testid="bulk-scrape-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="bulk-scrape-modal-heading"
   >
     <div class="absolute inset-0 bg-slate-900/40" data-action="click->modal#close"></div>
     <div class="relative z-10 w-full max-w-xl overflow-hidden rounded-lg bg-white shadow-xl">
       <div class="flex items-start justify-between border-b border-slate-200 px-6 py-4">
         <div>
-          <h2 class="text-lg font-semibold text-slate-900">Bulk Scrape Items</h2>
+          <h2 id="bulk-scrape-modal-heading" class="text-lg font-semibold text-slate-900">Bulk Scrape Items</h2>
           <p class="mt-1 text-xs text-slate-500">Queue scraping jobs for this source without leaving the page.</p>
         </div>
         <button
