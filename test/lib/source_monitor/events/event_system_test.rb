@@ -22,9 +22,9 @@ module SourceMonitor
 
       source = create_source!
       feed = Feedjira.parse(file_fixture("feeds/rss_sample.xml").read)
-      fetcher = SourceMonitor::Fetching::FeedFetcher.new(source: source, jitter: ->(_) { 0 })
+      processor = SourceMonitor::Fetching::FeedFetcher::EntryProcessor.new(source: source)
 
-      fetcher.send(:process_feed_entries, feed)
+      processor.process_feed_entries(feed)
 
       assert captured.any?, "expected after_item_created callbacks to be invoked"
       event = captured.first
@@ -42,9 +42,9 @@ module SourceMonitor
 
       source = create_source!
       feed = Feedjira.parse(file_fixture("feeds/rss_sample.xml").read)
-      fetcher = SourceMonitor::Fetching::FeedFetcher.new(source: source, jitter: ->(_) { 0 })
+      processor = SourceMonitor::Fetching::FeedFetcher::EntryProcessor.new(source: source)
 
-      result = fetcher.send(:process_feed_entries, feed)
+      result = processor.process_feed_entries(feed)
 
       assert result.created.positive?
       assert_equal result.created, processed.count
