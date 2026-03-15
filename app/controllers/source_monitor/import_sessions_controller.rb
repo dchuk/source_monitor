@@ -32,6 +32,10 @@ module SourceMonitor
     before_action :authorize_import_session!, only: %i[show update destroy]
     before_action :set_wizard_step, only: %i[show update]
 
+    # The OPML import wizard requires a persisted ImportSession record to track
+    # state across steps (file upload, preview, health check, configure, confirm).
+    # Visiting "new" immediately creates a session and redirects to the first step,
+    # so there is no separate form -- the wizard IS the form.
     def new
       create
     end
@@ -252,6 +256,13 @@ module SourceMonitor
       existing = ::User.first
       if existing
         @fallback_user_id = existing.id
+        return @fallback_user_id
+      end
+
+      # Only create guest users in development/test. An engine should never
+      # create records in host-app tables in production.
+      unless Rails.env.local?
+        @fallback_user_id = nil
         return @fallback_user_id
       end
 
