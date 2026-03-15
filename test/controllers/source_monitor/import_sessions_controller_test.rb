@@ -240,7 +240,7 @@ module SourceMonitor
 
     test "health check blocks advance when no selections remain" do
       parsed = [
-        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid", "health_status" => "unhealthy" }
+        { "id" => "one", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid", "health_status" => "failing" }
       ]
       session = SourceMonitor::ImportSession.create!(
         user_id: @admin.id,
