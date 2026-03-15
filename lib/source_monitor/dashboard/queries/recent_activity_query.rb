@@ -43,7 +43,7 @@ module SourceMonitor
         end
 
         def sanitized_sql
-          ActiveRecord::Base.send(:sanitize_sql_array, [ unified_sql_template, limit ])
+          ActiveRecord::Base.send(:sanitize_sql_array, [ unified_sql_template, limit, limit, limit, limit ])
         end
 
         def unified_sql_template
@@ -61,11 +61,11 @@ module SourceMonitor
                    source_id,
                    source_feed_url
             FROM (
-              #{fetch_log_sql}
+              (#{fetch_log_sql})
               UNION ALL
-              #{scrape_log_sql}
+              (#{scrape_log_sql})
               UNION ALL
-              #{item_sql}
+              (#{item_sql})
             ) AS dashboard_events
             WHERE occurred_at IS NOT NULL
             ORDER BY occurred_at DESC
@@ -91,6 +91,8 @@ module SourceMonitor
             FROM #{SourceMonitor::FetchLog.quoted_table_name}
             LEFT JOIN #{SourceMonitor::Source.quoted_table_name}
               ON #{SourceMonitor::Source.quoted_table_name}.id = #{SourceMonitor::FetchLog.quoted_table_name}.source_id
+            ORDER BY #{SourceMonitor::FetchLog.quoted_table_name}.started_at DESC NULLS LAST
+            LIMIT ?
           SQL
         end
 
@@ -114,6 +116,8 @@ module SourceMonitor
               ON #{SourceMonitor::Source.quoted_table_name}.id = #{SourceMonitor::ScrapeLog.quoted_table_name}.source_id
             LEFT JOIN #{SourceMonitor::Item.quoted_table_name}
               ON #{SourceMonitor::Item.quoted_table_name}.id = #{SourceMonitor::ScrapeLog.quoted_table_name}.item_id
+            ORDER BY #{SourceMonitor::ScrapeLog.quoted_table_name}.started_at DESC NULLS LAST
+            LIMIT ?
           SQL
         end
 
@@ -135,6 +139,8 @@ module SourceMonitor
             FROM #{SourceMonitor::Item.quoted_table_name}
             LEFT JOIN #{SourceMonitor::Source.quoted_table_name}
               ON #{SourceMonitor::Source.quoted_table_name}.id = #{SourceMonitor::Item.quoted_table_name}.source_id
+            ORDER BY #{SourceMonitor::Item.quoted_table_name}.created_at DESC NULLS LAST
+            LIMIT ?
           SQL
         end
 

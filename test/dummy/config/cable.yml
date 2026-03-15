@@ -1,6 +1,6 @@
 development:
   adapter: solid_cable
-  polling_interval: 0.1.seconds
+  polling_interval: 1.second
   message_retention: 15.minutes
   silence_polling: true
 
