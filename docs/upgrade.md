@@ -69,6 +69,20 @@ bin/rails db:migrate
 - New ViewComponents and presenters are available for custom view integration but are not required by default templates.
 - `Item#restore!` is the symmetric counterpart to `soft_delete!` — it clears `deleted_at` and increments the source `items_count` counter cache.
 
+### Upgrading to 0.12.2
+
+**What changed:**
+- Bug fix: Health check status vocabulary aligned (`working`/`failing`) across all components so the OPML import progress counter updates correctly instead of staying stuck at 0/N.
+
+**Upgrade steps:**
+```bash
+bundle update source_monitor
+```
+
+**Notes:**
+- No breaking changes, migrations, or configuration changes required.
+- This is a pure bug fix for OPML import progress reporting.
+
 ### Upgrading to 0.11.0
 
 **What changed:**

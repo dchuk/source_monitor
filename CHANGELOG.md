@@ -15,6 +15,11 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.12.2] - 2026-03-15
+
+### Fixed
+- Health check progress counter stuck at 0/N during OPML import — aligned status vocabulary (`working`/`failing`) across all consumers that previously expected `healthy`/`unhealthy`
+
 ## [0.12.1] - 2026-03-15
 
 ### Documentation
