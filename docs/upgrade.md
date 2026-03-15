@@ -46,6 +46,29 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
+### Upgrading to 0.12.0
+
+**What changed:**
+- 2 new migrations: composite indexes on log tables and `health_status` default value alignment.
+- 5 background jobs extracted to service classes (`Scraping::Runner`, `Images::Processor`, `Favicons::Fetcher`, `Health::SourceHealthCheckOrchestrator`, `ImportSessions::HealthCheckUpdater`). Jobs now contain only deserialization and delegation — business logic lives in `lib/`.
+- New ViewComponents: `StatusBadgeComponent` and `IconComponent` for consistent badge and icon rendering.
+- New presenters: `SourceDetailsPresenter` and `SourcesFilterPresenter` for view-specific formatting.
+- New model methods: `Source.enable_scraping!(ids)` bulk-enables scraping for a list of source IDs; `Item#restore!` reverses a soft delete and updates the source counter cache; `health_status` now validated against the 4 permitted values (`working`, `declining`, `improving`, `failing`).
+
+**Upgrade steps:**
+```bash
+bundle update source_monitor
+bin/rails source_monitor:install:migrations
+bin/rails db:migrate
+```
+
+**Notes:**
+- No breaking changes. All existing initializer configuration remains valid.
+- No configuration changes required for this release.
+- The 5 service extractions are internal. Job class names and their public interfaces (queue, arguments) are unchanged.
+- New ViewComponents and presenters are available for custom view integration but are not required by default templates.
+- `Item#restore!` is the symmetric counterpart to `soft_delete!` — it clears `deleted_at` and increments the source `items_count` counter cache.
+
 ### Upgrading to 0.11.0
 
 **What changed:**

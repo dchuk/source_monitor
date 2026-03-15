@@ -9,8 +9,8 @@ SourceMonitor is a production-ready Rails 8 mountable engine for ingesting, norm
 In your host Rails app:
 
 ```bash
-bundle add source_monitor --version "~> 0.11.0"
-# or add `gem "source_monitor", "~> 0.11.0"` manually, then run:
+bundle add source_monitor --version "~> 0.12.0"
+# or add `gem "source_monitor", "~> 0.12.0"` manually, then run:
 bundle install
 ```
 
@@ -25,6 +25,9 @@ This exposes `bin/source_monitor` (via Bundler binstubs) so you can run the guid
 - Extensible scraper adapters (Readability included) with per-source settings and structured result metadata
 - Declarative configuration DSL covering queues, HTTP, retention, events, model extensions, authentication, and realtime transports
 - First-class observability through ActiveSupport notifications and `SourceMonitor::Metrics` counters/gauges
+- ViewComponent UI primitives: `StatusBadgeComponent` and `IconComponent` for consistent badge and icon rendering in custom views
+- Presenter layer: `SourceDetailsPresenter` and `SourcesFilterPresenter` for view-specific formatting without coupling controllers to display logic
+- Shallow delegation service layer: five background jobs (ScrapeItemJob, DownloadContentImagesJob, FaviconFetchJob, SourceHealthCheckJob, ImportSessionHealthCheckJob) extracted to dedicated service classes, keeping job bodies to deserialization + delegation only
 
 ## Requirements
 - Ruby 4.0+ (we recommend [rbenv](https://github.com/rbenv/rbenv) for local development, but use whatever Ruby version manager suits your environment—asdf, chruby, rvm, or container-based workflows all work fine)
@@ -43,7 +46,7 @@ This exposes `bin/source_monitor` (via Bundler binstubs) so you can run the guid
 Before running any SourceMonitor commands inside your host app, add the gem and install dependencies:
 
 ```bash
-bundle add source_monitor --version "~> 0.11.0"
+bundle add source_monitor --version "~> 0.12.0"
 # or edit your Gemfile, then run
 bundle install
 ```

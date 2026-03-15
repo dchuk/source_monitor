@@ -26,7 +26,8 @@ These are real issues encountered in previous releases. Each step below accounts
 9. **ESLint browser globals**: Any JS file using browser APIs (MutationObserver, requestAnimationFrame, cancelAnimationFrame, IntersectionObserver, etc.) MUST declare them with a `/* global ... */` comment at the top. ESLint's `no-undef` rule in CI will reject them otherwise.
 10. **Diff coverage rescue paths**: Every `rescue`/fallback/error handling branch in changed source code needs test coverage. Common blind spots: `rescue StandardError => e` logging, `rescue URI::InvalidURIError` returning nil, fallback `false` returns. Write targeted tests for these BEFORE creating the release commit.
 11. **Zsh glob nomatch**: Commands like `rm -f *.gem` fail in zsh when no files match. Always use `rm -f *.gem 2>/dev/null || true` or check existence first with `ls`.
-12. **Documentation drift**: Features, config options, and behavioral changes often land across milestone work without corresponding doc updates. The Documentation Audit step (Step 4) catches this -- check `docs/`, `README.md`, skill reference files (`sm-*/reference/`), and the initializer template against the actual source code. In v0.9.x, 14 files needed updates that would have been missed without this step.
+12. **Documentation drift**: Features, config options, and behavioral changes often land across milestone work without corresponding doc updates. Step 4 now spawns agents to both audit AND fix all stale docs automatically. In v0.9.x, 14 files needed updates; in v0.12.0, 7 files were stale (README version refs, docs/setup version refs, docs/upgrade missing section, 4 skill references). Always assume docs are stale.
+13. **test-coverage script health_suite**: The `bin/test-coverage` script runs a second "health_suite" pass with specific test files. If you add new test files for health/service classes, you MUST add them to the `TARGETED_TESTS` array in `bin/test-coverage` or SimpleCov's merged report will show 0% coverage for those files even though the main suite covers them. In v0.12.0, `source_health_check_orchestrator_test.rb` showed 31% coverage on CI despite 100% locally because it wasn't in the health_suite list.
 
 ## Step 1: Git Hygiene
 
@@ -114,54 +115,76 @@ The changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
    - Insert the new versioned entry immediately after the `## [Unreleased]` block and before the previous release entry.
    - Preserve all existing entries below.
 
-## Step 4: Documentation Audit
+## Step 4: Documentation Update (Mandatory)
 
-Verify that all project documentation reflects the current state of the codebase. Changes made since the last release (or during milestone work) may have introduced features, configuration options, bug fixes, or behavioral changes that need to be documented.
+**This step is NON-OPTIONAL.** Every release MUST update all documentation to reflect the current codebase state. Documentation drift is the #1 blind spot in milestone-based work — in v0.9.x, 14 files needed updates; in v0.12.0, 7 files were stale. Always assume docs are stale and verify.
 
-1. **Gather what changed** since the last release tag:
-   ```
-   git diff vPREVIOUS..HEAD --name-only -- lib/ app/ config/
-   ```
-   This shows which source files changed. Use this to identify features/fixes that may need documentation.
+### 4a. Gather what changed
 
-2. **Check these documentation files against the changes:**
+```
+git log vPREVIOUS..HEAD --oneline --no-merges
+git diff vPREVIOUS..HEAD --name-only -- lib/ app/ config/
+```
 
-   | File | What to verify |
-   |------|---------------|
-   | `CHANGELOG.md` | Has an `[Unreleased]` or versioned entry covering all user-facing changes |
-   | `README.md` | Version references match, feature descriptions current, gem version in install instructions |
-   | `docs/configuration.md` | All config options documented, new settings included, env vars listed |
-   | `docs/deployment.md` | Worker/queue descriptions match current queues and job assignments |
-   | `docs/troubleshooting.md` | Covers known failure modes from recent changes |
-   | `docs/upgrade.md` | Has upgrade section for this version with action items |
-   | `docs/setup.md` | Setup steps still accurate |
+Summarize the key changes: new classes, extracted services, new components, new model methods, new migrations, config changes, breaking changes.
 
-3. **Check skills reference files** (engine-specific documentation for Claude Code):
+### 4b. Spawn Explore agent to audit all docs
 
-   | Skill Reference | What to verify |
-   |----------------|---------------|
-   | `sm-configure/reference/configuration-reference.md` | All config settings and their defaults |
-   | `sm-configuration-setting/reference/settings-catalog.md` | Settings catalog with types, defaults, descriptions |
-   | `sm-job/reference/job-conventions.md` | Queue names, job assignments, concurrency defaults |
-   | `sm-pipeline-stage/reference/completion-handlers.md` | Pipeline handler code matches actual implementation |
-   | `sm-upgrade/reference/version-history.md` | Version transition notes for the new release |
-   | `sm-host-setup/reference/initializer-template.md` | Initializer template shows all configurable options |
+Spawn an Explore agent (subagent_type: "Explore", thoroughness: "very thorough") to compare documentation against the actual source code. The agent MUST check ALL of these files:
 
-4. **For each file that is stale or missing coverage**:
-   - Update it to reflect the current codebase behavior.
-   - For config docs: read the actual settings classes in `lib/source_monitor/configuration/` to verify defaults.
-   - For job docs: read `app/jobs/source_monitor/` to verify queue assignments.
-   - For upgrade notes: summarize breaking changes, new config, and action items.
+**Project docs:**
 
-5. **If all documentation is already up to date**, report:
-   ```
-   Documentation Audit: All files current. No updates needed.
-   ```
-   If updates were made, report:
-   ```
-   Documentation Audit: Updated N files.
-     - <file>: <what was updated>
-   ```
+| File | What to verify |
+|------|---------------|
+| `README.md` | Version references match new version, feature descriptions current, install instructions accurate |
+| `docs/setup.md` | Version references match, setup steps accurate |
+| `docs/upgrade.md` | Has upgrade section for THIS version with migrations, action items, breaking changes |
+| `docs/configuration.md` | All config options documented, defaults match source code |
+| `docs/deployment.md` | Worker/queue descriptions match current queues and job assignments |
+| `docs/troubleshooting.md` | Covers known failure modes from recent changes |
+
+**Skills reference files** (engine-specific documentation for Claude Code):
+
+| Skill Reference | What to verify |
+|----------------|---------------|
+| `sm-configure/reference/configuration-reference.md` | All config settings and their defaults |
+| `sm-configuration-setting/reference/settings-catalog.md` | Settings catalog with types, defaults, descriptions |
+| `sm-job/reference/job-conventions.md` | Queue names, job assignments, concurrency defaults, service class delegation |
+| `sm-pipeline-stage/reference/completion-handlers.md` | Pipeline handler code matches actual implementation |
+| `sm-upgrade/reference/version-history.md` | Version transition notes for the new release |
+| `sm-host-setup/reference/initializer-template.md` | Initializer template shows all configurable options |
+| `sm-architecture/reference/module-map.md` | All modules, classes, components, presenters listed |
+| `sm-domain-model/reference/model-graph.md` | All model methods, validations, scopes, associations |
+
+The Explore agent should output a structured report: files that are current, files that need updates (with specific stale content), and what each update should contain.
+
+### 4c. Spawn Docs agent to fix all stale files
+
+Based on the Explore agent's report, spawn a Docs agent (subagent_type: "vbw:vbw-docs", model: "sonnet") to update ALL stale files. The Docs agent MUST:
+
+- Read each file before editing (targeted edits, not full rewrites)
+- Update version references to the new release version
+- Add upgrade section for this version (migrations, action items, breaking changes)
+- Update module maps, model graphs, job conventions to reflect current source code
+- Add entries for any new classes, components, concerns, or model methods
+
+### 4d. Verify and report
+
+After the Docs agent completes, verify all files were updated:
+```
+git diff --name-only  # Should show the updated doc files
+```
+
+Report:
+```
+Documentation Update: Updated N files.
+  - <file>: <what was updated>
+```
+
+If the Explore agent found 0 stale files, report:
+```
+Documentation Update: All files current. No updates needed.
+```
 
 Do NOT commit documentation updates separately -- they will be included in the single release commit in Step 7.
 

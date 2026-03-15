@@ -112,4 +112,45 @@ Source has a `type` column for potential STI subclassing but it is not actively 
 |--------|--------|-------|-------|
 | Source | `items_count` | Item | Only counts active (non-deleted) items |
 
-The counter is decremented manually during `soft_delete!` and can be recalculated via `reset_items_counter!`.
+The counter is decremented manually during `soft_delete!` and **incremented** during `restore!`. Both operations update `items_count` atomically. Use `reset_items_counter!` to recalculate from scratch if the counter drifts.
+
+## Model Methods (v0.12.0+)
+
+### Source.enable_scraping!(ids)
+
+Bulk-enables scraping for a list of source IDs:
+
+```ruby
+Source.enable_scraping!([1, 2, 3])
+# Sets scraping_enabled = true for each source in the list
+```
+
+Use case: enabling scraping on a filtered set of sources from the dashboard or a rake task.
+
+### Item#restore!
+
+Reverses a soft delete. Symmetric counterpart to `soft_delete!`:
+
+```ruby
+item.restore!
+# Clears deleted_at, increments source.items_count
+```
+
+After `restore!`, the item re-enters the `:items` (active) association and the source counter cache reflects the change.
+
+### health_status Validation
+
+As of v0.12.0, `health_status` is validated against the four permitted values. Assigning an unrecognized value raises a validation error:
+
+```ruby
+source.health_status = "healthy"  # invalid -- was removed in 0.11.0
+source.valid?                      # => false
+source.errors[:health_status]      # => ["is not included in the list"]
+```
+
+Permitted values: `"working"`, `"declining"`, `"improving"`, `"failing"`.
+
+## Schema Notes (v0.12.0)
+
+- **Composite indexes on log tables:** `sourcemon_fetch_logs`, `sourcemon_scrape_logs`, and `sourcemon_health_check_logs` now have composite indexes on `(source_id, created_at)` to improve log query performance on busy sources.
+- **health_status default alignment:** The `health_status` column default on `sourcemon_sources` was updated to `"working"` (previously `"healthy"`, a removed value) to match the four-value enum added in v0.11.0.
