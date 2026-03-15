@@ -100,7 +100,7 @@ module SourceMonitor
         assert_difference("SourceMonitor::ScrapeLog.count", 1) do
           with_inline_jobs do
             click_button "Manual Scrape"
-            assert_selector "[data-testid='scrape-status-badge']", text: "Pending", wait: 5
+            assert_selector "[data-testid='scrape-status-badge']", text: "Pending"
           end
         end
       end
@@ -155,16 +155,5 @@ module SourceMonitor
       end
     end
 
-    private
-
-    def assert_item_order(expected)
-      within "turbo-frame#source_monitor_items_table" do
-        expected.each_with_index do |title, index|
-          assert_selector :xpath,
-            format(".//tbody/tr[%<row>d]/td[1]", row: index + 1),
-            text: /\A#{Regexp.escape(title)}/
-        end
-      end
-    end
   end
 end
