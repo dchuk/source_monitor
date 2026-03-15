@@ -25,6 +25,14 @@ module SourceMonitor
       end
     end
 
+    test "retries on ActiveRecord::Deadlocked" do
+      SourceMonitor::Scheduler.stub(:run, ->(**_args) { raise ActiveRecord::Deadlocked, "deadlock detected" }) do
+        assert_enqueued_with(job: SourceMonitor::ScheduleFetchesJob) do
+          SourceMonitor::ScheduleFetchesJob.perform_now
+        end
+      end
+    end
+
     test "passes through an explicit limit when provided" do
       captured_limit = nil
 

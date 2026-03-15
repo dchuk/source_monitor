@@ -94,6 +94,18 @@ module SourceMonitor
       end
     end
 
+    test "retries on ActiveRecord::Deadlocked" do
+      SourceMonitor::FetchLog.stub(:where, ->(*_args) { raise ActiveRecord::Deadlocked, "deadlock detected" }) do
+        assert_enqueued_with(job: SourceMonitor::LogCleanupJob) do
+          SourceMonitor::LogCleanupJob.perform_now(
+            now: Time.current,
+            fetch_logs_older_than_days: 30,
+            scrape_logs_older_than_days: 30
+          )
+        end
+      end
+    end
+
     private
 
     def create_labeled_fetch_log(source:, label:)

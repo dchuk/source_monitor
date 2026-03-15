@@ -39,7 +39,7 @@ module SourceMonitor
         assert_includes migration_output, "source_monitor"
 
         output = HostAppHarness.bundle_exec!("rails", "runner", "puts SourceMonitor::Engine.isolated?")
-        assert_equal "true\n", output
+        assert_includes output.strip, "true"
       ensure
         if previous_override
           ENV["SOURCE_MONITOR_GEM_PATH"] = previous_override

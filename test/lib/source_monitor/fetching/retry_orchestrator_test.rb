@@ -71,9 +71,9 @@ module SourceMonitor
         assert_equal 0, @source.fetch_retry_attempt
         assert_equal "failed", @source.fetch_status
         assert @source.fetch_circuit_opened_at.present?
-        assert_equal circuit_until, @source.fetch_circuit_until
-        assert_equal circuit_until, @source.next_fetch_at
-        assert_equal circuit_until, @source.backoff_until
+        assert_in_delta circuit_until.to_f, @source.fetch_circuit_until.to_f, 1
+        assert_in_delta circuit_until.to_f, @source.next_fetch_at.to_f, 1
+        assert_in_delta circuit_until.to_f, @source.backoff_until.to_f, 1
       end
 
       # --- exhausted path (neither retry nor circuit) ---

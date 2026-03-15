@@ -304,5 +304,20 @@ module SourceMonitor
 
       assert_equal({ "x" => "value" }, result)
     end
+
+    test "compact_blank_hash uses fallback when compact_blank is unavailable" do
+      # Create a hash-like object that doesn't respond to compact_blank
+      hash_without_compact = { "keep" => "yes", "empty" => "", "nil_val" => nil, "zero" => 0 }
+      hash_without_compact.define_singleton_method(:respond_to?) do |method, *args|
+        return false if method == :compact_blank
+        super(method, *args)
+      end
+
+      result = compact_blank_hash(hash_without_compact)
+
+      assert_equal "yes", result["keep"]
+      assert_nil result["empty"]
+      assert_nil result["nil_val"]
+    end
   end
 end

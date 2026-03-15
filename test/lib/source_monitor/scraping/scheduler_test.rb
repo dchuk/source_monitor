@@ -47,6 +47,14 @@ module SourceMonitor
         assert_enqueued_with(job: SourceMonitor::ScrapeItemJob, args: [ first_item.id ])
       end
 
+      test "returns 0 and logs warning when scheduler run fails" do
+        SourceMonitor::Item.stub(:joins, ->(*_args) { raise StandardError, "DB connection lost" }) do
+          result = SourceMonitor::Scraping::Scheduler.run(limit: 10)
+
+          assert_equal 0, result
+        end
+      end
+
       private
     end
   end

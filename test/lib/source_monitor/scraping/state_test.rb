@@ -55,6 +55,26 @@ module SourceMonitor
         assert_equal "success", item.reload.scrape_status
       end
 
+      test "broadcast_item swallows errors and logs them" do
+        source = create_source!(scraping_enabled: true, auto_scrape: true)
+        item = create_item!(source:)
+
+        logged_messages = []
+        mock_logger = Object.new
+        mock_logger.define_singleton_method(:warn) { |msg| logged_messages << msg }
+
+        SourceMonitor::Realtime.stub(:broadcast_item, ->(_item) { raise StandardError, "broadcast error" }) do
+          Rails.stub(:logger, mock_logger) do
+            SourceMonitor::Scraping::State.mark_processing!(item)
+          end
+        end
+
+        assert_equal "processing", item.reload.scrape_status
+        assert_equal 1, logged_messages.size
+        assert_includes logged_messages.first, "Broadcast failed"
+        assert_includes logged_messages.first, "broadcast error"
+      end
+
       private
     end
   end

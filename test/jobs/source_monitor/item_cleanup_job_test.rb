@@ -56,6 +56,17 @@ module SourceMonitor
       end
     end
 
+    test "retries on ActiveRecord::Deadlocked" do
+      create_source!(items_retention_days: 1)
+
+      # Stub RetentionPruner.call to raise Deadlocked
+      SourceMonitor::Items::RetentionPruner.stub(:call, ->(**_args) { raise ActiveRecord::Deadlocked, "deadlock detected" }) do
+        assert_enqueued_with(job: SourceMonitor::ItemCleanupJob) do
+          SourceMonitor::ItemCleanupJob.perform_now
+        end
+      end
+    end
+
     private
   end
 end

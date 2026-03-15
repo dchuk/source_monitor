@@ -47,6 +47,20 @@ module SourceMonitor
       assert_equal "Scraped body", item.scraped_content
     end
 
+    test "retries on ActiveRecord::Deadlocked" do
+      source = create_source!(scraping_enabled: true, auto_scrape: true)
+      item = create_item!(source: source)
+
+      fake_runner = Object.new
+      fake_runner.define_singleton_method(:call) { raise ActiveRecord::Deadlocked, "deadlock detected" }
+
+      SourceMonitor::Scraping::Runner.stub(:new, ->(_item) { fake_runner }) do
+        assert_enqueued_with(job: SourceMonitor::ScrapeItemJob) do
+          SourceMonitor::ScrapeItemJob.perform_now(item.id)
+        end
+      end
+    end
+
     test "enqueues on scrape queue" do
       assert_equal SourceMonitor.queue_name(:scrape), ScrapeItemJob.new.queue_name
     end

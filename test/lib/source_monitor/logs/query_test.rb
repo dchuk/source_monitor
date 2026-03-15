@@ -186,6 +186,71 @@ module SourceMonitor
         assert result_page_2.has_previous_page?
       end
 
+      test "Result#next_page returns page + 1 when has_next_page" do
+        result = SourceMonitor::Logs::Query::Result.new(
+          entries: [],
+          page: 2,
+          per_page: 25,
+          has_next_page: true,
+          has_previous_page: true,
+          total_count: 100
+        )
+
+        assert_equal 3, result.next_page
+      end
+
+      test "Result#next_page returns nil when no next page" do
+        result = SourceMonitor::Logs::Query::Result.new(
+          entries: [],
+          page: 4,
+          per_page: 25,
+          has_next_page: false,
+          has_previous_page: true,
+          total_count: 100
+        )
+
+        assert_nil result.next_page
+      end
+
+      test "Result#previous_page returns page - 1 when has_previous_page" do
+        result = SourceMonitor::Logs::Query::Result.new(
+          entries: [],
+          page: 3,
+          per_page: 25,
+          has_next_page: false,
+          has_previous_page: true,
+          total_count: 100
+        )
+
+        assert_equal 2, result.previous_page
+      end
+
+      test "Result#previous_page returns nil when no previous page" do
+        result = SourceMonitor::Logs::Query::Result.new(
+          entries: [],
+          page: 1,
+          per_page: 25,
+          has_next_page: true,
+          has_previous_page: false,
+          total_count: 100
+        )
+
+        assert_nil result.previous_page
+      end
+
+      test "Result#previous_page returns at least 1" do
+        result = SourceMonitor::Logs::Query::Result.new(
+          entries: [],
+          page: 1,
+          per_page: 25,
+          has_next_page: false,
+          has_previous_page: true,
+          total_count: 100
+        )
+
+        assert_equal 1, result.previous_page
+      end
+
       test "sanitizes invalid parameters without raising" do
         result = SourceMonitor::Logs::Query.new(
           params: {

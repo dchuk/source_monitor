@@ -15,6 +15,56 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.12.0] - 2026-03-15
+
+### Added
+- `StatusBadgeComponent` for unified status badge rendering across all views
+- `IconComponent` with named icon registry replacing inline SVGs
+- `SourceDetailsPresenter` and `SourcesFilterPresenter` for view formatting
+- `FilterDropdownComponent` for reusable filter dropdowns
+- `SetSource` controller concern eliminating duplication across 7 controllers
+- `rescue_from ActiveRecord::RecordNotFound` with Turbo-aware 404 handling
+- `Source.enable_scraping!` class method for bulk enablement
+- `Item#restore!` with counter cache symmetry to `soft_delete!`
+- `Source` health_status inclusion validation and scraping scopes
+- Modal accessibility: `role="dialog"`, `aria-modal`, focus trapping via `inert`
+- Logs index Turbo Frame for partial page updates on filter/pagination
+- Missing controller tests for FetchLogsController and ScrapeLogsController
+- Date range scopes and composite indexes on Loggable concern
+- Result structs for completion handlers (EventPublisher, RetentionHandler, FollowUpHandler)
+- Transient vs fatal error classification in FaviconFetchJob and DownloadContentImagesJob
+- SharedLoggableTests module for consistent log model testing
+- TEST_CONVENTIONS.md documenting testing patterns
+
+### Fixed
+- LogCleanupJob now cascades deletes to LogEntry records preventing orphaned rows
+- `health_status` default aligned between model (`working`) and database
+- Swallowed exceptions in `Scraping::State` and pipeline rescue blocks now log warnings
+- Pagination tests use `clean_source_monitor_tables!` instead of `Source.destroy_all` for parallel safety
+- `fallback_user_id` guarded behind `Rails.env.development?` to prevent engine writing to host-app tables
+- Dashboard GC pressure reduced from SolidQueue data accumulation
+- Deadlock rescue added to 4 jobs
+
+### Changed
+- **5 jobs extracted to service classes** (shallow delegation pattern):
+  - `ScrapeItemJob` → `Scraping::Runner` (73→21 lines)
+  - `DownloadContentImagesJob` → `Images::Processor` (95→16 lines)
+  - `FaviconFetchJob` → `Favicons::Fetcher` (94→16 lines)
+  - `SourceHealthCheckJob` → `Health::SourceHealthCheckOrchestrator` (85→16 lines)
+  - `ImportSessionHealthCheckJob` → `ImportSessions::HealthCheckUpdater` (99→32 lines)
+- Duplicated scrape rate-limiting consolidated (removed from ScrapeItemJob, kept in Enqueuer)
+- `sync_log_entry` callback consolidated into Loggable concern (removed from 3 models)
+- `ItemScrapesController` extracted from Items#scrape for CRUD compliance
+- FetchFeedJob retry/circuit-breaker logic extracted to RetryOrchestrator service
+- Favicon cooldown logic moved from controller to Source model
+- Import step dispatch refactored to handler registry pattern
+- 30 backward-compatibility forwarding methods removed from FeedFetcher and ItemCreator
+- `Images::Downloader` uses `HTTP.client` instead of raw Faraday (respects proxy/SSL config)
+- `CloudflareBypass` limited to 1 UA rotation attempt with per-attempt timeout
+- Dashboard stats split into per-stat Turbo Streams for granular updates
+- Test factory helpers centralized into ModelFactories module
+- System tests refactored to shared base class with SystemTestHelpers
+
 ## [0.11.1] - 2026-03-13
 
 ### Fixed

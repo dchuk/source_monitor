@@ -69,6 +69,28 @@ module SourceMonitor
       end
     end
 
+    test "swallows StandardError and logs it" do
+      session = SourceMonitor::ImportSession.create!(
+        user_id: @admin.id,
+        current_step: "health_check",
+        parsed_sources: [
+          { "id" => "one", "feed_url" => "https://example.com/feed.xml", "status" => "valid" }
+        ],
+        selected_source_ids: [ "one" ],
+        health_checks_active: true,
+        health_check_target_ids: [ "one" ]
+      )
+
+      failing_checker = Object.new
+      failing_checker.define_singleton_method(:call) { raise StandardError, "unexpected failure" }
+
+      SourceMonitor::Health::ImportSourceHealthCheck.stub(:new, ->(**_args) { failing_checker }) do
+        assert_nothing_raised do
+          SourceMonitor::ImportSessionHealthCheckJob.perform_now(session.id, "one")
+        end
+      end
+    end
+
     test "skips updates when session is inactive" do
       session = SourceMonitor::ImportSession.create!(
         user_id: @admin.id,

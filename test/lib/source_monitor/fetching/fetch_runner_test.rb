@@ -455,6 +455,62 @@ module SourceMonitor
         assert_equal "failed", source.reload.fetch_status
       end
 
+      test "log_handler_result logs warning for failed handler results" do
+        source = create_source
+
+        stub_fetcher = Class.new do
+          define_method(:initialize) { |**_kwargs| }
+          define_method(:call) do
+            SourceMonitor::Fetching::FeedFetcher::Result.new(status: :fetched)
+          end
+        end
+
+        runner = FetchRunner.new(source:, fetcher_class: stub_fetcher)
+
+        # Test with a failed handler result that has an error
+        failed_result = Struct.new(:success?, :error, keyword_init: true).new(
+          success?: false,
+          error: StandardError.new("handler broke")
+        )
+
+        logged_messages = []
+        mock_logger = Object.new
+        mock_logger.define_singleton_method(:warn) { |msg| logged_messages << msg }
+
+        Rails.stub(:logger, mock_logger) do
+          runner.send(:log_handler_result, "test_handler", failed_result)
+        end
+
+        assert_equal 1, logged_messages.size
+        assert_includes logged_messages.first, "test_handler"
+        assert_includes logged_messages.first, "handler broke"
+      end
+
+      test "log_handler_result does nothing for successful handler results" do
+        source = create_source
+
+        stub_fetcher = Class.new do
+          define_method(:initialize) { |**_kwargs| }
+          define_method(:call) do
+            SourceMonitor::Fetching::FeedFetcher::Result.new(status: :fetched)
+          end
+        end
+
+        runner = FetchRunner.new(source:, fetcher_class: stub_fetcher)
+
+        success_result = Struct.new(:success?, keyword_init: true).new(success?: true)
+
+        logged_messages = []
+        mock_logger = Object.new
+        mock_logger.define_singleton_method(:warn) { |msg| logged_messages << msg }
+
+        Rails.stub(:logger, mock_logger) do
+          runner.send(:log_handler_result, "test_handler", success_result)
+        end
+
+        assert_empty logged_messages
+      end
+
       test "force run bypasses open circuit" do
         source = create_source
         source.update!(

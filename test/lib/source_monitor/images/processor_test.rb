@@ -148,6 +148,51 @@ module SourceMonitor
         end
       end
 
+      test "log_image_error logs warning to Rails logger" do
+        source = create_source!
+        item = create_item!(source: source, content: "<p>test</p>")
+        processor = Processor.new(item)
+
+        logged_messages = []
+        mock_logger = Object.new
+        mock_logger.define_singleton_method(:warn) { |msg| logged_messages << msg }
+
+        Rails.stub(:logger, mock_logger) do
+          processor.send(:log_image_error, "https://cdn.example.com/fail.png", StandardError.new("download failed"))
+        end
+
+        assert_equal 1, logged_messages.size
+        assert_includes logged_messages.first, "Skipping image"
+        assert_includes logged_messages.first, "download failed"
+      end
+
+      test "log_image_error swallows errors from logger itself" do
+        source = create_source!
+        item = create_item!(source: source, content: "<p>test</p>")
+        processor = Processor.new(item)
+
+        broken_logger = Object.new
+        broken_logger.define_singleton_method(:warn) { |_msg| raise StandardError, "logger broken" }
+
+        Rails.stub(:logger, broken_logger) do
+          assert_nothing_raised do
+            processor.send(:log_image_error, "https://cdn.example.com/fail.png", StandardError.new("original error"))
+          end
+        end
+      end
+
+      test "log_image_error skips when Rails logger unavailable" do
+        source = create_source!
+        item = create_item!(source: source, content: "<p>test</p>")
+        processor = Processor.new(item)
+
+        Rails.stub(:logger, nil) do
+          assert_nothing_raised do
+            processor.send(:log_image_error, "https://cdn.example.com/fail.png", StandardError.new("error"))
+          end
+        end
+      end
+
       test "creates item_content if it does not exist" do
         source = create_source!
         item = create_item!(source: source, content: nil)

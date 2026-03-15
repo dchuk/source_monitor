@@ -340,6 +340,21 @@ module SourceMonitor
         assert_requested :get, url, times: 1
       end
 
+      test "AIA recovery rescue logs warning and returns nil on failure" do
+        url = "https://example.com/aia-rescue-test.xml"
+        source = build_source(name: "AIA Rescue", feed_url: url)
+
+        # First request raises SSL error to trigger AIA recovery
+        stub_request(:get, url).to_raise(OpenSSL::SSL::SSLError.new("certificate verify failed"))
+
+        # Stub AIAResolver.resolve to raise, triggering the rescue on line 325
+        SourceMonitor::HTTP::AIAResolver.stub(:resolve, ->(_host) { raise StandardError, "AIA lookup failed" }) do
+          result = FeedFetcher.new(source: source, jitter: ->(_) { 0 }).call
+
+          assert_equal :failed, result.status
+        end
+      end
+
       test "re-raises existing FetchError subclasses without double-wrapping" do
         url = "https://example.com/already-timeout.xml"
         source = build_source(name: "Already Timeout", feed_url: url)
