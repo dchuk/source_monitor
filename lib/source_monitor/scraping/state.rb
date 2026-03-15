@@ -71,8 +71,10 @@ module SourceMonitor
 
       def broadcast_item(item)
         SourceMonitor::Realtime.broadcast_item(item)
-      rescue StandardError
-        nil
+      rescue StandardError => e
+        if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+          Rails.logger.warn("[SourceMonitor::Scraping::State] Broadcast failed: #{e.class}: #{e.message}")
+        end
       end
     end
   end

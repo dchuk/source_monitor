@@ -102,6 +102,15 @@ module SourceMonitor
         return ::SolidQueue::Job.none unless jobs_supported?
 
         queue_name = SourceMonitor.queue_name(:fetch)
+        # SolidQueue stores job arguments as JSON in the `arguments` text column.
+        # The format is: {"job_class":"...", "arguments":[source_id, ...], ...}
+        # We cast to jsonb and extract the first positional argument to match
+        # jobs targeting this source.
+        #
+        # Tested against: SolidQueue 1.1.x (Rails 8.x). The serialization format
+        # is part of ActiveJob's serialize/deserialize contract. If SolidQueue
+        # changes its storage format, this query will silently return no matches
+        # (safe failure). Re-verify on SolidQueue major version upgrades.
         ::SolidQueue::Job.
           where(queue_name: queue_name).
           where("arguments::jsonb -> 'arguments' ->> 0 = ?", source.id.to_s)
