@@ -9,7 +9,7 @@ module SourceMonitor
 
     setup do
       @admin = users(:admin)
-      configure_authentication(@admin)
+      configure_authentication(@admin, authorize: :admin)
     end
 
     test "new creates session and redirects to first step" do
@@ -551,22 +551,5 @@ module SourceMonitor
       assert_includes @response.body, "scraping_enabled"
     end
 
-    private
-
-    def configure_authentication(user)
-      SourceMonitor.configure do |config|
-        config.authentication.current_user_method = :current_user
-        config.authentication.user_signed_in_method = :user_signed_in?
-
-        config.authentication.authenticate_with lambda { |controller|
-          controller.singleton_class.define_method(:current_user) { user }
-          controller.singleton_class.define_method(:user_signed_in?) { user.present? }
-        }
-
-        config.authentication.authorize_with lambda { |controller|
-          raise ActionController::RoutingError, "Not Found" unless user&.admin?
-        }
-      end
-    end
   end
 end

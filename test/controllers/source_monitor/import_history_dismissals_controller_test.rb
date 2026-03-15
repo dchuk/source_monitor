@@ -68,18 +68,5 @@ module SourceMonitor
       assert_nil other_import_history.dismissed_at
     end
 
-    private
-
-    def configure_authentication(user)
-      SourceMonitor.configure do |config|
-        config.authentication.current_user_method = :current_user
-        config.authentication.user_signed_in_method = :user_signed_in?
-
-        config.authentication.authenticate_with lambda { |controller|
-          controller.singleton_class.define_method(:current_user) { user }
-          controller.singleton_class.define_method(:user_signed_in?) { user.present? }
-        }
-      end
-    end
   end
 end

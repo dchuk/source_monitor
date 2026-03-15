@@ -42,6 +42,7 @@ require "securerandom"
 require "minitest/mock"
 
 require_relative "support/model_factories"
+require_relative "support/authentication_helpers"
 
 require "capybara/rails"
 require "capybara/minitest"
@@ -105,6 +106,7 @@ class ActiveSupport::TestCase
   end
 
   include ModelFactories
+  include AuthenticationHelpers
 
   private
 

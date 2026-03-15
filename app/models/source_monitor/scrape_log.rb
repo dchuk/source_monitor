@@ -25,9 +25,5 @@ module SourceMonitor
 
       errors.add(:source, "must match item source") if item.source_id != source_id
     end
-
-    def sync_log_entry
-      SourceMonitor::Logs::EntrySync.call(self)
-    end
   end
 end
