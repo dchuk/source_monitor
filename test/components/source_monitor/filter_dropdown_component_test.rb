@@ -49,14 +49,14 @@ module SourceMonitor
       assert_selector "option[value='rss'][selected]", text: "RSS"
     end
 
-    test "includes onchange for auto-submit" do
+    test "includes Stimulus action for auto-submit" do
       render_inline(FilterDropdownComponent.new(
         label: "Status",
         param_name: :active_eq,
         options: [ [ "All Statuses", "" ] ]
       ))
 
-      assert_selector "select[onchange='this.form.requestSubmit()']"
+      assert_selector "select[data-action='change->filter-submit#submit']"
     end
 
     test "renders consistent Tailwind styling classes" do
