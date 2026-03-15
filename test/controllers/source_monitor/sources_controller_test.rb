@@ -247,9 +247,11 @@ module SourceMonitor
     end
 
     # --- Pagination tests ---
+    # These tests use clean_source_monitor_tables! + unique prefixes for
+    # parallel-safe isolation (no Source.destroy_all which races with threads).
 
     test "index returns paginated results with 25 per page default" do
-      Source.destroy_all
+      clean_source_monitor_tables!
       30.times { |i| create_source!(name: "Paginated #{i}") }
 
       get source_monitor.sources_path
@@ -261,7 +263,7 @@ module SourceMonitor
     end
 
     test "index page 2 returns remaining sources" do
-      Source.destroy_all
+      clean_source_monitor_tables!
       30.times { |i| create_source!(name: "Page2 #{i}") }
 
       get source_monitor.sources_path, params: { page: 2 }
@@ -273,7 +275,7 @@ module SourceMonitor
     end
 
     test "index respects per_page param" do
-      Source.destroy_all
+      clean_source_monitor_tables!
       15.times { |i| create_source!(name: "PerPage #{i}") }
 
       get source_monitor.sources_path, params: { per_page: 10 }
@@ -283,7 +285,7 @@ module SourceMonitor
     end
 
     test "index caps per_page at 100" do
-      Source.destroy_all
+      clean_source_monitor_tables!
       3.times { |i| create_source!(name: "Capped #{i}") }
 
       get source_monitor.sources_path, params: { per_page: 200 }
@@ -294,7 +296,7 @@ module SourceMonitor
     end
 
     test "index renders page numbers and total pages" do
-      Source.destroy_all
+      clean_source_monitor_tables!
       30.times { |i| create_source!(name: "PageNum #{i}") }
 
       get source_monitor.sources_path, params: { per_page: 10 }
@@ -308,7 +310,7 @@ module SourceMonitor
     end
 
     test "index renders jump-to-page form" do
-      Source.destroy_all
+      clean_source_monitor_tables!
       30.times { |i| create_source!(name: "JumpPage #{i}") }
 
       get source_monitor.sources_path, params: { per_page: 10 }
@@ -319,7 +321,7 @@ module SourceMonitor
     end
 
     test "jump to page preserves search params" do
-      Source.destroy_all
+      clean_source_monitor_tables!
       30.times { |i| create_source!(name: "JumpSearch #{i}", health_status: "declining") }
 
       get source_monitor.sources_path, params: { page: 2, q: { health_status_eq: "declining" }, per_page: 10 }
