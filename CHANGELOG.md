@@ -15,6 +15,13 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.12.1] - 2026-03-15
+
+### Documentation
+- Updated README, docs/setup, docs/upgrade with v0.12.0 version references and upgrade guide
+- Updated 4 skill references (sm-job, sm-architecture, sm-domain-model, sm-upgrade) for service class extractions, new components, and model methods
+- Improved `/release` command: Step 4 now spawns agents to automatically audit AND fix all stale docs before every release
+
 ## [0.12.0] - 2026-03-15
 
 ### Added
