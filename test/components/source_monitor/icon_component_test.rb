@@ -83,10 +83,10 @@ module SourceMonitor
       assert_selector "svg.text-blue-500"
     end
 
-    test "menu_dots icon has two path elements" do
+    test "menu_dots icon has one path element" do
       render_inline(IconComponent.new(:menu_dots))
 
-      assert_selector "svg path", count: 2
+      assert_selector "svg path", count: 1
     end
   end
 end
