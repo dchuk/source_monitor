@@ -32,7 +32,7 @@ module SourceMonitor
           next unless in_flight?(record.scrape_status)
 
           record.update_columns(scrape_status: nil)
-          record.assign_attributes(scrape_status: nil)
+          record.reload
         end
 
         broadcast_item(item) if broadcast
@@ -48,7 +48,7 @@ module SourceMonitor
         with_item(item, lock:) do |record|
           attributes = { scrape_status: status }.merge(extra.compact)
           record.update_columns(attributes)
-          record.assign_attributes(attributes)
+          record.reload
         end
 
         broadcast_item(item) if broadcast
