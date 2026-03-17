@@ -53,6 +53,7 @@ module SourceMonitor
       @avg_scraped_word_counts = word_counts[:scraped]
 
       @scrape_candidate_ids = compute_scrape_candidate_ids
+      @total_scrape_candidate_count = Source.scrape_candidates.count
 
       # Row partial preload requirements (V3): item_activity_rates,
       # avg_feed_word_counts, avg_scraped_word_counts are pre-computed above

@@ -15,6 +15,15 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.12.3] - 2026-03-16
+
+### Added
+- Cross-page "select all" for scraping recommendations — banner appears when candidates span multiple pages, backend resolves all candidates via query
+
+### Fixed
+- Source action dropdown icon rendered as gear instead of vertical ellipsis (three dots)
+- "Enable Scraping" button did not open confirmation modal — Stimulus controller scope and missing `stop` method fixed
+
 ## [0.12.2] - 2026-03-15
 
 ### Fixed

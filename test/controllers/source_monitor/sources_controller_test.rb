@@ -559,7 +559,7 @@ module SourceMonitor
       get source_monitor.sources_path
       assert_response :success
 
-      assert_select "[data-controller='modal']"
+      assert_select "[data-controller~='modal']"
       assert_includes response.body, "Enable Scraping"
       assert_includes response.body, "Confirm Enable"
     end

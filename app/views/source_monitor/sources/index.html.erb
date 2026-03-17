@@ -93,7 +93,7 @@
           <% end %>
         </div>
       <% end %>
-      <%= form_with url: source_monitor.bulk_scrape_enablements_path, data: { controller: "select-all" } do |form| %>
+      <%= form_with url: source_monitor.bulk_scrape_enablements_path, data: { controller: "select-all modal", "select-all-total-candidates-value": @total_scrape_candidate_count } do |form| %>
         <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
           <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
@@ -240,6 +240,25 @@
             <%= render("source_monitor/sources/empty_state_row") if @sources.blank? %>
           </tbody>
         </table>
+
+        <input type="hidden" name="bulk_scrape_enablement[select_all_pages]" value="true" disabled data-select-all-target="selectAllPagesInput">
+
+        <% if @total_scrape_candidate_count > @scrape_candidate_ids.size %>
+          <div data-select-all-target="crossPageBanner" data-selected="false" class="hidden border-t border-violet-100 bg-violet-50 px-4 py-2 text-center text-sm text-violet-700">
+            <span data-role="select">
+              All <%= @scrape_candidate_ids.size %> candidates on this page are selected.
+              <button type="button" data-action="select-all#selectAllPages" class="font-semibold text-violet-900 underline hover:text-violet-600">
+                Select all <%= @total_scrape_candidate_count %> candidates across all pages
+              </button>
+            </span>
+            <span data-role="deselect" class="hidden">
+              All <%= @total_scrape_candidate_count %> candidates across all pages are selected.
+              <button type="button" data-action="select-all#deselectAllPages" class="font-semibold text-violet-900 underline hover:text-violet-600">
+                Clear selection
+              </button>
+            </span>
+          </div>
+        <% end %>
 
         <div data-select-all-target="actionBar" class="hidden sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 shadow-md">
           <div class="flex items-center justify-between">

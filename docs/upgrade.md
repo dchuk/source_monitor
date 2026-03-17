@@ -69,6 +69,20 @@ bin/rails db:migrate
 - New ViewComponents and presenters are available for custom view integration but are not required by default templates.
 - `Item#restore!` is the symmetric counterpart to `soft_delete!` — it clears `deleted_at` and increments the source `items_count` counter cache.
 
+### Upgrading to 0.12.3
+
+**What changed:**
+- UI fixes: menu icon (gear -> ellipsis), modal controller scope, cross-page select-all for bulk scraping recommendations
+
+**Upgrade steps:**
+```bash
+bundle update source_monitor
+```
+
+**Notes:**
+- No breaking changes, migrations, or configuration changes required.
+- Patch fix release.
+
 ### Upgrading to 0.12.2
 
 **What changed:**
