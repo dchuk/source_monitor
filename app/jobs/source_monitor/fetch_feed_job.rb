@@ -2,7 +2,8 @@
 
 module SourceMonitor
   class FetchFeedJob < ApplicationJob
-    FETCH_CONCURRENCY_RETRY_WAIT = 30.seconds
+    FETCH_CONCURRENCY_BASE_WAIT = 30.seconds
+    FETCH_CONCURRENCY_MAX_WAIT = 5.minutes
     EARLY_EXECUTION_LEEWAY = 30.seconds
 
     source_monitor_queue :fetch
@@ -39,11 +40,31 @@ module SourceMonitor
       else
         attempt = executions
         if attempt < SCHEDULED_CONCURRENCY_MAX_ATTEMPTS
-          retry_job wait: FETCH_CONCURRENCY_RETRY_WAIT
+          retry_job wait: concurrency_backoff_wait(attempt)
         else
-          raise error
+          log_concurrency_exhausted
+          @source&.update_columns(fetch_status: "idle") if @source&.fetch_status == "queued"
         end
       end
+    end
+
+    def concurrency_backoff_wait(attempt)
+      base = FETCH_CONCURRENCY_BASE_WAIT.to_i
+      exponential = base * (2**attempt)
+      capped = [ exponential, FETCH_CONCURRENCY_MAX_WAIT.to_i ].min
+      jitter = rand(0..(capped * 0.25).to_i)
+      (capped + jitter).seconds
+    end
+
+    def log_concurrency_exhausted
+      return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+      Rails.logger.info(
+        "[SourceMonitor::FetchFeedJob] Concurrency retries exhausted for source #{@source_id}, " \
+        "discarding (another worker is fetching this source)"
+      )
+    rescue StandardError
+      nil
     end
 
     def log_force_fetch_skipped
