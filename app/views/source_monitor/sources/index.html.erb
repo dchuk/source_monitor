@@ -19,7 +19,7 @@
         selected_bucket: @selected_fetch_interval_bucket,
         search_params: @search_params %>
 
-  <%= search_form_for @q, url: source_monitor.sources_path, method: :get, html: { class: "flex flex-wrap items-end gap-3", data: { turbo_frame: "source_monitor_sources_table" } } do |form| %>
+  <%= search_form_for @q, url: source_monitor.sources_path, method: :get, html: { class: "flex flex-wrap items-end gap-3", data: { turbo_frame: "source_monitor_sources_table", controller: "filter-submit" } } do |form| %>
     <div class="flex-1 min-w-[12rem]">
       <%= form.label @search_field, "Search sources", class: "sr-only" %>
       <div class="flex rounded-md shadow-sm">
