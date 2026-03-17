@@ -3,7 +3,7 @@
 module SourceMonitor
   class BulkScrapeEnablementsController < ApplicationController
     def create
-      source_ids = enablement_params[:source_ids]
+      source_ids = resolve_source_ids
 
       if source_ids.empty?
         handle_empty_selection
@@ -31,10 +31,13 @@ module SourceMonitor
 
     private
 
-    def enablement_params
-      raw_ids = Array(params.dig(:bulk_scrape_enablement, :source_ids))
-      ids = raw_ids.map(&:to_i).reject(&:zero?)
-      { source_ids: ids }
+    def resolve_source_ids
+      if params.dig(:bulk_scrape_enablement, :select_all_pages) == "true"
+        Source.scrape_candidates.pluck(:id)
+      else
+        raw_ids = Array(params.dig(:bulk_scrape_enablement, :source_ids))
+        raw_ids.map(&:to_i).reject(&:zero?)
+      end
     end
 
     def handle_empty_selection
