@@ -2,6 +2,19 @@
 
 Version-specific migration notes for each major/minor version transition. Agents should reference this file when guiding users through multi-version upgrades.
 
+## 0.12.3 to 0.12.4
+
+**Key changes:**
+- Bug fix: ScrapeItemJob with_lock compatibility (assign_attributes → reload)
+- Bug fix: FetchFeedJob advisory lock exponential backoff + graceful discard
+- Bug fix: OPML import dismissal (all instead of latest only)
+- Bug fix: Dashboard pagination regex for group keys
+- Bug fix: Filter dropdown Stimulus controller declaration
+
+**Action items:**
+1. `bundle update source_monitor`
+2. No migrations, config changes, or breaking changes.
+
 ## 0.12.2 to 0.12.3
 
 **Key changes:**

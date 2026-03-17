@@ -15,6 +15,15 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.12.4] - 2026-03-17
+
+### Fixed
+- ScrapeItemJob failing with "Locking a record with unpersisted changes" on Rails 8.1.2 — replaced `assign_attributes` with `reload` in scraping state machine
+- FetchFeedJob permanently failing on advisory lock contention — switched to exponential backoff with jitter and graceful discard on exhaustion
+- OPML import dismissal only hiding the latest notification — now dismisses all undismissed import histories for the user
+- Dashboard pagination not working — schedule group keys were silently dropped by overly restrictive param whitelist regex
+- Source filter dropdowns not auto-submitting — missing `filter-submit` Stimulus controller declaration on search forms (also fixed on logs index)
+
 ## [0.12.3] - 2026-03-16
 
 ### Added

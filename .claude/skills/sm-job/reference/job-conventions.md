@@ -58,13 +58,14 @@ The most complex job, demonstrating retry strategy integration:
 
 ```ruby
 class FetchFeedJob < ApplicationJob
-  FETCH_CONCURRENCY_RETRY_WAIT = 30.seconds
+  FETCH_CONCURRENCY_BASE_WAIT = 30.seconds
+  FETCH_CONCURRENCY_MAX_WAIT = 5.minutes
   EARLY_EXECUTION_LEEWAY = 30.seconds
 
   source_monitor_queue :fetch
 
   discard_on ActiveJob::DeserializationError
-  retry_on FetchRunner::ConcurrencyError, wait: 30.seconds, attempts: 5
+  # ConcurrencyError: exponential backoff (30s * 2^attempt) with 25% jitter, discards after 5 attempts
 
   def perform(source_id, force: false)
     source = Source.find_by(id: source_id)

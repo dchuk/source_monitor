@@ -69,6 +69,24 @@ bin/rails db:migrate
 - New ViewComponents and presenters are available for custom view integration but are not required by default templates.
 - `Item#restore!` is the symmetric counterpart to `soft_delete!` — it clears `deleted_at` and increments the source `items_count` counter cache.
 
+### Upgrading to 0.12.4
+
+**What changed:**
+- Bug fix: ScrapeItemJob Rails 8.1.2 with_lock compatibility (assign_attributes → reload)
+- Bug fix: FetchFeedJob exponential backoff for advisory lock contention
+- Bug fix: OPML import dismissal now dismisses all undismissed histories
+- Bug fix: Dashboard pagination regex for schedule group keys
+- Bug fix: Source/logs filter dropdowns auto-submit via Stimulus controller
+
+**Upgrade steps:**
+```bash
+bundle update source_monitor
+```
+
+**Notes:**
+- No breaking changes, migrations, or configuration changes required.
+- Patch fix release.
+
 ### Upgrading to 0.12.3
 
 **What changed:**

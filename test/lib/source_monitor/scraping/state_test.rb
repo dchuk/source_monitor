@@ -75,6 +75,35 @@ module SourceMonitor
         assert_includes logged_messages.first, "broadcast error"
       end
 
+      test "sequential state transitions do not raise with_lock dirty attribute error" do
+        source = create_source!(scraping_enabled: true, auto_scrape: true)
+        item = create_item!(source:)
+
+        # Simulate Runner flow: mark_processing! then clear_inflight! on the same
+        # in-memory item instance. Before the fix, assign_attributes left dirty
+        # state that caused Rails 8.1.2's with_lock guard to raise RuntimeError.
+        assert_nothing_raised do
+          SourceMonitor::Scraping::State.mark_processing!(item)
+          SourceMonitor::Scraping::State.clear_inflight!(item)
+        end
+
+        assert_nil item.reload.scrape_status
+      end
+
+      test "mark_failed then clear_inflight does not raise on same instance" do
+        source = create_source!(scraping_enabled: true, auto_scrape: true)
+        item = create_item!(source:)
+
+        assert_nothing_raised do
+          SourceMonitor::Scraping::State.mark_processing!(item)
+          SourceMonitor::Scraping::State.mark_failed!(item)
+          SourceMonitor::Scraping::State.clear_inflight!(item)
+        end
+
+        # failed is not an in-flight status, so clear_inflight! should leave it
+        assert_equal "failed", item.reload.scrape_status
+      end
+
       private
     end
   end

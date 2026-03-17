@@ -22,7 +22,7 @@ module SourceMonitor
       assert_mock runner
     end
 
-    test "retries when a concurrency error occurs" do
+    test "retries when a concurrency error occurs with exponential backoff" do
       source = create_source
 
       stub_runner = Class.new do
@@ -52,6 +52,11 @@ module SourceMonitor
       force_value = args[1]&.[]("force")
       assert_includes [ nil, false ], force_value
       assert enqueued[:at].present?, "expected retry to be scheduled in the future"
+
+      # First attempt (executions=1) should have base wait of 30s * 2^1 = 60s + up to 25% jitter
+      wait_seconds = enqueued[:at] - Time.current.to_f
+      assert wait_seconds >= 59, "expected at least ~60s backoff, got #{wait_seconds}"
+      assert wait_seconds <= 76, "expected at most ~75s backoff (60 + 25% jitter), got #{wait_seconds}"
     end
 
     test "schedules retry using retry policy when a transient fetch error bubbles up" do
@@ -253,7 +258,7 @@ module SourceMonitor
       assert_equal "fetching", source.fetch_status
     end
 
-    test "scheduled ConcurrencyError retries up to max attempts then raises" do
+    test "scheduled ConcurrencyError retries on first attempt" do
       source = create_source
 
       stub_runner = Class.new do
@@ -283,8 +288,8 @@ module SourceMonitor
       assert enqueued[:at].present?, "expected retry to be scheduled in the future"
     end
 
-    test "concurrency error raises after exhausting max attempts" do
-      source = create_source
+    test "concurrency error discards job after exhausting max attempts" do
+      source = create_source(fetch_status: "queued")
 
       stub_runner = Class.new do
         def initialize(**); end
@@ -300,9 +305,84 @@ module SourceMonitor
       job.define_singleton_method(:executions) { max }
 
       SourceMonitor::Fetching::FetchRunner.stub(:new, ->(**_kwargs) { stub_runner.new }) do
-        assert_raises(SourceMonitor::Fetching::FetchRunner::ConcurrencyError) do
+        assert_nothing_raised do
           job.perform_now
         end
+      end
+
+      source.reload
+      assert_equal "idle", source.fetch_status
+    end
+
+    test "concurrency backoff increases exponentially with jitter" do
+      source = create_source
+      job = SourceMonitor::FetchFeedJob.new(source.id)
+      job.instance_variable_set(:@source_id, source.id)
+
+      # Attempt 0: base * 2^0 = 30s, jitter up to 7.5s => 30-37.5s
+      wait_0 = job.send(:concurrency_backoff_wait, 0).to_i
+      assert_operator wait_0, :>=, 30
+      assert_operator wait_0, :<=, 38
+
+      # Attempt 1: base * 2^1 = 60s, jitter up to 15s => 60-75s
+      wait_1 = job.send(:concurrency_backoff_wait, 1).to_i
+      assert_operator wait_1, :>=, 60
+      assert_operator wait_1, :<=, 75
+
+      # Attempt 2: base * 2^2 = 120s, jitter up to 30s => 120-150s
+      wait_2 = job.send(:concurrency_backoff_wait, 2).to_i
+      assert_operator wait_2, :>=, 120
+      assert_operator wait_2, :<=, 150
+
+      # Attempt 3: base * 2^3 = 240s, jitter up to 60s => 240-300s
+      wait_3 = job.send(:concurrency_backoff_wait, 3).to_i
+      assert_operator wait_3, :>=, 240
+      assert_operator wait_3, :<=, 300
+
+      # Attempt 4: base * 2^4 = 480s, capped at 300s, jitter up to 75s => 300-375s
+      wait_4 = job.send(:concurrency_backoff_wait, 4).to_i
+      assert_operator wait_4, :>=, 300
+      assert_operator wait_4, :<=, 375
+    end
+
+    test "concurrency exhaustion does not reset status when not queued" do
+      source = create_source(fetch_status: "fetching")
+
+      stub_runner = Class.new do
+        def initialize(**); end
+
+        def run
+          raise SourceMonitor::Fetching::FetchRunner::ConcurrencyError, "locked"
+        end
+      end
+
+      job = SourceMonitor::FetchFeedJob.new(source.id)
+      max = SourceMonitor::FetchFeedJob::SCHEDULED_CONCURRENCY_MAX_ATTEMPTS
+      job.define_singleton_method(:executions) { max }
+
+      SourceMonitor::Fetching::FetchRunner.stub(:new, ->(**_kwargs) { stub_runner.new }) do
+        assert_nothing_raised do
+          job.perform_now
+        end
+      end
+
+      source.reload
+      assert_equal "fetching", source.fetch_status
+    end
+
+    test "log_concurrency_exhausted rescues StandardError" do
+      source = create_source
+      job = SourceMonitor::FetchFeedJob.new(source.id)
+      job.instance_variable_set(:@source_id, source.id)
+
+      fake_logger = Object.new
+      def fake_logger.info(_msg)
+        raise StandardError, "logger broken"
+      end
+
+      Rails.stub(:logger, fake_logger) do
+        result = job.send(:log_concurrency_exhausted)
+        assert_nil result
       end
     end
 

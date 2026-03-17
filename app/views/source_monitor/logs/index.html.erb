@@ -52,7 +52,7 @@
     </div>
   </div>
 
-  <%= form_with url: source_monitor.logs_path, method: :get, html: { class: "rounded-lg border border-slate-200 bg-white p-4 shadow-sm", data: { turbo_frame: "source_monitor_logs" } } do |form| %>
+  <%= form_with url: source_monitor.logs_path, method: :get, html: { class: "rounded-lg border border-slate-200 bg-white p-4 shadow-sm", data: { turbo_frame: "source_monitor_logs", controller: "filter-submit" } } do |form| %>
     <%= form.hidden_field :status, value: @filter_set.status %>
     <%= form.hidden_field :log_type, value: @filter_set.log_type %>
 
