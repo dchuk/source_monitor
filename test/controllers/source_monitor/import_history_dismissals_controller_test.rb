@@ -44,6 +44,43 @@ module SourceMonitor
       assert_not_nil @import_history.dismissed_at
     end
 
+    test "create dismisses all undismissed import histories for user" do
+      older_import = ImportHistory.create!(
+        user_id: @user.id,
+        imported_sources: [ { "id" => 2, "feed_url" => "https://example.com/older.xml", "name" => "Older" } ],
+        failed_sources: [],
+        skipped_duplicates: [],
+        started_at: 2.minutes.ago,
+        completed_at: 1.minute.ago
+      )
+
+      post import_history_dismissal_path(@import_history), as: :turbo_stream
+
+      assert_response :success
+      @import_history.reload
+      older_import.reload
+      assert_not_nil @import_history.dismissed_at
+      assert_not_nil older_import.dismissed_at, "Older import history should also be dismissed"
+    end
+
+    test "create does not dismiss other users import histories" do
+      other_user = users(:viewer)
+      other_import = ImportHistory.create!(
+        user_id: other_user.id,
+        imported_sources: [ { "id" => 3, "feed_url" => "https://example.com/other.xml", "name" => "Other" } ],
+        failed_sources: [],
+        skipped_duplicates: [],
+        started_at: 1.minute.ago,
+        completed_at: Time.current
+      )
+
+      post import_history_dismissal_path(@import_history), as: :turbo_stream
+
+      assert_response :success
+      other_import.reload
+      assert_nil other_import.dismissed_at, "Other user's import history should not be dismissed"
+    end
+
     test "create returns not found for nonexistent import history" do
       post import_history_dismissal_path(import_history_id: 0), as: :turbo_stream
 
