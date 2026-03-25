@@ -33,21 +33,30 @@ module SourceMonitor
       KEYWORD_SEPARATORS = /[,;]+/.freeze
       METADATA_ROOT_KEY = "feedjira_entry".freeze
 
-      def self.call(source:, entry:)
-        new(source:, entry:).call
+      # Process a single feed entry, creating or updating the corresponding item.
+      #
+      # @param existing_items_index [Hash, nil] Optional pre-fetched lookup of
+      #   existing items keyed by guid and content_fingerprint. When provided,
+      #   skips per-entry SELECT queries (used by BatchItemCreator).
+      def self.call(source:, entry:, existing_items_index: nil)
+        new(source:, entry:, existing_items_index: existing_items_index).call
       end
 
-      def initialize(source:, entry:)
+      def initialize(source:, entry:, existing_items_index: nil)
         @source = source
         @entry = entry
+        @existing_items_index = existing_items_index
       end
 
       def call
         attributes = build_attributes
         raw_guid = attributes[:guid]
-        attributes[:guid] = raw_guid.presence || attributes[:content_fingerprint]
+        # Normalize GUID to lowercase so the plain btree index on guid is used
+        # for lookups instead of LOWER(guid) which forces sequential scans.
+        normalized_guid = raw_guid.present? ? raw_guid.downcase : nil
+        attributes[:guid] = normalized_guid.presence || attributes[:content_fingerprint]
 
-        existing_item, matched_by = existing_item_for(attributes, raw_guid_present: raw_guid.present?)
+        existing_item, matched_by = existing_item_for(attributes, raw_guid_present: normalized_guid.present?)
 
         if existing_item
           apply_attributes(existing_item, attributes)
@@ -61,34 +70,54 @@ module SourceMonitor
           end
         end
 
-        create_new_item(attributes, raw_guid_present: raw_guid.present?)
+        create_new_item(attributes, raw_guid_present: normalized_guid.present?)
       end
 
       private
 
-      attr_reader :source, :entry
+      attr_reader :source, :entry, :existing_items_index
 
       def existing_item_for(attributes, raw_guid_present:)
         guid = attributes[:guid]
         fingerprint = attributes[:content_fingerprint]
 
         if raw_guid_present
-          existing = find_item_by_guid(guid)
+          existing = lookup_by_guid(guid)
           return [ existing, :guid ] if existing
         end
 
         if fingerprint.present?
-          existing = find_item_by_fingerprint(fingerprint)
+          existing = lookup_by_fingerprint(fingerprint)
           return [ existing, :fingerprint ] if existing
         end
 
         [ nil, nil ]
       end
 
+      # When a pre-fetched index is available (batch mode), look up from it
+      # instead of issuing a per-entry SELECT query.
+      def lookup_by_guid(guid)
+        if existing_items_index
+          existing_items_index[:by_guid]&.dig(guid)
+        else
+          find_item_by_guid(guid)
+        end
+      end
+
+      def lookup_by_fingerprint(fingerprint)
+        if existing_items_index
+          existing_items_index[:by_fingerprint]&.dig(fingerprint)
+        else
+          find_item_by_fingerprint(fingerprint)
+        end
+      end
+
       def find_item_by_guid(guid)
         return if guid.blank?
 
-        source.all_items.where("LOWER(guid) = ?", guid.downcase).first
+        # GUIDs are normalized to lowercase on write, so we can use a plain
+        # equality check that hits the btree index on (source_id, guid).
+        source.all_items.find_by(guid: guid.downcase)
       end
 
       def find_item_by_fingerprint(fingerprint)

@@ -15,6 +15,14 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.13.0] - 2026-03-24
+
+### Changed
+- **Fetch pipeline performance overhaul** — resolves production DB overload on small servers (2-core/4GB) where 569 fetch jobs backed up and PostgreSQL hit 150% CPU
+  - Normalize GUIDs to lowercase on write, replacing `LOWER(guid)` queries that forced sequential scans — existing btree indexes now used correctly
+  - Restructure advisory lock in FetchRunner into 3 phases (lock/fetch/write) so DB connections are not held idle during HTTP requests
+  - Add BatchItemCreator for bulk item lookups — reduces per-fetch queries from ~N*2 to 2 regardless of entry count
+
 ## [0.12.4] - 2026-03-17
 
 ### Fixed

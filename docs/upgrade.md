@@ -46,6 +46,21 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
+### Upgrading to 0.13.0
+
+**What changed:**
+- **Performance:** GUID normalization to lowercase on write; plain btree index used instead of LOWER(guid) sequential scans
+- **Fetch pipeline:** Restructured FetchRunner into 3-phase execution (lock/fetch/write) so DB connections not held idle during HTTP requests
+- **Batch processing:** New BatchItemCreator for bulk item lookups reduces per-fetch queries from ~N*2 to 2
+
+**Upgrade steps:**
+```bash
+bundle update source_monitor
+bin/rails source_monitor:upgrade
+```
+
+No migrations, configuration changes, or breaking changes required.
+
 ### Upgrading to 0.12.0
 
 **What changed:**

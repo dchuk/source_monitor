@@ -56,6 +56,66 @@ module SourceMonitor
         assert lock_available?(LOCK_NAMESPACE, key), "expected lock to be released when block raises"
       end
 
+      test "acquire! acquires the lock and release! frees it" do
+        key = next_lock_key
+        lock = SourceMonitor::Fetching::AdvisoryLock.new(namespace: LOCK_NAMESPACE, key:)
+
+        result = lock.acquire!
+        assert result, "expected acquire! to return true"
+
+        # Advisory locks are session-scoped and re-entrant, so we can't test
+        # "not available" from the same connection. Instead, verify that
+        # release! completes without error and the lock lifecycle works.
+        lock.release!
+        assert lock_available?(LOCK_NAMESPACE, key), "expected lock to be released after release!"
+      end
+
+      test "acquire! raises when lock is already held and raise_on_failure is true" do
+        key = next_lock_key
+        lock = SourceMonitor::Fetching::AdvisoryLock.new(namespace: LOCK_NAMESPACE, key:)
+
+        # Hold the lock in a different connection-like fashion using with_lock
+        lock.acquire!
+        begin
+          # A second lock instance trying to acquire the same key should fail
+          lock2 = SourceMonitor::Fetching::AdvisoryLock.new(namespace: LOCK_NAMESPACE, key:)
+
+          # Advisory locks are re-entrant on the same session, so we simulate
+          # failure by stubbing
+          fake_connection = Class.new do
+            def exec_query(sql)
+              locked = !sql.include?("pg_try_advisory_lock")
+              ActiveRecord::Result.new([], [ [ locked ] ])
+            end
+          end.new
+
+          ActiveRecord::Base.connection_pool.stub(:with_connection, ->(&block) { block.call(fake_connection) }) do
+            assert_raises(SourceMonitor::Fetching::AdvisoryLock::NotAcquiredError) do
+              lock2.acquire!
+            end
+          end
+        ensure
+          lock.release!
+        end
+      end
+
+      test "acquire! returns false when raise_on_failure is false and lock is busy" do
+        key = next_lock_key
+        lock = SourceMonitor::Fetching::AdvisoryLock.new(namespace: LOCK_NAMESPACE, key:)
+
+        fake_connection = Class.new do
+          def exec_query(sql)
+            locked = !sql.include?("pg_try_advisory_lock")
+            ActiveRecord::Result.new([], [ [ locked ] ])
+          end
+        end.new
+
+        ActiveRecord::Base.connection_pool.stub(:with_connection, ->(&block) { block.call(fake_connection) }) do
+          result = lock.acquire!(raise_on_failure: false)
+          refute result, "expected acquire! to return false when lock is busy"
+        end
+      end
+
       private
 
       def next_lock_key

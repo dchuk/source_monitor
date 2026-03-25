@@ -40,7 +40,7 @@ module SourceMonitor
         error_message = "duplicate key"
         singleton = SourceMonitor::Items::ItemCreator.singleton_class
         singleton.alias_method :call_without_stub, :call
-        singleton.define_method(:call) do |source:, entry:|
+        singleton.define_method(:call) do |source:, entry:, **|
           raise StandardError, error_message
         end
 
@@ -76,7 +76,7 @@ module SourceMonitor
         singleton = SourceMonitor::Items::ItemCreator.singleton_class
         singleton.alias_method :call_without_stub, :call
         call_count = 0
-        singleton.define_method(:call) do |source:, entry:|
+        singleton.define_method(:call) do |source:, entry:, **|
           call_count += 1
           raise StandardError, error_message
         end
@@ -212,12 +212,12 @@ module SourceMonitor
         call_count = 0
         original_call = SourceMonitor::Items::ItemCreator.method(:call)
         singleton = SourceMonitor::Items::ItemCreator.singleton_class
-        singleton.define_method(:call) do |source:, entry:|
+        singleton.define_method(:call) do |source:, entry:, **|
           call_count += 1
           if call_count.odd?
             raise ActiveRecord::RecordInvalid.new(SourceMonitor::Item.new), "Validation failed: simulated"
           else
-            original_call.call(source: source, entry: entry)
+            original_call.call(source: source, entry: entry, existing_items_index: nil)
           end
         end
 
@@ -235,7 +235,7 @@ module SourceMonitor
           assert_not_nil source.last_fetched_at, "source should have been updated after fetch"
           assert_equal 0, source.failure_count
         ensure
-          singleton.define_method(:call) { |source:, entry:| original_call.call(source: source, entry: entry) }
+          singleton.define_method(:call) { |source:, entry:, **kwargs| original_call.call(source: source, entry: entry, **kwargs) }
         end
       end
     end

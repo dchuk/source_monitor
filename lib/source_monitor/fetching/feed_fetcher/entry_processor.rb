@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "source_monitor/items/batch_item_creator"
+
 module SourceMonitor
   module Fetching
     class FeedFetcher
@@ -22,6 +24,34 @@ module SourceMonitor
             updated_items: []
           ) unless feed.respond_to?(:entries)
 
+          entries = Array(feed.entries)
+          return empty_result if entries.empty?
+
+          # Pre-fetch existing items in bulk (2 SELECTs instead of N per-entry).
+          # If the batch index build fails, fall back to per-entry lookups.
+          existing_items_index = begin
+            SourceMonitor::Items::BatchItemCreator.build_index(source: source, entries: entries)
+          rescue StandardError
+            nil
+          end
+
+          process_entries_with_index(entries, existing_items_index)
+        end
+
+        private
+
+        def empty_result
+          FeedFetcher::EntryProcessingResult.new(
+            created: 0, updated: 0, unchanged: 0, failed: 0,
+            items: [], errors: [], created_items: [], updated_items: []
+          )
+        end
+
+        # Processes entries one at a time through ItemCreator.call.
+        # When existing_items_index is provided, ItemCreator skips per-entry
+        # SELECT queries and uses the pre-fetched index instead.
+        # When nil, ItemCreator falls back to individual DB lookups.
+        def process_entries_with_index(entries, existing_items_index)
           created = 0
           updated = 0
           unchanged = 0
@@ -31,9 +61,12 @@ module SourceMonitor
           updated_items = []
           errors = []
 
-          Array(feed.entries).each do |entry|
+          entries.each do |entry|
             begin
-              result = SourceMonitor::Items::ItemCreator.call(source:, entry:)
+              result = SourceMonitor::Items::ItemCreator.call(
+                source: source, entry: entry,
+                existing_items_index: existing_items_index
+              )
               SourceMonitor::Events.run_item_processors(source:, entry:, result: result)
               items << result.item
               if result.created?
@@ -54,18 +87,10 @@ module SourceMonitor
           end
 
           FeedFetcher::EntryProcessingResult.new(
-            created:,
-            updated:,
-            unchanged:,
-            failed:,
-            items:,
-            errors: errors.compact,
-            created_items:,
-            updated_items:
+            created:, updated:, unchanged:, failed:,
+            items:, errors: errors.compact, created_items:, updated_items:
           )
         end
-
-        private
 
         def enqueue_image_download(item)
           return unless SourceMonitor.config.images.download_enabled?

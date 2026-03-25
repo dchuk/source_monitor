@@ -23,12 +23,12 @@ module SourceMonitor
         result = nil
 
         singleton.alias_method :call_without_stub, :call
-        singleton.define_method(:call) do |source:, entry:|
+        singleton.define_method(:call) do |source:, entry:, **kwargs|
           call_count += 1
           if call_count == 1
             raise StandardError, error_message
           else
-            call_without_stub(source:, entry:)
+            call_without_stub(source:, entry:, **kwargs)
           end
         end
 

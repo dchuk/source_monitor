@@ -66,6 +66,7 @@ Complete module tree with each module's responsibility.
 | Module | File | Responsibility |
 |--------|------|----------------|
 | `ItemCreator` | `items/item_creator.rb` | Create or update Item from feed entry |
+| `BatchItemCreator` | `items/batch_item_creator.rb` | Pre-fetch lookup index of existing items for batch entry processing |
 | `ItemCreator::EntryParser` | `items/item_creator/entry_parser.rb` | Parse Feedjira entry into attribute hash |
 | `ItemCreator::ContentExtractor` | `items/item_creator/content_extractor.rb` | Process content through readability parser |
 | `RetentionPruner` | `items/retention_pruner.rb` | Prune items by age/count per source |

@@ -145,6 +145,12 @@ module SourceMonitor
           def with_lock
             raise SourceMonitor::Fetching::AdvisoryLock::NotAcquiredError, "busy"
           end
+
+          def acquire!(raise_on_failure: true)
+            raise SourceMonitor::Fetching::AdvisoryLock::NotAcquiredError, "busy"
+          end
+
+          def release!; end
         end
 
         runner = FetchRunner.new(
@@ -509,6 +515,32 @@ module SourceMonitor
         end
 
         assert_empty logged_messages
+      end
+
+      test "releases advisory lock when mark_fetching raises" do
+        source = create_source
+
+        lock_released = false
+        stub_lock_class = Class.new do
+          define_method(:initialize) { |namespace:, key:, connection_pool:| }
+          define_method(:acquire!) { |raise_on_failure: true| true }
+          define_method(:release!) { lock_released = true }
+        end
+
+        # Stub update_columns to raise on the mark_fetching! call
+        original_update_columns = source.method(:update_columns)
+        source.define_singleton_method(:update_columns) do |attrs|
+          if attrs[:fetch_status] == "fetching"
+            raise ActiveRecord::ConnectionNotEstablished, "connection lost"
+          end
+          original_update_columns.call(attrs)
+        end
+
+        assert_raises(ActiveRecord::ConnectionNotEstablished) do
+          FetchRunner.new(source:, fetcher_class: DummyFetcher, lock_factory: stub_lock_class).run
+        end
+
+        assert lock_released, "Advisory lock should be released when mark_fetching! raises"
       end
 
       test "force run bypasses open circuit" do

@@ -56,13 +56,35 @@ module SourceMonitor
         @retry_scheduled = false
         result = nil
 
-        lock.with_lock do
+        # Phase 1: Acquire advisory lock and mark source as fetching.
+        # Uses a DB connection briefly, then releases it.
+        lock.acquire!
+        begin
           mark_fetching!
+        rescue StandardError
+          lock.release!
+          raise
+        end
+
+        # Phase 2: HTTP fetch -- no DB connection held during network I/O.
+        # This is the key optimization: on slow feeds (up to 30s timeout),
+        # we no longer hold a DB connection idle while waiting for HTTP.
+        begin
           result = fetcher_class.new(source: source).call
+        rescue StandardError => fetch_error
+          # Ensure lock is released before propagating
+          lock.release!
+          raise fetch_error
+        end
+
+        # Phase 3: Post-fetch DB writes under the advisory lock (still held).
+        begin
           log_handler_result("RetentionHandler", retention_handler.call(source:, result:))
           log_handler_result("FollowUpHandler", follow_up_handler.call(source:, result:))
           schedule_retry_if_needed(result)
           mark_complete!(result)
+        ensure
+          lock.release!
         end
 
         log_handler_result("EventPublisher", event_publisher.call(source:, result:))
