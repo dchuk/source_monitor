@@ -2,6 +2,20 @@
 
 Version-specific migration notes for each major/minor version transition. Agents should reference this file when guiding users through multi-version upgrades.
 
+## 0.12.4 to 0.13.0
+
+**Key changes:**
+- Performance: GUID normalization to lowercase on write; plain btree index used instead of LOWER(guid) sequential scans
+- New `AdvisoryLock#acquire!` and `AdvisoryLock#release!` methods alongside existing `with_lock` block API
+- New `BatchItemCreator` class for bulk item lookups; reduces per-fetch DB queries from ~N*2 to 2
+- `ItemCreator` accepts optional `existing_items_index` parameter for batch-mode deduplication
+- `FetchRunner` restructured into 3-phase execution (lock/fetch/write) so DB connections are not held idle during HTTP requests
+- `EntryProcessor` integrates batch index from `BatchItemCreator`
+
+**Action items:**
+1. `bundle update source_monitor`
+2. No migrations, config changes, or breaking changes.
+
 ## 0.12.3 to 0.12.4
 
 **Key changes:**
