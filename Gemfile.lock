@@ -16,7 +16,7 @@ PATH
       solid_cable (>= 3.0, < 4.0)
       solid_queue (>= 0.3, < 3.0)
       turbo-rails (~> 2.0)
-      view_component (>= 3.0, < 4.0)
+      view_component (>= 3.0, < 5.0)
 
 GEM
   remote: https://rubygems.org/
@@ -178,12 +178,12 @@ GEM
       net-smtp
     marcel (1.1.0)
     matrix (0.4.3)
-    method_source (1.1.0)
     mini_magick (5.3.1)
       logger
     mini_mime (1.1.5)
     mini_portile2 (2.8.9)
-    minitest (6.0.1)
+    minitest (6.0.2)
+      drb (~> 2.0)
       prism (~> 1.5)
     minitest-mock (5.27.0)
     net-http (0.9.1)
@@ -362,10 +362,10 @@ GEM
     uri (1.1.1)
     useragent (0.16.11)
     vcr (6.4.0)
-    view_component (3.24.0)
-      activesupport (>= 5.2.0, < 8.2)
+    view_component (4.5.0)
+      actionview (>= 7.1.0)
+      activesupport (>= 7.1.0)
       concurrent-ruby (~> 1)
-      method_source (~> 1.0)
     webmock (3.26.1)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
