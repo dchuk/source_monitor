@@ -102,8 +102,13 @@ module SourceMonitor
             status: status,
             matched_by: nil
           )
-          SourceMonitor::Items::ItemCreator.stub(:call, result) do
-            yield
+          # Stub both the batch index builder and ItemCreator.call since
+          # EntryProcessor uses build_index + per-entry ItemCreator.call.
+          empty_index = { by_guid: {}, by_fingerprint: {} }
+          SourceMonitor::Items::BatchItemCreator.stub(:build_index, empty_index) do
+            SourceMonitor::Items::ItemCreator.stub(:call, result) do
+              yield
+            end
           end
         end
       end

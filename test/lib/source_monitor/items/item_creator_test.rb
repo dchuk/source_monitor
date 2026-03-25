@@ -233,6 +233,35 @@ module SourceMonitor
         assert_equal created_item.content_fingerprint, payload[:content_fingerprint]
       end
 
+      test "normalizes guid to lowercase for index-friendly lookups" do
+        entry = OpenStruct.new(
+          entry_id: "UPPER-CASE-GUID-123",
+          title: "Mixed Case Entry",
+          url: "https://example.com/mixed",
+          summary: "Summary text",
+          published: Time.utc(2025, 10, 1),
+          to_h: { title: "Mixed Case Entry" }
+        )
+
+        result = ItemCreator.call(source: @source, entry: entry)
+        assert result.created?
+        assert_equal "upper-case-guid-123", result.item.guid
+
+        # Re-process with same GUID in different case -- should match
+        entry2 = OpenStruct.new(
+          entry_id: "upper-case-guid-123",
+          title: "Same Entry",
+          url: "https://example.com/mixed",
+          summary: "Updated summary",
+          published: Time.utc(2025, 10, 1),
+          to_h: { title: "Same Entry" }
+        )
+
+        result2 = ItemCreator.call(source: @source, entry: entry2)
+        assert result2.updated? || result2.unchanged?
+        assert_equal result.item.id, result2.item.id
+      end
+
       # ─── Task 1: URL extraction fallbacks and content extraction chain ───
 
       test "extract_url falls back to link_nodes when url is blank" do

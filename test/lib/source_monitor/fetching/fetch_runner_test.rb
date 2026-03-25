@@ -145,6 +145,12 @@ module SourceMonitor
           def with_lock
             raise SourceMonitor::Fetching::AdvisoryLock::NotAcquiredError, "busy"
           end
+
+          def acquire!(raise_on_failure: true)
+            raise SourceMonitor::Fetching::AdvisoryLock::NotAcquiredError, "busy"
+          end
+
+          def release!; end
         end
 
         runner = FetchRunner.new(
