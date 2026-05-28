@@ -13,6 +13,11 @@ All notable changes to this project are documented below. The format follows [Ke
 
 ## [Unreleased]
 
+### Security (BREAKING)
+- **Fail-closed engine access by default** (#129). When the host app has configured no authentication/authorization handler, every mounted SourceMonitor route now returns `403 Forbidden` instead of being publicly accessible. Previously `authenticate!`/`authorize!` were silent no-ops when unconfigured, so create/update/delete/enqueue routes were public by omission.
+  - **Migration:** Configure a handler — `config.authentication.authenticate_with` and/or `config.authentication.authorize_with` — to gate the engine with your host auth stack. Configured handlers are honored exactly as before.
+  - **Demo opt-in:** To intentionally keep routes public (local demos/sandboxes only), set `config.authentication.open_access = true` (default `false`). Do not enable this in production.
+
 ## [0.13.1] - 2026-05-28
 
 ### Fixed

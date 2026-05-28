@@ -87,6 +87,14 @@ class ActiveSupport::TestCase
     # Each test gets a fresh config object. No concurrent mutation risk since
     # tests read config only after their own setup completes.
     SourceMonitor.reset_configuration!
+    # The engine is fail-closed by default (issue #129): with no configured
+    # auth handler, engine routes return :forbidden. The vast majority of
+    # controller/integration tests hit real engine routes without configuring a
+    # handler and expect 200, so the shared harness opts into open access here
+    # (immediately after reset, since reset_configuration! rebuilds the config
+    # object every test). Tests that exercise fail-closed denial explicitly set
+    # `SourceMonitor.config.authentication.open_access = false` themselves.
+    SourceMonitor.config.authentication.open_access = true
     # Disable Faraday retry middleware in tests. Without this, tests that
     # stub WebMock to raise Faraday::TimeoutError trigger 4 retries with
     # exponential backoff (0.5s + 1s + 2s + 4s = 7.5s of real sleep).

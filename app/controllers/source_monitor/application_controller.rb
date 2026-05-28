@@ -4,6 +4,7 @@ module SourceMonitor
   class ApplicationController < ActionController::Base
     protect_from_forgery with: :exception, prepend: true
 
+    before_action :enforce_source_monitor_access_default
     before_action :authenticate_source_monitor_user
     before_action :authorize_source_monitor_access
 
@@ -40,6 +41,30 @@ module SourceMonitor
     # Stimulus notification_controller via data-notification-delay-value.
     TOAST_DURATION_DEFAULT = 5000
     TOAST_DURATION_ERROR = 6000
+
+    # Fail-closed guard: when the host app has configured no authentication or
+    # authorization handler and has not explicitly opted into open access, deny
+    # all engine routes. Configured handlers short-circuit this and decide for
+    # themselves (see SourceMonitor::Security::Authentication).
+    def enforce_source_monitor_access_default
+      return unless SourceMonitor::Security::Authentication.access_denied_by_default?(self)
+
+      source_monitor_access_forbidden
+    end
+
+    def source_monitor_access_forbidden
+      message = "SourceMonitor access is not configured"
+      respond_to do |format|
+        format.html { render plain: message, status: :forbidden }
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.append("flash",
+            partial: "source_monitor/shared/toast",
+            locals: { message: message, level: :error }),
+            status: :forbidden
+        end
+        format.json { render json: { error: message }, status: :forbidden }
+      end
+    end
 
     def authenticate_source_monitor_user
       SourceMonitor::Security::Authentication.authenticate!(self)

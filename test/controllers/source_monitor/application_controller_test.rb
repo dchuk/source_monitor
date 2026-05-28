@@ -25,7 +25,52 @@ module SourceMonitor
       assert_equal [ :authenticate, "SourceMonitor::DashboardController" ], calls.first
     end
 
-    test "skips authentication when host has not configured it" do
+    # Issue #129: the engine is fail-closed by default. With no configured auth
+    # handler and open_access disabled, engine routes must deny access. (The
+    # shared test harness defaults open_access to true, so this test disables it
+    # explicitly to exercise the production default.)
+    test "denies access by default when host has not configured auth (html)" do
+      SourceMonitor.config.authentication.open_access = false
+
+      get "/source_monitor/dashboard"
+
+      assert_response :forbidden
+      assert_equal "SourceMonitor access is not configured", response.body
+    end
+
+    test "denies access by default returns forbidden JSON" do
+      SourceMonitor.config.authentication.open_access = false
+
+      get "/source_monitor/dashboard", as: :json
+
+      assert_response :forbidden
+      json = JSON.parse(response.body)
+      assert_equal "SourceMonitor access is not configured", json["error"]
+    end
+
+    test "denies access by default returns forbidden toast for turbo_stream" do
+      SourceMonitor.config.authentication.open_access = false
+
+      get "/source_monitor/dashboard", as: :turbo_stream
+
+      assert_response :forbidden
+      assert_includes response.body, "SourceMonitor access is not configured"
+      assert_includes response.body, "turbo-stream"
+    end
+
+    test "open_access opt-in restores open access without a handler" do
+      SourceMonitor.config.authentication.open_access = true
+
+      get "/source_monitor/dashboard"
+
+      assert_response :success
+    end
+
+    test "configured handler is honored and allows access (fail-closed does not apply)" do
+      SourceMonitor.config.authentication.open_access = false
+      user = Struct.new(:admin?).new(true)
+      configure_authentication(user, authorize: true)
+
       get "/source_monitor/dashboard"
 
       assert_response :success

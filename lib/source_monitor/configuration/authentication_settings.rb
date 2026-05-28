@@ -22,7 +22,7 @@ module SourceMonitor
       end
 
       attr_reader :authenticate_handler, :authorize_handler
-      attr_accessor :current_user_method, :user_signed_in_method
+      attr_accessor :current_user_method, :user_signed_in_method, :open_access
 
       def initialize
         reset!
@@ -41,6 +41,10 @@ module SourceMonitor
         @authorize_handler = nil
         @current_user_method = nil
         @user_signed_in_method = nil
+        # Fail-closed by default: when no handler is configured the engine
+        # denies access. Set to true to opt into open/demo access. This is a
+        # technical opt-in flag, not business state.
+        @open_access = false
       end
 
       private

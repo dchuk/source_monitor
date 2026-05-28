@@ -52,6 +52,10 @@ SourceMonitor.configure do |config|
   config.mission_control_dashboard_path = nil
 
   # ---- Authentication -----------------------------------------------------
+  # SECURITY: SourceMonitor is FAIL-CLOSED by default. If you do not configure
+  # an authentication or authorization handler below, every engine route
+  # (including create/update/delete/enqueue actions) returns 403 Forbidden.
+  #
   # Hook SourceMonitor into your host application's authentication stack. Each
   # handler can be a Symbol (invoked on the controller) or a callable that will
   # receive the controller instance.
@@ -59,6 +63,12 @@ SourceMonitor.configure do |config|
   # config.authentication.authorize_with -> { authorize!(:manage, :source_monitor) }
   # config.authentication.current_user_method = :current_admin
   # config.authentication.user_signed_in_method = :admin_signed_in?
+  #
+  # Explicit opt-in for open/unauthenticated access. Leave this commented out
+  # in production. Only enable it for local demos or sandboxes where the engine
+  # routes are deliberately public.
+  # WARNING: non-production / demo only -- this disables the fail-closed guard.
+  # config.authentication.open_access = true
 
   # ---- HTTP client -------------------------------------------------------
   # Tune the Faraday client SourceMonitor uses for fetches/scrapes.

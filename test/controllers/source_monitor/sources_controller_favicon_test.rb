@@ -6,6 +6,9 @@ module SourceMonitor
   class SourcesControllerFaviconTest < ActionDispatch::IntegrationTest
     setup do
       SourceMonitor.reset_configuration!
+      # reset_configuration! re-enables the fail-closed default; opt back into
+      # open access so these route tests exercise favicon behavior, not auth.
+      SourceMonitor.config.authentication.open_access = true
     end
 
     test "create with website_url enqueues FaviconFetchJob" do

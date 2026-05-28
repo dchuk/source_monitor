@@ -31,6 +31,16 @@ module SourceMonitor
         config.authenticate_handler.present? || config.authorize_handler.present?
       end
 
+      # Fail-closed predicate. The engine denies access when the host app has
+      # configured no authentication/authorization handler AND has not
+      # explicitly opted into open access. Configured handlers always win: when
+      # a handler is present the handler decides and this returns false.
+      def self.access_denied_by_default?(_controller = nil)
+        return false if authentication_configured?
+
+        !SourceMonitor.config.authentication.open_access
+      end
+
       def self.authorize_configured?
         SourceMonitor.config.authentication.authorize_handler.present?
       end
