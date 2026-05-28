@@ -191,6 +191,57 @@ module SourceMonitor
         assert_equal({ completed: 1, total: 2, pending: 1, active: true, done: false }, context.health_progress)
       end
 
+      test "confirm context returns selected entries and bulk settings" do
+        import_session = build_session(
+          current_step: "confirm",
+          parsed_sources: selectable_parsed_sources,
+          selected_source_ids: [ "one" ],
+          bulk_settings: { "fetch_interval_minutes" => 30 }
+        )
+
+        context = wizard(import_session, current_step: "confirm").confirm_context
+
+        assert_equal [ "one" ], context.selected_source_ids
+        assert_equal [ "one" ], context.selected_entries.map { |entry| entry[:id] }
+        assert_equal({ "fetch_interval_minutes" => 30 }, context.bulk_settings)
+      end
+
+      test "confirm blocks when selected entries are empty" do
+        import_session = build_session(current_step: "confirm", parsed_sources: [], selected_source_ids: [])
+
+        result = nil
+        assert_no_enqueued_jobs only: SourceMonitor::ImportOpmlJob do
+          result = wizard(import_session, current_step: "confirm").handle_confirm
+        end
+
+        assert result.blocked?
+        assert_equal "Select at least one source to import.", result.selection_error
+        assert_equal 0, SourceMonitor::ImportHistory.count
+      end
+
+      test "confirm creates import history and enqueues import job" do
+        import_session = build_session(
+          current_step: "confirm",
+          parsed_sources: selectable_parsed_sources,
+          selected_source_ids: [ "one", "two" ],
+          bulk_settings: { "fetch_interval_minutes" => 45 }
+        )
+
+        assert_difference "SourceMonitor::ImportHistory.count", 1 do
+          assert_enqueued_with(job: SourceMonitor::ImportOpmlJob) do
+            result = wizard(import_session, current_step: "confirm").handle_confirm
+
+            assert_equal :success, result.status
+            assert_equal "Import started for 2 sources.", result.message
+            assert_equal [ "one", "two" ], result.selected_entries.map { |entry| entry[:id] }
+          end
+        end
+
+        history = SourceMonitor::ImportHistory.order(:created_at).last
+        assert_equal @user.id, history.user_id
+        assert_equal({ "fetch_interval_minutes" => 45 }, history.bulk_settings)
+      end
+
       private
 
       def build_session(attributes = {})

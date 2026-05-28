@@ -62,6 +62,23 @@ module SourceMonitor
         keyword_init: true
       )
 
+      ConfirmResult = Struct.new(
+        :status,
+        :selected_source_ids,
+        :selected_entries,
+        :bulk_settings,
+        :selection_error,
+        :message,
+        :history,
+        keyword_init: true
+      ) do
+        def blocked?
+          status == :blocked
+        end
+      end
+
+      ConfirmContext = Struct.new(:selected_source_ids, :selected_entries, :bulk_settings, keyword_init: true)
+
       def initialize(import_session:, params:, current_step:, now: Time.current)
         @import_session = import_session
         @params = params
@@ -177,6 +194,36 @@ module SourceMonitor
         )
       end
 
+      def handle_confirm
+        context = confirm_context
+
+        if context.selected_entries.empty?
+          return ConfirmResult.new(
+            status: :blocked,
+            selected_source_ids: context.selected_source_ids,
+            selected_entries: context.selected_entries,
+            bulk_settings: context.bulk_settings,
+            selection_error: "Select at least one source to import."
+          )
+        end
+
+        history = SourceMonitor::ImportHistory.create!(
+          user_id: import_session.user_id,
+          bulk_settings: import_session.bulk_settings
+        )
+        SourceMonitor::ImportOpmlJob.perform_later(import_session.id, history.id)
+        import_session.update_column(:current_step, "confirm") if import_session.current_step != "confirm"
+
+        ConfirmResult.new(
+          status: :success,
+          selected_source_ids: context.selected_source_ids,
+          selected_entries: context.selected_entries,
+          bulk_settings: context.bulk_settings,
+          history: history,
+          message: "Import started for #{context.selected_entries.size} sources."
+        )
+      end
+
       def preview_context(skip_default: false, selected_source_ids: nil)
         filter = permitted_filter(params[:filter]) || "all"
         page = normalize_page_param(params[:page])
@@ -229,6 +276,18 @@ module SourceMonitor
         import_session.update_columns(
           health_checks_active: false,
           health_check_completed_at: Time.current
+        )
+      end
+
+      def confirm_context
+        selected_source_ids = Array(import_session.selected_source_ids).map(&:to_s)
+        selected_entries = annotated_entries(selected_source_ids)
+          .select { |entry| selected_source_ids.include?(entry[:id]) }
+
+        ConfirmContext.new(
+          selected_source_ids: selected_source_ids,
+          selected_entries: selected_entries,
+          bulk_settings: import_session.bulk_settings || {}
         )
       end
 

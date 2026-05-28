@@ -169,31 +169,25 @@ module SourceMonitor
     end
 
     def handle_confirm_step
-      @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
-      @selected_entries = annotated_entries(@selected_source_ids).select { |entry| @selected_source_ids.include?(entry[:id]) }
-      if @selected_entries.empty?
-        @selection_error = "Select at least one source to import."
-        prepare_confirm_context
+      result = import_session_wizard.handle_confirm
+      apply_confirm_context(result)
+
+      if result.blocked?
+        @selection_error = result.selection_error
         render :show, status: :unprocessable_entity
         return
       end
-      history = SourceMonitor::ImportHistory.create!(
-        user_id: @import_session.user_id,
-        bulk_settings: @import_session.bulk_settings
-      )
-      SourceMonitor::ImportOpmlJob.perform_later(@import_session.id, history.id)
-      @import_session.update_column(:current_step, "confirm") if @import_session.current_step != "confirm"
-      message = "Import started for #{@selected_entries.size} sources."
+
       respond_to do |format|
         format.turbo_stream do
           responder = SourceMonitor::TurboStreams::StreamResponder.new
-          responder.toast(message:, level: :success)
+          responder.toast(message: result.message, level: :success)
           responder.redirect(source_monitor.sources_path)
           render turbo_stream: responder.render(view_context)
         end
 
         format.html do
-          redirect_to source_monitor.sources_path, notice: message
+          redirect_to source_monitor.sources_path, notice: result.message
         end
       end
     end
@@ -287,6 +281,10 @@ module SourceMonitor
       apply_health_check_context(import_session_wizard.health_check_context)
     end
 
+    def prepare_confirm_context
+      apply_confirm_context(import_session_wizard.confirm_context)
+    end
+
     def apply_preview_context(context)
       @filter = context.filter
       @page = context.page
@@ -303,6 +301,12 @@ module SourceMonitor
       @health_check_entries = context.health_check_entries
       @health_check_target_ids = context.health_check_target_ids
       @health_progress = context.health_progress
+    end
+
+    def apply_confirm_context(context)
+      @selected_source_ids = context.selected_source_ids
+      @selected_entries = context.selected_entries
+      @bulk_settings = context.bulk_settings
     end
 
     def authorize_import_session!
