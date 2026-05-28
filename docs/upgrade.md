@@ -46,6 +46,20 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
+### Upgrading to 0.13.1
+
+**What changed:**
+- **Compatibility:** `after_fetch_completed` callbacks continue to receive `FeedFetcher::Result`; the fetch outcome extraction remains internal.
+- **Scrape recommendations:** Inactive sources stay excluded from source-index recommendation badges, matching dashboard and bulk enablement behavior.
+
+**Upgrade steps:**
+```bash
+bundle update source_monitor
+bin/rails source_monitor:upgrade
+```
+
+No migrations, configuration changes, or breaking changes required.
+
 ### Upgrading to 0.13.0
 
 **What changed:**

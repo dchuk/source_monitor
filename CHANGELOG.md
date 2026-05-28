@@ -13,6 +13,8 @@ All notable changes to this project are documented below. The format follows [Ke
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-05-28
+
 ### Fixed
 - Preserve the public `after_fetch_completed` payload as `FeedFetcher::Result`; the PR #118 fetch outcome objects remain an internal refactor detail.
 - Keep inactive sources out of sources-index scrape recommendation badges, matching the shared recommendation query used by dashboard and bulk enablement.
