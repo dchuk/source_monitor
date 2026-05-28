@@ -87,24 +87,23 @@ module SourceMonitor
     def persist_step!
       return if @import_session.current_step == @current_step
 
-      deactivate_health_checks! if @current_step != "health_check"
+      import_session_wizard.deactivate_health_checks if @current_step != "health_check"
       @import_session.update_column(:current_step, @current_step)
     end
 
     def handle_health_check_step
-      @selected_source_ids = health_check_selection_from_params
-      @import_session.update!(selected_source_ids: @selected_source_ids)
-      if advancing_from_health_check? && @selected_source_ids.blank?
-        @selection_error = "Select at least one source to continue."
-        prepare_health_check_context
+      result = import_session_wizard.handle_health_check
+      @selected_source_ids = result.selected_source_ids
+
+      if result.blocked?
+        @selection_error = result.selection_error
+        apply_health_check_context(result.health_check_context)
         render :show, status: :unprocessable_entity
         return
       end
 
-      @current_step = target_step
-      deactivate_health_checks! if @current_step != "health_check"
-      @import_session.update_column(:current_step, @current_step) if @import_session.current_step != @current_step
-      prepare_health_check_context if @current_step == "health_check"
+      @current_step = result.current_step
+      apply_health_check_context(result.health_check_context) if @current_step == "health_check"
       redirect_to source_monitor.step_import_session_path(@import_session, step: @current_step), allow_other_host: false
     end
 
@@ -284,6 +283,10 @@ module SourceMonitor
       apply_preview_context(import_session_wizard.preview_context(skip_default: skip_default))
     end
 
+    def prepare_health_check_context
+      apply_health_check_context(import_session_wizard.health_check_context)
+    end
+
     def apply_preview_context(context)
       @filter = context.filter
       @page = context.page
@@ -293,6 +296,13 @@ module SourceMonitor
       @paginated_entries = context.paginated_entries
       @has_next_page = context.has_next_page
       @has_previous_page = context.has_previous_page
+    end
+
+    def apply_health_check_context(context)
+      @selected_source_ids = context.selected_source_ids
+      @health_check_entries = context.health_check_entries
+      @health_check_target_ids = context.health_check_target_ids
+      @health_progress = context.health_progress
     end
 
     def authorize_import_session!

@@ -41,6 +41,27 @@ module SourceMonitor
         keyword_init: true
       )
 
+      HealthCheckResult = Struct.new(
+        :status,
+        :selected_source_ids,
+        :current_step,
+        :selection_error,
+        :health_check_context,
+        keyword_init: true
+      ) do
+        def blocked?
+          status == :blocked
+        end
+      end
+
+      HealthCheckContext = Struct.new(
+        :selected_source_ids,
+        :health_check_entries,
+        :health_check_target_ids,
+        :health_progress,
+        keyword_init: true
+      )
+
       def initialize(import_session:, params:, current_step:, now: Time.current)
         @import_session = import_session
         @params = params
@@ -128,6 +149,34 @@ module SourceMonitor
         )
       end
 
+      def handle_health_check
+        selected_source_ids = health_check_selection_from_params
+        import_session.update!(selected_source_ids: selected_source_ids)
+
+        if advancing_from_health_check? && selected_source_ids.blank?
+          deactivate_health_checks
+
+          return HealthCheckResult.new(
+            status: :blocked,
+            selected_source_ids: selected_source_ids,
+            current_step: current_step,
+            selection_error: "Select at least one source to continue.",
+            health_check_context: health_check_context
+          )
+        end
+
+        next_step = target_step
+        deactivate_health_checks if next_step != "health_check"
+        import_session.update_column(:current_step, next_step) if import_session.current_step != next_step
+
+        HealthCheckResult.new(
+          status: :success,
+          selected_source_ids: selected_source_ids,
+          current_step: next_step,
+          health_check_context: (health_check_context if next_step == "health_check")
+        )
+      end
+
       def preview_context(skip_default: false, selected_source_ids: nil)
         filter = permitted_filter(params[:filter]) || "all"
         page = normalize_page_param(params[:page])
@@ -156,6 +205,30 @@ module SourceMonitor
           paginated_entries: paginator.records,
           has_next_page: paginator.has_next_page,
           has_previous_page: paginator.has_previous_page
+        )
+      end
+
+      def health_check_context
+        start_health_checks_if_needed
+
+        selected_source_ids = Array(import_session.selected_source_ids).map(&:to_s)
+        entries = health_check_entries(selected_source_ids)
+        target_ids = health_check_targets
+
+        HealthCheckContext.new(
+          selected_source_ids: selected_source_ids,
+          health_check_entries: entries,
+          health_check_target_ids: target_ids,
+          health_progress: health_check_progress(entries)
+        )
+      end
+
+      def deactivate_health_checks
+        return unless import_session.health_checks_active?
+
+        import_session.update_columns(
+          health_checks_active: false,
+          health_check_completed_at: Time.current
         )
       end
 
@@ -315,6 +388,103 @@ module SourceMonitor
 
       def advancing_from_preview?
         target_step != "preview"
+      end
+
+      def health_check_selection_from_params
+        if import_session_params[:select_all] == "true"
+          return health_check_targets.dup
+        end
+
+        return [] if import_session_params[:select_none] == "true"
+
+        ids = import_session_params[:selected_source_ids]
+        return Array(import_session.selected_source_ids).map(&:to_s) unless ids
+
+        Array(ids).map(&:to_s).uniq & health_check_targets
+      end
+
+      def advancing_from_health_check?
+        target_step != "health_check"
+      end
+
+      def start_health_checks_if_needed
+        return unless current_step == "health_check"
+
+        jobs_to_enqueue = []
+
+        import_session.with_lock do
+          import_session.reload
+          selected = Array(import_session.selected_source_ids).map(&:to_s)
+
+          if selected.blank?
+            import_session.update_columns(health_checks_active: false, health_check_target_ids: [])
+            next
+          end
+
+          if import_session.health_checks_active? && import_session.health_check_targets.sort == selected.sort
+            next
+          end
+
+          import_session.update!(
+            parsed_sources: reset_health_results(import_session.parsed_sources, selected),
+            health_checks_active: true,
+            health_check_target_ids: selected,
+            health_check_started_at: Time.current,
+            health_check_completed_at: nil
+          )
+
+          jobs_to_enqueue = selected
+        end
+
+        enqueue_health_check_jobs(import_session, jobs_to_enqueue) if jobs_to_enqueue.any?
+      end
+
+      def reset_health_results(entries, target_ids)
+        Array(entries).map do |entry|
+          entry_hash = entry.to_h
+          entry_id = entry_hash["id"] || entry_hash[:id]
+          next entry_hash unless target_ids.include?(entry_id.to_s)
+
+          entry_hash.merge("health_status" => "pending", "health_error" => nil)
+        end
+      end
+
+      def enqueue_health_check_jobs(import_session, target_ids)
+        target_ids.each do |target_id|
+          SourceMonitor::ImportSessionHealthCheckJob.set(wait: 1.second).perform_later(import_session.id, target_id)
+        end
+      end
+
+      def health_check_entries(selected_ids)
+        targets = health_check_targets
+        entries = Array(import_session.parsed_sources).map { |entry| normalize_entry(entry) }
+
+        entries.select { |entry| targets.include?(entry[:id]) }.map do |entry|
+          entry.merge(selected: selected_ids.include?(entry[:id]))
+        end
+      end
+
+      def health_check_progress(entries)
+        total = health_check_targets.size
+        completed = entries.count { |entry| health_check_complete?(entry) }
+
+        {
+          completed: completed,
+          total: total,
+          pending: [ total - completed, 0 ].max,
+          active: import_session.health_checks_active?,
+          done: total.positive? && completed >= total
+        }
+      end
+
+      def health_check_complete?(entry)
+        %w[working failing].include?(entry[:health_status].to_s)
+      end
+
+      def health_check_targets
+        targets = import_session.health_check_targets
+        targets = Array(import_session.selected_source_ids).map(&:to_s) if targets.blank?
+        targets
       end
 
       def normalize_page_param(value)

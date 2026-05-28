@@ -5,6 +5,8 @@ require "test_helper"
 module SourceMonitor
   module ImportSessions
     class WizardTest < ActiveSupport::TestCase
+      include ActiveJob::TestHelper
+
       fixtures :users
 
       setup do
@@ -97,6 +99,96 @@ module SourceMonitor
         assert result.blocked?
         assert_equal "Select at least one new source to continue.", result.selection_error
         assert_equal "preview", import_session.reload.current_step
+      end
+
+      test "health check context starts checks and enqueues jobs" do
+        import_session = build_session(
+          current_step: "health_check",
+          parsed_sources: selectable_parsed_sources,
+          selected_source_ids: [ "one", "two" ]
+        )
+
+        context = nil
+        assert_enqueued_jobs 2, only: SourceMonitor::ImportSessionHealthCheckJob do
+          context = wizard(import_session, current_step: "health_check").health_check_context
+        end
+
+        import_session.reload
+        assert import_session.health_checks_active?
+        assert_equal %w[one two], import_session.health_check_target_ids
+        assert_equal %w[pending pending], import_session.parsed_sources.map { |entry| entry["health_status"] }
+        assert_equal %w[one two], context.health_check_target_ids
+        assert_equal({ completed: 0, total: 2, pending: 2, active: true, done: false }, context.health_progress)
+      end
+
+      test "health check context does not enqueue duplicate jobs for unchanged targets" do
+        import_session = build_session(
+          current_step: "health_check",
+          parsed_sources: selectable_parsed_sources,
+          selected_source_ids: [ "one" ],
+          health_checks_active: true,
+          health_check_target_ids: [ "one" ]
+        )
+
+        assert_no_enqueued_jobs only: SourceMonitor::ImportSessionHealthCheckJob do
+          wizard(import_session, current_step: "health_check").health_check_context
+        end
+
+        assert_equal [ "one" ], import_session.reload.health_check_target_ids
+      end
+
+      test "health check handles select all and select none against targets" do
+        import_session = build_session(
+          current_step: "health_check",
+          parsed_sources: selectable_parsed_sources,
+          selected_source_ids: [ "one" ],
+          health_checks_active: true,
+          health_check_target_ids: [ "one", "two" ]
+        )
+
+        select_all = wizard(import_session, current_step: "health_check", params: { import_session: { select_all: "true", next_step: "health_check" } }).handle_health_check
+        assert_equal :success, select_all.status
+        assert_equal %w[one two], import_session.reload.selected_source_ids.sort
+
+        select_none = wizard(import_session, current_step: "health_check", params: { import_session: { select_none: "true", next_step: "health_check" } }).handle_health_check
+        assert_equal :success, select_none.status
+        assert_equal [], import_session.reload.selected_source_ids
+      end
+
+      test "health check blocks advancing with empty selection and deactivates checks" do
+        import_session = build_session(
+          current_step: "health_check",
+          parsed_sources: selectable_parsed_sources,
+          selected_source_ids: [],
+          health_checks_active: true,
+          health_check_target_ids: [ "one" ]
+        )
+
+        result = wizard(import_session, current_step: "health_check", params: { import_session: { selected_source_ids: [], next_step: "configure" } }).handle_health_check
+
+        assert result.blocked?
+        assert_equal "Select at least one source to continue.", result.selection_error
+        import_session.reload
+        assert_equal "health_check", import_session.current_step
+        assert_not import_session.health_checks_active?
+      end
+
+      test "health check context reports completed progress and selected entries" do
+        import_session = build_session(
+          current_step: "health_check",
+          parsed_sources: [
+            { "id" => "one", "feed_url" => "https://new.example.com/rss", "status" => "valid", "health_status" => "working" },
+            { "id" => "two", "feed_url" => "https://another.example.com/rss", "status" => "valid", "health_status" => "pending" }
+          ],
+          selected_source_ids: [ "one", "two" ],
+          health_checks_active: true,
+          health_check_target_ids: [ "one", "two" ]
+        )
+
+        context = wizard(import_session, current_step: "health_check").health_check_context
+
+        assert_equal [ true, true ], context.health_check_entries.map { |entry| entry[:selected] }
+        assert_equal({ completed: 1, total: 2, pending: 1, active: true, done: false }, context.health_progress)
       end
 
       private
