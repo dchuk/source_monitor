@@ -46,6 +46,33 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
+### Upgrading to 0.14.0
+
+**What changed:**
+- **BREAKING — Fail-closed engine access by default** (#129). SourceMonitor now returns `403 Forbidden` on every mounted route unless the host app has configured an authentication or authorization handler. Previously routes were publicly accessible when no handler was configured.
+- **Request flashes are delivered response-local** (#130). Flash toasts are no longer broadcast to the global `source_monitor_notifications` ActionCable stream (which every connected tab subscribed to); they now render inline on full-page loads and append to the turbo_stream response, reaching only the requesting tab. Background operational toasts remain global but carry no per-user request context.
+- **Gem package excludes `.claude` internals** (#131). Only `.claude/skills/sm-*` SourceMonitor skills are packaged; agents, hooks, agent-memory, `settings.json`, commands, and non-`sm-*` skills are excluded.
+
+**Upgrade steps:**
+```bash
+bundle update source_monitor
+bin/rails source_monitor:upgrade
+```
+
+**Action required (BREAKING):**
+Open `config/initializers/source_monitor.rb`. If neither `config.authentication.authenticate_with` nor `config.authentication.authorize_with` is configured, the engine will return `403` on all routes after upgrade. Either:
+- configure a handler to gate the engine with your host auth stack:
+  ```ruby
+  config.authentication.authenticate_with :authenticate_user!
+  config.authentication.authorize_with ->(controller) { controller.current_user&.admin? }
+  ```
+- or, for local demos/sandboxes only, explicitly opt into public access:
+  ```ruby
+  config.authentication.open_access = true # NOT for production
+  ```
+
+No database migrations are required. The flash and packaging changes apply transparently.
+
 ### Upgrading to 0.13.1
 
 **What changed:**

@@ -13,10 +13,20 @@ All notable changes to this project are documented below. The format follows [Ke
 
 ## [Unreleased]
 
+- No unreleased changes yet.
+
+## [0.14.0] - 2026-05-28
+
 ### Security (BREAKING)
 - **Fail-closed engine access by default** (#129). When the host app has configured no authentication/authorization handler, every mounted SourceMonitor route now returns `403 Forbidden` instead of being publicly accessible. Previously `authenticate!`/`authorize!` were silent no-ops when unconfigured, so create/update/delete/enqueue routes were public by omission.
   - **Migration:** Configure a handler — `config.authentication.authenticate_with` and/or `config.authentication.authorize_with` — to gate the engine with your host auth stack. Configured handlers are honored exactly as before.
   - **Demo opt-in:** To intentionally keep routes public (local demos/sandboxes only), set `config.authentication.open_access = true` (default `false`). Do not enable this in production.
+
+### Fixed
+- **Request flashes no longer leak across users** (#130). Request flash toasts were broadcast to a global ActionCable stream (`source_monitor_notifications`) that every connected browser tab subscribed to, so one user's flash could appear on every user's screen. Flashes are now delivered response-local — rendered inline on full-page HTML loads and appended to the turbo_stream response otherwise — reaching only the requesting tab. Background operational toasts (fetch/scrape completion) remain global but carry no per-user request context.
+
+### Changed
+- **Gem package no longer ships `.claude` internals** (#131). The packaged gem now excludes `.claude` agents, hooks, agent-memory, `settings.json`, commands, and non-`sm-*` skills; only the intended `.claude/skills/sm-*` SourceMonitor skills are shipped. Packaging is also now CWD-independent so the skill files are included deterministically.
 
 ## [0.13.1] - 2026-05-28
 
