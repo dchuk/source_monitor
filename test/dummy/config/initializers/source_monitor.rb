@@ -56,4 +56,11 @@ SourceMonitor.configure do |config|
 
   # Realtime configuration for Turbo Streams via Solid Cable
   config.realtime.adapter = :solid_cable
+
+  # The engine is fail-closed by default (issue #129): with no authentication
+  # handler configured it denies all engine routes. The dummy app is a local
+  # integration playground with no real auth, so it explicitly opts into open
+  # access. NEVER enable this in production -- configure
+  # config.authentication.authenticate_with / authorize_with instead.
+  config.authentication.open_access = true
 end

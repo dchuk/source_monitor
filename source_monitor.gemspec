@@ -23,11 +23,16 @@ Gem::Specification.new do |spec|
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
     tracked_files = `git ls-files -z`.split("\x0")
     tracked_files.reject do |file|
-      file.start_with?(".ai/", ".github/", ".vbw-planning/", "coverage/", "node_modules/", "pkg/", "spec/", "test/", "tmp/", "vendor/", "examples/", "bin/")
+      file.start_with?(".ai/", ".github/", ".vbw-planning/", "coverage/", "node_modules/", "pkg/", "spec/", "test/", "tmp/", "vendor/", "examples/", "bin/") ||
+        # Exclude all .claude internals (agents, hooks, agent-memory, settings,
+        # commands) but keep the intended SourceMonitor sm-* skills. Driven from
+        # git ls-files (inside Dir.chdir) so packaging is CWD-independent --- a
+        # bare Dir[] glob here returned nothing on CI when another test had
+        # changed the process working directory.
+        (file.start_with?(".claude/") && !file.start_with?(".claude/skills/sm-"))
     end
   end
   spec.files += [ "CHANGELOG.md" ].select { |path| File.exist?(File.join(__dir__, path)) }
-  spec.files += Dir[".claude/skills/sm-*/**/*"]
   spec.files.uniq!
 
   spec.require_paths = [ "lib" ]

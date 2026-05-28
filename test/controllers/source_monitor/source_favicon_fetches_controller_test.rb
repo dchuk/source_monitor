@@ -8,6 +8,9 @@ module SourceMonitor
 
     setup do
       SourceMonitor.reset_configuration!
+      # reset_configuration! re-enables the fail-closed default; opt back into
+      # open access so these route tests exercise favicon behavior, not auth.
+      SourceMonitor.config.authentication.open_access = true
       @source = create_source!(name: "Favicon Test Source", website_url: "https://example.com")
     end
 

@@ -283,10 +283,17 @@ config.realtime.solid_cable.connects_to = { database: { writing: :cable } }
 
 Class: `SourceMonitor::Configuration::AuthenticationSettings`
 
+**Fail-closed by default.** When no `authenticate_with`/`authorize_with` handler is
+configured and `open_access` is `false`, the engine denies every route with
+`403 Forbidden` (see `SourceMonitor::Security::Authentication.access_denied_by_default?`).
+Configuring either handler makes the handler authoritative and bypasses the
+fail-closed guard.
+
 | Setting | Type | Default | Description |
 |---|---|---|---|
 | `current_user_method` | Symbol/nil | `nil` | Controller method to get current user |
 | `user_signed_in_method` | Symbol/nil | `nil` | Controller method to check sign-in status |
+| `open_access` | Boolean | `false` | Opt out of the fail-closed guard so engine routes are public. **Demo/non-production only.** Ignored when a handler is configured. |
 
 ### Methods
 
@@ -312,6 +319,10 @@ config.authentication.authorize_with ->(controller) {
 config.authentication.authorize_with do
   redirect_to root_path unless current_user&.admin?
 end
+
+# Open access (demo/non-production only) -- disables the fail-closed guard.
+# Leave commented/false in production. A configured handler always wins.
+config.authentication.open_access = true # default: false
 ```
 
 ---

@@ -16,6 +16,10 @@ module SourceMonitor
         assert_nil @settings.user_signed_in_method
       end
 
+      test "open_access defaults to false (fail-closed)" do
+        assert_equal false, @settings.open_access
+      end
+
       test "authenticate_with symbol" do
         @settings.authenticate_with(:authenticate_user!)
 
@@ -96,6 +100,7 @@ module SourceMonitor
         @settings.authorize_with(:authorize!)
         @settings.current_user_method = :current_user
         @settings.user_signed_in_method = :user_signed_in?
+        @settings.open_access = true
 
         @settings.reset!
 
@@ -103,6 +108,7 @@ module SourceMonitor
         assert_nil @settings.authorize_handler
         assert_nil @settings.current_user_method
         assert_nil @settings.user_signed_in_method
+        assert_equal false, @settings.open_access
       end
     end
   end

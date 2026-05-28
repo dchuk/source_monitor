@@ -119,7 +119,7 @@ After installation, review and customize the initializer. Key areas:
 | Section | Purpose |
 |---|---|
 | Queue settings | Queue names, concurrency, namespace |
-| Authentication | `authenticate_with`, `authorize_with` hooks |
+| Authentication | **Fail-closed by default** -- configure `authenticate_with`/`authorize_with` hooks, or set `open_access = true` for demos only |
 | HTTP client | Timeouts, proxy, retries |
 | Fetching | Adaptive scheduling intervals and factors |
 | Health | Auto-pause/resume thresholds |
@@ -152,7 +152,17 @@ SOURCE_MONITOR_SETUP_TELEMETRY=true bin/source_monitor verify
 # Logs to log/source_monitor_setup.log
 ```
 
-## Devise Integration
+## Authentication (Fail-Closed by Default)
+
+SourceMonitor is **fail-closed by default**: with no `authenticate_with`/`authorize_with`
+handler configured, every engine route (including create/update/delete/enqueue actions)
+returns `403 Forbidden`. You must make one of two choices during setup:
+
+1. **Configure a handler** (recommended) -- the handler decides access and bypasses the
+   fail-closed guard.
+2. **Set `config.authentication.open_access = true`** -- opts out of the guard so routes
+   are public. **Demo/non-production only.** A configured handler always takes precedence
+   over this flag.
 
 When Devise is detected, the guided installer offers to wire authentication hooks:
 
@@ -238,6 +248,6 @@ end
 - [x] `Procfile.dev` includes `jobs:` entry for Solid Queue (handled by generator)
 - [x] Dispatcher config includes `recurring_schedule: config/recurring.yml` (handled by generator)
 - [ ] Solid Queue workers started
-- [ ] Authentication hooks configured in initializer
+- [ ] Authentication decision made (engine is fail-closed by default): handler configured via `authenticate_with`/`authorize_with`, OR `config.authentication.open_access = true` for demos only
 - [ ] `bin/source_monitor verify` passes
 - [ ] Dashboard accessible at mount path

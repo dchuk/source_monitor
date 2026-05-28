@@ -109,7 +109,7 @@ Prefer to script each step or plug SourceMonitor into an existing deployment che
 6. **Start workers** with `bin/rails solid_queue:start` (or your process manager). The install generator automatically configures recurring jobs in `config/recurring.yml` for fetch scheduling, scraping, and cleanup. They'll run with `bin/dev` or `bin/jobs`.
    - **Procfile.dev:** The generator automatically patches `Procfile.dev` with a `jobs:` entry for Solid Queue. Verify the file contains `jobs: bundle exec rake solid_queue:start` after running the generator.
    - **Recurring schedule:** The generator automatically patches `config/queue.yml` dispatchers with `recurring_schedule: config/recurring.yml`. Verify the key is present after running the generator.
-7. **Review the initializer** and tune queue names, HTTP timeouts, scraping adapters, retention limits, authentication hooks, and Mission Control integration. The [configuration reference](configuration.md) details every option.
+7. **Review the initializer** and tune queue names, HTTP timeouts, scraping adapters, retention limits, authentication hooks, and Mission Control integration. The [configuration reference](configuration.md) details every option. **Important:** the engine is fail-closed by default — configure `config.authentication.authenticate_with` / `authorize_with`, otherwise engine routes return `403 Forbidden`. For non-production demos only, you may set `config.authentication.open_access = true`.
 8. **Verify the install**: run `bin/source_monitor verify` to ensure Solid Queue workers and Action Cable are healthy, then visit the mount path to trigger a fetch manually. Enable telemetry if you want JSON logs recorded for support.
 
 ### Host Compatibility Matrix

@@ -33,7 +33,7 @@ SourceMonitor assumes the standard Rails 8 process split:
 
 ## Security & Authentication
 
-- Lock down the engine routes with authentication hooks (`config.authentication.authenticate_with` / `authorize_with`).
+- SourceMonitor is **fail-closed by default**: without a configured handler every engine route returns `403 Forbidden`. Lock down the routes with authentication hooks (`config.authentication.authenticate_with` / `authorize_with`). Only set `config.authentication.open_access = true` for non-production demos where public access is intentional.
 - Configure HTTPS for Action Cable if you expose Solid Cable over the public internet.
 - Store API keys for authenticated feeds in encrypted credentials and inject them via per-source custom headers.
 

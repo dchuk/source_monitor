@@ -66,9 +66,16 @@ config.http.retry_max = 3
 ```
 
 ### Authentication (Devise)
+SourceMonitor is **fail-closed by default**: with no `authenticate_with`/`authorize_with`
+handler configured, every engine route returns `403 Forbidden`. Configure a handler
+to protect the dashboard (the handler decides access and bypasses the fail-closed guard):
 ```ruby
 config.authentication.authenticate_with :authenticate_user!
 config.authentication.authorize_with ->(c) { c.current_user&.admin? }
+```
+For local demos/sandboxes only, opt out of the fail-closed guard (non-production):
+```ruby
+config.authentication.open_access = true # default: false -- demo/non-production only
 ```
 
 ### Image Downloads (Active Storage)
@@ -167,7 +174,7 @@ end
 - [ ] Initializer exists at `config/initializers/source_monitor.rb`
 - [ ] Queue names match `config/queue.yml` (or `config/solid_queue.yml`) entries
 - [x] Dispatcher config includes `recurring_schedule: config/recurring.yml` (handled by install generator)
-- [ ] Authentication hooks configured for host auth system
+- [ ] Authentication decision made: configure `authenticate_with`/`authorize_with` (fail-closed default) OR set `config.authentication.open_access = true` for demos only
 - [ ] HTTP timeouts appropriate for target feeds
 - [ ] Retention policy set for production
 - [ ] Workers restarted after configuration changes

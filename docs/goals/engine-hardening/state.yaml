@@ -1,0 +1,324 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Engine Hardening: auth defaults, notification scoping, gem packaging"
+  slug: "engine-hardening"
+  kind: existing_plan # specific | open_ended | existing_plan | recovery | audit
+  tranche: "Validate 3 specs against HEAD, then implement one verified Worker package per issue (#131 -> #130 -> #129), then audit all three complete."
+  status: done # active | blocked | done
+  oracle:
+    signal: "rbenv exec bin/rails test + rbenv exec bin/rubocop + rbenv exec bin/brakeman --no-pager + (cd test/dummy && rbenv exec bundle exec rails zeitwerk:check) ALL green, with every acceptance-criteria checkbox on #129/#130/#131 mapped to a named test or evidence."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Three done Worker receipts (one per issue) with green gate commands, plus a Judge/PM audit mapping each issue's criteria to evidence."
+  intake:
+    original_request: "these 3 issues (#129, #130, #131)"
+    interpreted_outcome: "Implement and verify all three engine-hardening issues; satisfy each issue's acceptance criteria with the repo gates green."
+    input_shape: existing_plan
+    audience: "SourceMonitor engine maintainer + host apps consuming the gem"
+    authority: requested
+    proof_type: test
+    completion_proof: "All acceptance-criteria checkboxes on #129/#130/#131 satisfied AND all four repo gates green."
+    likely_misfire: "Declaring done after planning; or shipping #129 fail-closed without the open_access opt-in + dummy update, breaking the dummy app/tests; or entangling all 3 in one commit; or deleting toasts instead of scoping them in #130."
+    blind_spots_considered:
+      - "#129 is an intentional breaking change needing a CHANGELOG/upgrade note + dummy-app opt-in landing together."
+      - "#130 has TWO global-stream leak paths: ApplicationController#broadcast_flash_toasts (request flashes) AND Broadcaster#broadcast_toast (background events). Both must be fixed."
+      - "Issues are independent (no blocker ordering) but each is its own vertical slice + commit."
+      - "CI diff-coverage gate requires a test for every new rescue/fallback branch."
+    existing_plan_facts:
+      - "GitHub issue #131: exclude .claude/ from gemspec git ls-files filter, keep .claude/skills/sm-*; add test/gemspec_packaging_test.rb. Spec validated against source_monitor.gemspec lines 23-31 (.claude/ NOT in reject list)."
+      - "GitHub issue #130: StreamResponder#toast is already response-local; leaks are ApplicationController#broadcast_flash_toasts and Realtime::Broadcaster#broadcast_toast -> global 'source_monitor_notifications' stream subscribed by every tab via layouts/source_monitor/application.html.erb:15. Add test/lib/source_monitor/realtime/broadcaster_test.rb (none exists yet)."
+      - "GitHub issue #129: Security::Authentication.authenticate!/authorize! call_handler is a silent no-op when handler nil. authentication_configured? predicate already exists. Add open_access opt-in on Configuration::AuthenticationSettings (reset in reset!), enforce in Security::Authentication, deny via :forbidden following ApplicationController#record_not_found multi-format pattern. Dummy initializer (test/dummy/config/initializers/source_monitor.rb) currently sets NO auth handler -> must opt into open_access. AuthenticationHelpers#configure_authentication covers the handler-honored path."
+      - "Source: issues #129/#130/#131 carry full ## Technical Spec sections written by issues-to-specs; parent umbrella #128; PRD #127."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  # installed | bundled_not_installed | missing | unknown
+  scout: installed       # ~/.claude/agents/goal-scout.md verified
+  worker: installed      # ~/.claude/agents/goal-worker.md verified
+  judge: installed       # ~/.claude/agents/goal-judge.md verified
+
+visual_board:
+  # none | local | unknown
+  selected: local
+  local:
+    status: live # not_requested | starting | live | generated | blocked
+    url: "http://goalbuddy.localhost:41737/engine-hardening/"
+    command: "npx goalbuddy board docs/goals/engine-hardening"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: medium
+    objective: "Validate the three issue Technical Specs against current HEAD, confirm the leak paths / fail-open behavior / gemspec filter still match the code, and confirm the Worker package sequence and allowed_files for T002-T004."
+    inputs:
+      - "GitHub issues #129, #130, #131 (## Technical Spec sections)"
+      - "source_monitor.gemspec"
+      - "lib/source_monitor/security/authentication.rb"
+      - "lib/source_monitor/configuration/authentication_settings.rb"
+      - "app/controllers/source_monitor/application_controller.rb"
+      - "lib/source_monitor/realtime/broadcaster.rb"
+      - "lib/source_monitor/turbo_streams/stream_responder.rb"
+      - "app/views/layouts/source_monitor/application.html.erb"
+      - "test/dummy/config/initializers/source_monitor.rb"
+    constraints:
+      - "Read-only. Do not edit implementation files."
+      - "Preserve the issue specs as plan facts; only flag conflicts with HEAD."
+      - "Do not collapse the three issues into one package; keep one Worker package per issue."
+    expected_output:
+      - "Per-issue: spec still valid? any drift from HEAD?"
+      - "Confirmed allowed_files + verify commands for T002 (#131), T003 (#130), T004 (#129)"
+      - "Any owner question needed before a package can proceed (e.g. open_access naming)"
+      - "Go/no-go to start T002"
+    receipt:
+      result: done
+      decision: approved_with_notes
+      full_outcome_complete: false
+      note: notes/T001-spec-validation.md
+      summary: "All 3 specs valid vs HEAD (evidence cited). go for T002. Two critical board updates applied: T004 +test/test_helper.rb (reset_configuration! wipes dummy open_access per-test; ~24 tests would 403) and flip application_controller_test.rb:28-31 to :forbidden; T003 extends existing broadcaster_test.rb (spec wrongly said it was missing) + aware of 2 extra background toast sites. Sequence #131->#130->#129 OK; T003/T004 serial-only (shared application_controller.rb)."
+      owner_questions_blocking: []
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement #131: exclude .claude/ internals from the packaged gem while keeping .claude/skills/sm-*; add a packaging test."
+    allowed_files:
+      - "source_monitor.gemspec"
+      - "test/gemspec_packaging_test.rb"
+    verify:
+      - "rbenv exec bin/rails test test/gemspec_packaging_test.rb"
+      - "rbenv exec bin/rubocop"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "git ls-files unavailable in the test env (use stubbed file-list approach per spec risk note)."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - source_monitor.gemspec
+        - test/gemspec_packaging_test.rb
+      commands:
+        - cmd: "bin/rails test test/gemspec_packaging_test.rb"
+          status: pass
+        - cmd: "bin/rubocop (505 files)"
+          status: pass
+      summary: "Added '.claude/' to the gemspec reject-prefix list; existing Dir[.claude/skills/sm-*] re-include keeps only sm-* skills. New test/gemspec_packaging_test.rb asserts no .claude internals ship, only sm-* under .claude/, sm-host-setup present, app/+lib/ intact. spec.files: 427 total, 54 .claude (all sm-*), 0 non-sm .claude. Committed 846d612, Closes #131."
+      notes: "IMPORTANT for later tasks: 'rbenv exec bin/rails' fails (rbenv exec resolves via PATH, not relative path). Use 'bin/rails'/'bin/rubocop' directly (already rbenv-shimmed) or 'rbenv exec rails'. Live HEAD has 54 sm-* skill files (T001 said 39); test does not hard-code count."
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement #130: stop request flashes broadcasting to the global notification stream (keep them response-local) and scope or decontextualize background Broadcaster toasts; EXTEND the existing broadcaster test to prove no cross-user leakage. Do not delete the toast feature."
+    constraints:
+      - "T001 finding: test/lib/source_monitor/realtime/broadcaster_test.rb ALREADY EXISTS (stubs Turbo::StreamsChannel.broadcast_append_to) -- EXTEND it, do not recreate."
+      - "Two leak paths to fix: (a) ApplicationController#broadcast_flash_toasts:63-79 (request flashes -> global) keep response-local; (b) Broadcaster#broadcast_toast:66-85 (background fetch/scrape) keep global but context-free OR scope per spec default."
+      - "Be aware of 2 more background broadcast_toast call sites (source_health_check_orchestrator.rb:57, source_updater.rb:196 auto-pause) -- source-operational, context-free is fine."
+      - "Serial-only with T004 (shared application_controller.rb); never run in parallel."
+    allowed_files:
+      - "lib/source_monitor/realtime/broadcaster.rb"
+      - "app/controllers/source_monitor/application_controller.rb"
+      - "lib/source_monitor/turbo_streams/stream_responder.rb"
+      - "app/views/layouts/source_monitor/application.html.erb"
+      - "test/lib/source_monitor/realtime/broadcaster_test.rb"
+      - "test/controllers/source_monitor/**"
+    verify:
+      - "rbenv exec bin/rails test test/lib/source_monitor/realtime/broadcaster_test.rb"
+      - "rbenv exec bin/rails test"
+      - "rbenv exec bin/rubocop"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Scoped-stream vs context-free-global decision turns out ambiguous beyond the spec default (escalate to owner)."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - app/controllers/source_monitor/application_controller.rb
+        - app/views/layouts/source_monitor/application.html.erb
+        - test/controllers/source_monitor/application_controller_test.rb
+        - test/lib/source_monitor/realtime/broadcaster_test.rb
+      commands:
+        - cmd: "bin/rails test test/lib/source_monitor/realtime/broadcaster_test.rb"
+          status: pass
+        - cmd: "bin/rails test (full suite, 1736 runs)"
+          status: pass
+        - cmd: "bin/rubocop (505 files)"
+          status: pass
+      summary: "Removed the after_action broadcasting request flashes to the global ActionCable stream. Request flashes now render inline on HTML loads (source_monitor_flash_toasts helper into existing #source_monitor_notifications container) and append to the turbo_stream response body -- reaching only the requesting tab. Background operational broadcast_toast left global + context-free (decision: source-operational data, not per-user). Fixed a flash.discard timing bug that wiped flashes across redirects. Committed c4e5626, Closes #130."
+      notes: "Did not touch broadcaster.rb or stream_responder.rb (in allowed_files but unneeded -- the leak was the controller after_action). Background toast posture = keep global, context-free (documented default; not scoped per-session, avoiding over-engineering)."
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement #129: fail-closed engine access by default when no auth handler is configured; add explicit open_access/demo opt-in; opt the dummy app AND the test harness in; honor configured handlers; update docs/initializer template + CHANGELOG. Land enforcement + opt-in + dummy/test-harness update together."
+    constraints:
+      - "CRITICAL (T001 finding): dummy initializer alone is NOT enough -- test/test_helper.rb:85-89 runs SourceMonitor.reset_configuration! every test, wiping open_access. MUST enable open_access in test/test_helper.rb setup (or per-file) or ~24 controller/integration tests will 403."
+      - "Flip test/controllers/source_monitor/application_controller_test.rb:28-31 (currently asserts :success with no auth) to assert :forbidden -- this is the explicit fail-closed assertion."
+      - "Add a test that open_access=true restores 200, and that configured handlers (AuthenticationHelpers#configure_authentication) still allow access."
+      - "Reset open_access in AuthenticationSettings#reset! (authentication_settings.rb:39-44)."
+      - "Serial-only with T003 (shared application_controller.rb); never run in parallel."
+    allowed_files:
+      - "lib/source_monitor/security/authentication.rb"
+      - "lib/source_monitor/configuration/authentication_settings.rb"
+      - "app/controllers/source_monitor/application_controller.rb"
+      - "test/dummy/config/initializers/source_monitor.rb"
+      - "test/test_helper.rb"
+      - "test/lib/source_monitor/configuration/authentication_settings_test.rb"
+      - "test/controllers/source_monitor/**"
+      - "test/integration/**"
+      - "lib/generators/**"
+      - "docs/**"
+      - "CHANGELOG.md"
+    verify:
+      - "rbenv exec bin/rails test"
+      - "rbenv exec bin/rubocop"
+      - "rbenv exec bin/brakeman --no-pager"
+      - "cd test/dummy && rbenv exec bundle exec rails zeitwerk:check"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "open_access opt-in naming/posture needs owner confirmation (escalate, do not guess past the spec default)."
+      - "Existing tests rely on implicit open access in a way the spec did not anticipate."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - lib/source_monitor/security/authentication.rb
+        - lib/source_monitor/configuration/authentication_settings.rb
+        - app/controllers/source_monitor/application_controller.rb
+        - test/dummy/config/initializers/source_monitor.rb
+        - test/test_helper.rb
+        - test/lib/source_monitor/configuration/authentication_settings_test.rb
+        - test/controllers/source_monitor/application_controller_test.rb
+        - test/controllers/source_monitor/source_favicon_fetches_controller_test.rb
+        - test/controllers/source_monitor/sources_controller_favicon_test.rb
+        - test/integration/source_monitor/favicon_integration_test.rb
+        - lib/generators/source_monitor/install/templates/source_monitor.rb.tt
+        - docs/configuration.md
+        - docs/deployment.md
+        - docs/setup.md
+        - CHANGELOG.md
+      commands:
+        - cmd: "bin/rails test (1741 runs, 0 failures)"
+          status: pass
+        - cmd: "bin/rubocop (505 files)"
+          status: pass
+        - cmd: "bin/brakeman --no-pager (0 warnings)"
+          status: pass
+        - cmd: "cd test/dummy && bin/rails zeitwerk:check"
+          status: pass
+      summary: "Fail-closed engine access. open_access bool (default false, reset in reset!) on AuthenticationSettings. Security::Authentication.access_denied_by_default? denies when no handler configured AND open_access false; configured handlers short-circuit. ApplicationController enforce_source_monitor_access_default first before_action renders :forbidden (html/turbo_stream/json, mirrors record_not_found) and halts chain. test_helper opts open_access=true after reset_configuration!; 3 self-resetting test files re-opt-in; application_controller_test flips to :forbidden + adds open_access on/off + handler tests. Install template, docs, CHANGELOG (BREAKING) updated. Committed 1dc03fe, Closes #129."
+      notes: "REQUIRED FOLLOW-UP -> T005: sm-* skill references (sm-configure, sm-host-setup) document the auth config DSL but live under .claude/skills/ (outside T004 allowed_files). Project CLAUDE.md 'Skills & docs alignment' rule requires them updated in the SAME PR when engine config changes. Created T005 to satisfy this."
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Satisfy the project 'Skills & docs alignment' maintenance rule: update the sm-* skill references that document the authentication config DSL to reflect the new fail-closed default and the open_access opt-in (from #129)."
+    constraints:
+      - "Only update skill content that documents authentication/config defaults; do not alter unrelated skill text."
+      - "Match the wording/posture already used in docs/configuration.md + the install template (fail-closed default; open_access = true is demo/non-production only)."
+      - "Note: #131 excludes .claude internals from the gem EXCEPT .claude/skills/sm-*, so these skills DO still ship -- the maintenance rule applies."
+    allowed_files:
+      - ".claude/skills/sm-configure/**"
+      - ".claude/skills/sm-host-setup/**"
+    verify:
+      - "grep -ril 'open_access' .claude/skills/sm-configure .claude/skills/sm-host-setup"
+      - "bin/rubocop"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "An sm-* skill has no authentication/config section to update (report which, then proceed with the ones that do)."
+    receipt:
+      result: done
+      changed_files:
+        - .claude/skills/sm-configure/SKILL.md
+        - .claude/skills/sm-configure/reference/configuration-reference.md
+        - .claude/skills/sm-host-setup/SKILL.md
+        - .claude/skills/sm-host-setup/reference/initializer-template.md
+        - .claude/skills/sm-host-setup/reference/setup-checklist.md
+      commands:
+        - cmd: "grep -ril open_access .claude/skills/sm-configure .claude/skills/sm-host-setup (5 files)"
+          status: pass
+        - cmd: "bin/rubocop (505 files)"
+          status: pass
+      summary: "Updated sm-configure + sm-host-setup skills to document fail-closed default + open_access opt-in, mirroring docs/ and the install template. Auth sections only; unrelated content untouched. Committed 834560c, Refs #129."
+      notes: "Satisfies the CLAUDE.md Skills & docs alignment maintenance rule for the #129 config change."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether all three issues (#129, #130, #131) are implemented and verified, mapping each issue's acceptance criteria to test/evidence and confirming all four gates are green."
+    inputs:
+      - "T002, T003, T004 receipts"
+      - "Acceptance criteria on #129, #130, #131"
+      - "Last verification (all four gates)"
+      - "Current dirty diff"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required Worker package is still queued/active or any gate is red."
+      - "Reject completion if any acceptance-criteria checkbox lacks evidence."
+      - "Map completion back to the original 3-issue outcome."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "per-issue criteria -> evidence map"
+      - "missing evidence / next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      gates:
+        tests: "pass (1741 runs, 0 failures/errors/skips)"
+        rubocop: "pass (505 files, 0 offenses)"
+        brakeman: "pass (0 warnings)"
+        zeitwerk: "pass"
+      summary: "Independent audit re-ran 68 targeted tests + evaluated gemspec directly. All acceptance criteria on #131/#130/#129 map to committed code with tests that genuinely assert the behavior. #131: spec.files has 0 non-sm .claude files, 54 sm-* files, sm-host-setup present; packaging test asserts both. #130: global broadcast_flash_toasts after_action removed, replaced with response-local delivery, proven by assert_empty broadcast_calls; background toasts still render. #129: enforce_source_monitor_access_default is FIRST before_action, renders :forbidden and halts chain; tests cover deny-by-default / open_access / configured-handler / default+reset; dummy+harness+docs+template+CHANGELOG+sm-* skills all updated. No gaps."
+      missing_evidence: []
+      next_task_if_not_complete: null
+
+checks:
+  dirty_fingerprint: "branch harden-engine-access-129-131; 5 issue commits (846d612 #131, c4e5626 #130, 1dc03fe #129, 834560c skills); work committed, tree clean except board"
+  last_verification:
+    result: pass
+    task: T999-pre-audit (PM ran all four gates on combined branch)
+    commands:
+      - cmd: "bin/rails test"
+        status: "pass — 1741 runs, 5301 assertions, 0 failures, 0 errors, 0 skips"
+      - cmd: "bin/rubocop"
+        status: "pass — 505 files, 0 offenses"
+      - cmd: "bin/brakeman --no-pager"
+        status: "pass — 0 warnings"
+      - cmd: "cd test/dummy && bin/rails zeitwerk:check"
+        status: "pass — All is good!"

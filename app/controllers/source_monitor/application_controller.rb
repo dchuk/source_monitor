@@ -4,11 +4,13 @@ module SourceMonitor
   class ApplicationController < ActionController::Base
     protect_from_forgery with: :exception, prepend: true
 
+    before_action :enforce_source_monitor_access_default
     before_action :authenticate_source_monitor_user
     before_action :authorize_source_monitor_access
 
-    helper_method :source_monitor_current_user, :source_monitor_user_signed_in?
-    after_action :broadcast_flash_toasts
+    helper_method :source_monitor_current_user, :source_monitor_user_signed_in?,
+      :source_monitor_flash_toasts
+    after_action :append_flash_toasts_to_turbo_stream
 
     rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
 
@@ -40,6 +42,30 @@ module SourceMonitor
     TOAST_DURATION_DEFAULT = 5000
     TOAST_DURATION_ERROR = 6000
 
+    # Fail-closed guard: when the host app has configured no authentication or
+    # authorization handler and has not explicitly opted into open access, deny
+    # all engine routes. Configured handlers short-circuit this and decide for
+    # themselves (see SourceMonitor::Security::Authentication).
+    def enforce_source_monitor_access_default
+      return unless SourceMonitor::Security::Authentication.access_denied_by_default?(self)
+
+      source_monitor_access_forbidden
+    end
+
+    def source_monitor_access_forbidden
+      message = "SourceMonitor access is not configured"
+      respond_to do |format|
+        format.html { render plain: message, status: :forbidden }
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.append("flash",
+            partial: "source_monitor/shared/toast",
+            locals: { message: message, level: :error }),
+            status: :forbidden
+        end
+        format.json { render json: { error: message }, status: :forbidden }
+      end
+    end
+
     def authenticate_source_monitor_user
       SourceMonitor::Security::Authentication.authenticate!(self)
     end
@@ -60,22 +86,55 @@ module SourceMonitor
       level.to_sym == :error ? TOAST_DURATION_ERROR : TOAST_DURATION_DEFAULT
     end
 
-    def broadcast_flash_toasts
-      return if flash.empty?
-      return unless request.format.html? || request.format.turbo_stream?
+    # Request flashes are delivered response-local, never broadcast over the
+    # global ActionCable notification stream. On full-page HTML loads the layout
+    # renders the toasts inline (see +source_monitor_flash_toasts+); on
+    # turbo_stream responses we append the toasts to the response body so they
+    # reach only the requesting tab.
+    def source_monitor_flash_toasts
+      payloads = flash_toast_payloads
+      # Reading via the layout consumes the flash for this request so it does
+      # not linger into the next one.
+      flash.discard unless payloads.empty?
+      payloads
+    end
 
-      flash.each do |key, message|
-        next if message.blank?
+    def append_flash_toasts_to_turbo_stream
+      return unless request.format.turbo_stream?
+      return if response.redirect?
 
-        Array(message).each do |msg|
-          SourceMonitor::Realtime.broadcast_toast(
-            message: msg,
-            level: FLASH_LEVELS[key.to_sym] || :info
-          )
+      payloads = flash_toast_payloads
+      return if payloads.empty?
+
+      streams = payloads.map do |payload|
+        view_context.turbo_stream.append(
+          "source_monitor_notifications",
+          partial: "source_monitor/shared/toast",
+          locals: {
+            message: payload[:message],
+            level: payload[:level],
+            delay_ms: toast_delay_for(payload[:level])
+          }
+        )
+      end
+
+      response.body = "#{response.body}#{streams.join}"
+      flash.discard
+    end
+
+    # Builds the list of toast payloads ({ message:, level: }) for the current
+    # request's flash. Used by both the inline layout renderer and the
+    # turbo_stream after_action so request flashes stay response-local.
+    def flash_toast_payloads
+      return [] if flash.empty?
+
+      flash.flat_map do |key, message|
+        Array(message).filter_map do |msg|
+          next if msg.blank?
+
+          { message: msg, level: FLASH_LEVELS[key.to_sym] || :info }
         end
       end
-    ensure
-      flash.discard
     end
   end
 end

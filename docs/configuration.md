@@ -137,6 +137,11 @@ Call `config.realtime.action_cable_config` if you need a full hash for environme
 
 ## Authentication Helpers
 
+**Fail-closed by default.** SourceMonitor denies access to every engine route
+(returning `403 Forbidden`) unless you configure an authentication or
+authorization handler. This prevents the engine's create/update/delete/enqueue
+routes from being public by accident.
+
 Protect the dashboard with host-specific auth in one place:
 
 ```ruby
@@ -148,7 +153,19 @@ config.authentication.current_user_method = :current_user
 config.authentication.user_signed_in_method = :user_signed_in?
 ```
 
-Handlers can be symbols (invoked on the controller) or callables. Return `false` or raise to deny access.
+Handlers can be symbols (invoked on the controller) or callables. Return `false` or raise to deny access. As soon as either handler is configured, the handler decides access and the fail-closed guard no longer applies.
+
+### Open access opt-in (non-production)
+
+For local demos or sandboxes where engine routes are deliberately public, you
+can explicitly opt out of the fail-closed guard:
+
+```ruby
+config.authentication.open_access = true # default: false
+```
+
+This is intended for non-production/demo environments only. Configuring a
+handler always takes precedence over this flag.
 
 ## Health Model
 

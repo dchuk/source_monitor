@@ -25,7 +25,52 @@ module SourceMonitor
       assert_equal [ :authenticate, "SourceMonitor::DashboardController" ], calls.first
     end
 
-    test "skips authentication when host has not configured it" do
+    # Issue #129: the engine is fail-closed by default. With no configured auth
+    # handler and open_access disabled, engine routes must deny access. (The
+    # shared test harness defaults open_access to true, so this test disables it
+    # explicitly to exercise the production default.)
+    test "denies access by default when host has not configured auth (html)" do
+      SourceMonitor.config.authentication.open_access = false
+
+      get "/source_monitor/dashboard"
+
+      assert_response :forbidden
+      assert_equal "SourceMonitor access is not configured", response.body
+    end
+
+    test "denies access by default returns forbidden JSON" do
+      SourceMonitor.config.authentication.open_access = false
+
+      get "/source_monitor/dashboard", as: :json
+
+      assert_response :forbidden
+      json = JSON.parse(response.body)
+      assert_equal "SourceMonitor access is not configured", json["error"]
+    end
+
+    test "denies access by default returns forbidden toast for turbo_stream" do
+      SourceMonitor.config.authentication.open_access = false
+
+      get "/source_monitor/dashboard", as: :turbo_stream
+
+      assert_response :forbidden
+      assert_includes response.body, "SourceMonitor access is not configured"
+      assert_includes response.body, "turbo-stream"
+    end
+
+    test "open_access opt-in restores open access without a handler" do
+      SourceMonitor.config.authentication.open_access = true
+
+      get "/source_monitor/dashboard"
+
+      assert_response :success
+    end
+
+    test "configured handler is honored and allows access (fail-closed does not apply)" do
+      SourceMonitor.config.authentication.open_access = false
+      user = Struct.new(:admin?).new(true)
+      configure_authentication(user, authorize: true)
+
       get "/source_monitor/dashboard"
 
       assert_response :success
@@ -72,6 +117,75 @@ module SourceMonitor
       assert_response :not_found
       json = JSON.parse(response.body)
       assert_equal "Record not found", json["error"]
+    end
+
+    # Issue #130: request flashes must be delivered response-local and must NOT
+    # be broadcast to the global source_monitor_notifications ActionCable stream
+    # (which every connected tab subscribes to).
+    test "html request flash renders the toast inline in its own response without global broadcast" do
+      source = create_source!(scraping_enabled: true)
+      item = SourceMonitor::Item.create!(
+        source: source,
+        guid: SecureRandom.uuid,
+        url: "https://example.com/article-#{SecureRandom.hex(4)}",
+        title: "Test Article"
+      )
+
+      broadcast_calls = []
+      SourceMonitor::Realtime.stub(
+        :broadcast_toast,
+        ->(**kwargs) { broadcast_calls << kwargs }
+      ) do
+        post source_monitor.item_scrape_path(item)
+        assert_redirected_to source_monitor.item_path(item)
+        follow_redirect!
+      end
+
+      assert_response :success
+      # The flash toast is rendered into the page response (response-local).
+      assert_includes response.body, "Scrape has been enqueued and will run shortly."
+      assert_includes response.body, "data-controller=\"notification\""
+      # The request flash was never pushed to the global notification stream.
+      assert_empty broadcast_calls,
+        "request flashes must not be broadcast to the global notification stream"
+    end
+
+    test "turbo_stream request flash is appended response-local without global broadcast" do
+      source = create_source!
+
+      broadcast_calls = []
+      SourceMonitor::Realtime.stub(
+        :broadcast_toast,
+        ->(**kwargs) { broadcast_calls << kwargs }
+      ) do
+        get "/source_monitor/sources/999999999", as: :turbo_stream
+      end
+
+      assert_response :not_found
+      assert_includes response.body, "Record not found"
+      assert_empty broadcast_calls,
+        "request flashes must not be broadcast to the global notification stream"
+    end
+
+    # A turbo_stream response that carries a Rails flash (no real engine action
+    # does this -- engine turbo_stream actions use StreamResponder#toast -- so a
+    # test-only probe controller exercises the after_action append branch).
+    test "turbo_stream response carrying a flash appends the toast to the response body" do
+      broadcast_calls = []
+      SourceMonitor::Realtime.stub(
+        :broadcast_toast,
+        ->(**kwargs) { broadcast_calls << kwargs }
+      ) do
+        get "/test_support/flash_turbo_probe", as: :turbo_stream
+      end
+
+      assert_response :success
+      # The flash toast is appended to the turbo_stream response (response-local),
+      # reaching only the requesting tab -- never the global notification stream.
+      assert_includes response.body, "Saved via turbo stream"
+      assert_includes response.body, "source_monitor_notifications"
+      assert_empty broadcast_calls,
+        "request flashes must not be broadcast to the global notification stream"
     end
   end
 end

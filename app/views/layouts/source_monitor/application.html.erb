@@ -19,6 +19,12 @@
       <div id="source_monitor_notifications"
            data-notification-container-target="list"
            class="flex w-full flex-col gap-3">
+        <%# Request flashes render response-local here (never broadcast to all tabs). %>
+        <% source_monitor_flash_toasts.each do |toast| %>
+          <%= render "source_monitor/shared/toast",
+                message: toast[:message],
+                level: toast[:level] %>
+        <% end %>
       </div>
       <div data-notification-container-target="badge"
            class="pointer-events-auto hidden">
