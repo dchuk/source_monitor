@@ -12,6 +12,7 @@ module SourceMonitor
       GENERIC_CONTENT_TYPES = %w[application/octet-stream binary/octet-stream].freeze
 
       class UploadError < StandardError; end
+      TRUE_PARAM_VALUES = [ true, "true", "1", 1, "on" ].freeze
 
       UploadResult = Struct.new(:status, :errors, :current_step, :preview_context, keyword_init: true)
 
@@ -118,7 +119,7 @@ module SourceMonitor
           status: :success,
           errors: [],
           current_step: next_step,
-          preview_context: preview_context(skip_default: true)
+          preview_context: preview_context
         )
       rescue UploadError => error
         UploadResult.new(status: :invalid, errors: [ error.message ], current_step: current_step)
@@ -129,16 +130,16 @@ module SourceMonitor
         preview_entries = annotated_entries(selected_source_ids)
         selectable_entries = preview_entries.select { |entry| entry[:selectable] }
 
-        valid_ids = if import_session_params[:select_all].present?
+        valid_ids = if select_all_requested?
           ids = selectable_entries.map { |entry| entry[:id] }
           import_session.update_column(:selected_source_ids, ids)
           ids
-        elsif import_session_params[:select_none].present?
+        elsif select_none_requested?
           import_session.update_column(:selected_source_ids, [])
           []
         else
-          selected_source_ids = build_selection_from_params(selectable_entries)
-          ids = selectable_entries.index_by { |entry| entry[:id] }.slice(*selected_source_ids).keys
+          requested_ids = build_selection_from_params(selectable_entries)
+          ids = selectable_entries.index_by { |entry| entry[:id] }.slice(*requested_ids).keys
           import_session.update!(selected_source_ids: ids)
           ids
         end
@@ -150,7 +151,7 @@ module SourceMonitor
             valid_ids: valid_ids,
             current_step: current_step,
             selection_error: "Select at least one new source to continue.",
-            preview_context: preview_context(skip_default: true, selected_source_ids: valid_ids)
+            preview_context: preview_context(selected_source_ids: valid_ids)
           )
         end
 
@@ -162,7 +163,7 @@ module SourceMonitor
           selected_source_ids: valid_ids,
           valid_ids: valid_ids,
           current_step: next_step,
-          preview_context: preview_context(skip_default: true, selected_source_ids: valid_ids)
+          preview_context: preview_context(selected_source_ids: valid_ids)
         )
       end
 
@@ -224,17 +225,11 @@ module SourceMonitor
         )
       end
 
-      def preview_context(skip_default: false, selected_source_ids: nil)
+      def preview_context(selected_source_ids: nil)
         filter = permitted_filter(params[:filter]) || "all"
         page = normalize_page_param(params[:page])
         selected_source_ids = Array(selected_source_ids || import_session.selected_source_ids).map(&:to_s)
         preview_entries = annotated_entries(selected_source_ids)
-
-        if !skip_default && selected_source_ids.blank? && preview_entries.present?
-          selected_source_ids = preview_entries.select { |entry| entry[:selectable] }.map { |entry| entry[:id] }
-          import_session.update_column(:selected_source_ids, selected_source_ids)
-          preview_entries = annotated_entries(selected_source_ids)
-        end
 
         filtered_entries = filter_entries(preview_entries, filter)
         paginator = SourceMonitor::Pagination::Paginator.new(
@@ -253,6 +248,18 @@ module SourceMonitor
           has_next_page: paginator.has_next_page,
           has_previous_page: paginator.has_previous_page
         )
+      end
+
+      def preview_context_with_default_selection
+        selected_source_ids = Array(import_session.selected_source_ids).map(&:to_s)
+        preview_entries = annotated_entries(selected_source_ids)
+
+        if selected_source_ids.blank? && preview_entries.present?
+          selected_source_ids = preview_entries.select { |entry| entry[:selectable] }.map { |entry| entry[:id] }
+          import_session.update_column(:selected_source_ids, selected_source_ids)
+        end
+
+        preview_context(selected_source_ids: selected_source_ids)
       end
 
       def health_check_context
@@ -275,7 +282,7 @@ module SourceMonitor
 
         import_session.update_columns(
           health_checks_active: false,
-          health_check_completed_at: Time.current
+          health_check_completed_at: now
         )
       end
 
@@ -450,11 +457,11 @@ module SourceMonitor
       end
 
       def health_check_selection_from_params
-        if import_session_params[:select_all] == "true"
+        if select_all_requested?
           return health_check_targets.dup
         end
 
-        return [] if import_session_params[:select_none] == "true"
+        return [] if select_none_requested?
 
         ids = import_session_params[:selected_source_ids]
         return Array(import_session.selected_source_ids).map(&:to_s) unless ids
@@ -488,7 +495,7 @@ module SourceMonitor
             parsed_sources: reset_health_results(import_session.parsed_sources, selected),
             health_checks_active: true,
             health_check_target_ids: selected,
-            health_check_started_at: Time.current,
+            health_check_started_at: now,
             health_check_completed_at: nil
           )
 
@@ -587,6 +594,18 @@ module SourceMonitor
 
           SourceMonitor::Security::ParameterSanitizer.sanitize(permitted.to_h).with_indifferent_access
         end
+      end
+
+      def select_all_requested?
+        truthy_import_session_param?(:select_all)
+      end
+
+      def select_none_requested?
+        truthy_import_session_param?(:select_none)
+      end
+
+      def truthy_import_session_param?(key)
+        TRUE_PARAM_VALUES.include?(import_session_params[key])
       end
     end
   end

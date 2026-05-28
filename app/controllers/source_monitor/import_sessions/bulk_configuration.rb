@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "source_monitor/import_sessions/entry_normalizer"
+
 module SourceMonitor
   module ImportSessions
     module BulkConfiguration
@@ -33,7 +35,7 @@ module SourceMonitor
         entry = selected_entries_for_identity.first
         return fallback_identity unless entry
 
-        normalized = normalize_entry(entry)
+        normalized = SourceMonitor::ImportSessions::EntryNormalizer.normalize(entry)
         {
           name: normalized[:title].presence || normalized[:feed_url] || fallback_identity[:name],
           feed_url: normalized[:feed_url].presence || fallback_identity[:feed_url],

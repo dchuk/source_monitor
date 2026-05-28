@@ -1,16 +1,10 @@
 # frozen_string_literal: true
 
-require "nokogiri"
-require "uri"
-require "source_monitor/import_sessions/entry_normalizer"
 require "source_monitor/import_sessions/wizard"
 require "source_monitor/sources/params"
 
 module SourceMonitor
   class ImportSessionsController < ApplicationController
-    include SourceMonitor::ImportSessions::OpmlParser
-    include SourceMonitor::ImportSessions::EntryAnnotation
-    include SourceMonitor::ImportSessions::HealthCheckManagement
     include SourceMonitor::ImportSessions::BulkConfiguration
 
     STEP_HANDLERS = {
@@ -273,8 +267,53 @@ module SourceMonitor
       )
     end
 
+    def permitted_step(value)
+      step = value.to_s.presence
+      return unless step
+
+      ImportSession::STEP_ORDER.find { |candidate| candidate == step }
+    end
+
+    def target_step
+      permitted_step(import_session_state_params[:next_step]) || @current_step || ImportSession.default_step
+    end
+
+    def session_attributes
+      attrs = import_session_state_params.except(:next_step, :current_step, "next_step", "current_step")
+      attrs[:current_step] = target_step
+      attrs
+    end
+
+    def import_session_state_params
+      @import_session_state_params ||= begin
+        raw = params[:import_session] || params["import_session"] || {}
+        permitted = if raw.respond_to?(:permit)
+          raw.permit(
+            :current_step,
+            :next_step,
+            :select_all,
+            :select_none,
+            parsed_sources: [],
+            selected_source_ids: [],
+            bulk_settings: {},
+            opml_file_metadata: {}
+          )
+        else
+          raw.to_h
+        end
+
+        SourceMonitor::Security::ParameterSanitizer.sanitize(permitted.to_h).with_indifferent_access
+      end
+    end
+
     def prepare_preview_context(skip_default: false)
-      apply_preview_context(import_session_wizard.preview_context(skip_default: skip_default))
+      context = if skip_default
+        import_session_wizard.preview_context
+      else
+        import_session_wizard.preview_context_with_default_selection
+      end
+
+      apply_preview_context(context)
     end
 
     def prepare_health_check_context

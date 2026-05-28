@@ -58,7 +58,20 @@ module SourceMonitor
         assert_equal "opml_no_valid_entries.xml", import_session.opml_file_metadata["filename"]
       end
 
-      test "preview context annotates duplicates and defaults selectable entries" do
+      test "preview context is read-only when no selection exists" do
+        import_session = build_session(
+          current_step: "preview",
+          parsed_sources: selectable_parsed_sources,
+          selected_source_ids: []
+        )
+
+        context = wizard(import_session, current_step: "preview").preview_context
+
+        assert_equal [], import_session.reload.selected_source_ids
+        assert_equal [ false, false ], context.preview_entries.map { |entry| entry[:selected] }
+      end
+
+      test "preview context with default selection annotates duplicates and persists selectable entries" do
         existing = create_source!(feed_url: "https://dup.example.com/feed.xml")
         import_session = build_session(
           current_step: "preview",
@@ -70,7 +83,7 @@ module SourceMonitor
           selected_source_ids: []
         )
 
-        context = wizard(import_session, current_step: "preview").preview_context
+        context = wizard(import_session, current_step: "preview").preview_context_with_default_selection
 
         import_session.reload
         assert_equal [ "two" ], import_session.selected_source_ids
@@ -79,7 +92,7 @@ module SourceMonitor
         assert_equal [ false, true, false ], context.preview_entries.map { |entry| entry[:selected] }
       end
 
-      test "preview select all and select none persist selected IDs" do
+      test "preview select all and select none persist selected IDs with true strings" do
         import_session = build_session(current_step: "preview", parsed_sources: selectable_parsed_sources)
 
         select_all = wizard(import_session, current_step: "preview", params: { import_session: { select_all: "true", next_step: "preview" } }).handle_preview
@@ -87,6 +100,18 @@ module SourceMonitor
         assert_equal [ "one", "two" ], import_session.reload.selected_source_ids.sort
 
         select_none = wizard(import_session, current_step: "preview", params: { import_session: { select_none: "true", next_step: "preview" } }).handle_preview
+        assert_equal :success, select_none.status
+        assert_equal [], import_session.reload.selected_source_ids
+      end
+
+      test "preview select all and select none persist selected IDs with checkbox payloads" do
+        import_session = build_session(current_step: "preview", parsed_sources: selectable_parsed_sources)
+
+        select_all = wizard(import_session, current_step: "preview", params: { import_session: { select_all: "1", next_step: "preview" } }).handle_preview
+        assert_equal :success, select_all.status
+        assert_equal [ "one", "two" ], import_session.reload.selected_source_ids.sort
+
+        select_none = wizard(import_session, current_step: "preview", params: { import_session: { select_none: "1", next_step: "preview" } }).handle_preview
         assert_equal :success, select_none.status
         assert_equal [], import_session.reload.selected_source_ids
       end
@@ -101,21 +126,23 @@ module SourceMonitor
         assert_equal "preview", import_session.reload.current_step
       end
 
-      test "health check context starts checks and enqueues jobs" do
+      test "health check context starts checks with injected timestamp and enqueues jobs" do
         import_session = build_session(
           current_step: "health_check",
           parsed_sources: selectable_parsed_sources,
           selected_source_ids: [ "one", "two" ]
         )
+        now = Time.zone.parse("2026-05-28 12:00:00 UTC")
 
         context = nil
         assert_enqueued_jobs 2, only: SourceMonitor::ImportSessionHealthCheckJob do
-          context = wizard(import_session, current_step: "health_check").health_check_context
+          context = wizard(import_session, current_step: "health_check", now: now).health_check_context
         end
 
         import_session.reload
         assert import_session.health_checks_active?
         assert_equal %w[one two], import_session.health_check_target_ids
+        assert_in_delta now, import_session.health_check_started_at, 1.second
         assert_equal %w[pending pending], import_session.parsed_sources.map { |entry| entry["health_status"] }
         assert_equal %w[one two], context.health_check_target_ids
         assert_equal({ completed: 0, total: 2, pending: 2, active: true, done: false }, context.health_progress)
@@ -137,7 +164,7 @@ module SourceMonitor
         assert_equal [ "one" ], import_session.reload.health_check_target_ids
       end
 
-      test "health check handles select all and select none against targets" do
+      test "health check handles select all and select none true strings against targets" do
         import_session = build_session(
           current_step: "health_check",
           parsed_sources: selectable_parsed_sources,
@@ -155,7 +182,25 @@ module SourceMonitor
         assert_equal [], import_session.reload.selected_source_ids
       end
 
-      test "health check blocks advancing with empty selection and deactivates checks" do
+      test "health check handles select all and select none checkbox payloads against targets" do
+        import_session = build_session(
+          current_step: "health_check",
+          parsed_sources: selectable_parsed_sources,
+          selected_source_ids: [ "one" ],
+          health_checks_active: true,
+          health_check_target_ids: [ "one", "two" ]
+        )
+
+        select_all = wizard(import_session, current_step: "health_check", params: { import_session: { select_all: "1", next_step: "health_check" } }).handle_health_check
+        assert_equal :success, select_all.status
+        assert_equal %w[one two], import_session.reload.selected_source_ids.sort
+
+        select_none = wizard(import_session, current_step: "health_check", params: { import_session: { select_none: "1", next_step: "health_check" } }).handle_health_check
+        assert_equal :success, select_none.status
+        assert_equal [], import_session.reload.selected_source_ids
+      end
+
+      test "health check blocks advancing with empty selection and deactivates checks with injected timestamp" do
         import_session = build_session(
           current_step: "health_check",
           parsed_sources: selectable_parsed_sources,
@@ -163,14 +208,16 @@ module SourceMonitor
           health_checks_active: true,
           health_check_target_ids: [ "one" ]
         )
+        now = Time.zone.parse("2026-05-28 13:00:00 UTC")
 
-        result = wizard(import_session, current_step: "health_check", params: { import_session: { selected_source_ids: [], next_step: "configure" } }).handle_health_check
+        result = wizard(import_session, current_step: "health_check", params: { import_session: { selected_source_ids: [], next_step: "configure" } }, now: now).handle_health_check
 
         assert result.blocked?
         assert_equal "Select at least one source to continue.", result.selection_error
         import_session.reload
         assert_equal "health_check", import_session.current_step
         assert_not import_session.health_checks_active?
+        assert_in_delta now, import_session.health_check_completed_at, 1.second
       end
 
       test "health check context reports completed progress and selected entries" do
@@ -253,11 +300,12 @@ module SourceMonitor
         )
       end
 
-      def wizard(import_session, params: {}, current_step: import_session.current_step)
+      def wizard(import_session, params: {}, current_step: import_session.current_step, now: Time.current)
         SourceMonitor::ImportSessions::Wizard.new(
           import_session: import_session,
           params: ActionController::Parameters.new(params),
-          current_step: current_step
+          current_step: current_step,
+          now: now
         )
       end
 
