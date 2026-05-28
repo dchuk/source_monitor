@@ -10,6 +10,7 @@ require "source_monitor/fetching/feed_fetcher/adaptive_interval"
 require "source_monitor/fetching/feed_fetcher/source_updater"
 require "source_monitor/fetching/feed_fetcher/entry_processor"
 require "source_monitor/fetching/feed_fetcher/success_outcome"
+require "source_monitor/fetching/feed_fetcher/failure_outcome"
 
 module SourceMonitor
   module Fetching
@@ -246,48 +247,8 @@ module SourceMonitor
       end
 
       def handle_failure(error, started_at:, instrumentation_payload:)
-        response = error.response
-        body = response&.body
-        duration_ms = source_updater.elapsed_ms(started_at)
-
-        retry_decision = source_updater.update_source_for_failure(error, duration_ms)
-        source_updater.create_fetch_log(
-          response: response,
-          duration_ms: duration_ms,
-          started_at: started_at,
-          success: false,
-          error: error,
-          body: body
-        )
-
-        instrumentation_payload[:success] = false
-        instrumentation_payload[:status] = :failed
-        instrumentation_payload[:error_class] = error.class.name
-        instrumentation_payload[:error_message] = error.message
-        instrumentation_payload[:http_status] = error.http_status if error.http_status
-        instrumentation_payload[:error_code] = error.code if error.respond_to?(:code)
-        instrumentation_payload[:items_created] = 0
-        instrumentation_payload[:items_updated] = 0
-        instrumentation_payload[:items_failed] = 0
-        instrumentation_payload[:retry_attempt] = retry_decision&.next_attempt ? retry_decision.next_attempt : 0
-
-        Result.new(
-          status: :failed,
-          response: response,
-          body: body,
-          error: error,
-          retry_decision: retry_decision,
-          item_processing: EntryProcessingResult.new(
-            created: 0,
-            updated: 0,
-            unchanged: 0,
-            failed: 0,
-            items: [],
-            errors: [],
-            created_items: [],
-            updated_items: []
-          )
-        )
+        FailureOutcome.new(error: error)
+          .apply(source_updater: source_updater, started_at: started_at, instrumentation_payload: instrumentation_payload)
       end
 
       def attempt_aia_recovery(_error, started_at, instrumentation_payload)
