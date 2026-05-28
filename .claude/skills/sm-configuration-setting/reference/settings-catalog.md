@@ -157,6 +157,7 @@ Has `reset!` method. The `adapter=` setter validates against `VALID_ADAPTERS`.
 | `authorize_handler` | Handler/nil | `nil` | Authorization handler |
 | `current_user_method` | Symbol/nil | `nil` | Method name for current user |
 | `user_signed_in_method` | Symbol/nil | `nil` | Method name for signed-in check |
+| `open_access` | Boolean | `false` | Opt out of the fail-closed access guard (demo/non-production only); ignored when a handler is configured |
 
 Has `reset!` method.
 

@@ -2,6 +2,18 @@
 
 Version-specific migration notes for each major/minor version transition. Agents should reference this file when guiding users through multi-version upgrades.
 
+## 0.13.1 to 0.14.0
+
+**Key changes:**
+- **BREAKING — Fail-closed by default** (#129): engine routes return `403 Forbidden` unless `config.authentication.authenticate_with` or `config.authentication.authorize_with` is configured, OR `config.authentication.open_access = true` is explicitly set (non-production only).
+- **Request flashes response-local** (#130): flash toasts no longer broadcast to the global `source_monitor_notifications` ActionCable stream; rendered inline on HTML loads and appended on turbo_stream responses instead. Background operational toasts stay global but context-free.
+- **Gem package excludes `.claude` internals** (#131): only `.claude/skills/sm-*` shipped; agents, hooks, `settings.json`, commands, and non-`sm-*` skills excluded.
+
+**Action items:**
+1. `bundle update source_monitor`
+2. **Action required (auth):** in `config/initializers/source_monitor.rb`, ensure at least one of `authenticate_with`, `authorize_with`, or `open_access = true` (demo/sandbox only). Without one, all engine routes return `403`.
+3. No migrations or other breaking API changes; flash/packaging changes apply transparently.
+
 ## 0.12.4 to 0.13.0
 
 **Key changes:**
