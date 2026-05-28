@@ -166,5 +166,26 @@ module SourceMonitor
       assert_empty broadcast_calls,
         "request flashes must not be broadcast to the global notification stream"
     end
+
+    # A turbo_stream response that carries a Rails flash (no real engine action
+    # does this -- engine turbo_stream actions use StreamResponder#toast -- so a
+    # test-only probe controller exercises the after_action append branch).
+    test "turbo_stream response carrying a flash appends the toast to the response body" do
+      broadcast_calls = []
+      SourceMonitor::Realtime.stub(
+        :broadcast_toast,
+        ->(**kwargs) { broadcast_calls << kwargs }
+      ) do
+        get "/test_support/flash_turbo_probe", as: :turbo_stream
+      end
+
+      assert_response :success
+      # The flash toast is appended to the turbo_stream response (response-local),
+      # reaching only the requesting tab -- never the global notification stream.
+      assert_includes response.body, "Saved via turbo stream"
+      assert_includes response.body, "source_monitor_notifications"
+      assert_empty broadcast_calls,
+        "request flashes must not be broadcast to the global notification stream"
+    end
   end
 end
