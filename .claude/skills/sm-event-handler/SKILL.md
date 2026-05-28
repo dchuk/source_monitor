@@ -98,7 +98,7 @@ Fires after a feed fetch finishes (success or failure).
 | Field | Type | Description |
 |---|---|---|
 | `source` | `SourceMonitor::Source` | The fetched source |
-| `result` | Object | The fetch result |
+| `result` | `SourceMonitor::Fetching::FeedFetcher::Result` | The fetch result |
 | `status` | String | Result status |
 | `occurred_at` | Time | When the event fired |
 

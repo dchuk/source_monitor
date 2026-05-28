@@ -35,7 +35,7 @@ module SourceMonitor
         end
 
         def item_processing
-          @item_processing ||= empty_item_processing
+          @item_processing ||= EntryProcessingResult.empty
         end
 
         private
@@ -77,19 +77,6 @@ module SourceMonitor
             retry_decision: retry_decision,
             item_processing: item_processing,
             outcome: self
-          )
-        end
-
-        def empty_item_processing
-          EntryProcessingResult.new(
-            created: 0,
-            updated: 0,
-            unchanged: 0,
-            failed: 0,
-            items: [],
-            errors: [],
-            created_items: [],
-            updated_items: []
           )
         end
       end

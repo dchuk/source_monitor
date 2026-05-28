@@ -26,7 +26,20 @@ module SourceMonitor
         :created_items,
         :updated_items,
         keyword_init: true
-      )
+      ) do
+        def self.empty
+          new(
+            created: 0,
+            updated: 0,
+            unchanged: 0,
+            failed: 0,
+            items: [],
+            errors: [],
+            created_items: [],
+            updated_items: []
+          )
+        end
+      end
       ResponseWrapper = Struct.new(:status, :headers, :body, keyword_init: true)
 
       attr_reader :source, :client, :jitter_proc
@@ -126,16 +139,7 @@ module SourceMonitor
           processing = entry_processor.process_feed_entries(feed)
           content_changed = entries_digest_changed?(feed)
         else
-          processing = EntryProcessingResult.new(
-            created: 0,
-            updated: 0,
-            unchanged: 0,
-            failed: 0,
-            items: [],
-            errors: [],
-            created_items: [],
-            updated_items: []
-          )
+          processing = EntryProcessingResult.empty
           content_changed = false
         end
 
@@ -173,16 +177,7 @@ module SourceMonitor
           status: :not_modified,
           response: response,
           body: nil,
-          item_processing: EntryProcessingResult.new(
-            created: 0,
-            updated: 0,
-            unchanged: 0,
-            failed: 0,
-            items: [],
-            errors: [],
-            created_items: [],
-            updated_items: []
-          )
+          item_processing: EntryProcessingResult.empty
         )
       end
 

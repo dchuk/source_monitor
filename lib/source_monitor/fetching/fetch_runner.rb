@@ -88,7 +88,7 @@ module SourceMonitor
           lock.release!
         end
 
-        log_handler_result("EventPublisher", event_publisher.call(source:, result: completion_result))
+        log_handler_result("EventPublisher", event_publisher.call(source:, result: result))
         result
       rescue SourceMonitor::Fetching::AdvisoryLock::NotAcquiredError => error
         raise ConcurrencyError, error.message

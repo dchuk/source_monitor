@@ -11,6 +11,22 @@ module SourceMonitor
     class FeedFetcherUtilitiesTest < ActiveSupport::TestCase
       include FeedFetcherTestHelper
 
+      test "entry processing empty factory returns zero counts and isolated collections" do
+        first = FeedFetcher::EntryProcessingResult.empty
+        second = FeedFetcher::EntryProcessingResult.empty
+
+        assert_equal 0, first.created
+        assert_equal 0, first.updated
+        assert_equal 0, first.unchanged
+        assert_equal 0, first.failed
+        assert_empty first.items
+        assert_empty first.errors
+        assert_empty first.created_items
+        assert_empty first.updated_items
+        refute_same first.items, second.items
+        refute_same first.errors, second.errors
+      end
+
       # ── Request header handling ──
 
       test "sends If-Modified-Since header when source has last_modified" do

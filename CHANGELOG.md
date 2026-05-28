@@ -13,7 +13,8 @@ All notable changes to this project are documented below. The format follows [Ke
 
 ## [Unreleased]
 
-- No unreleased changes yet.
+### Fixed
+- Preserve the public `after_fetch_completed` payload as `FeedFetcher::Result`; the PR #118 fetch outcome objects remain an internal refactor detail.
 
 ## [0.13.0] - 2026-03-24
 

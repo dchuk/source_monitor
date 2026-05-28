@@ -112,7 +112,7 @@ Fired by `Events.after_fetch_completed` after a feed fetch finishes.
 ```ruby
 FetchCompletedEvent = Struct.new(
   :source,      # SourceMonitor::Source - the fetched source
-  :result,      # Object - fetch result
+  :result,      # SourceMonitor::Fetching::FeedFetcher::Result - fetch result
   :status,      # String - result status
   :occurred_at, # Time - when the event fired
   keyword_init: true
