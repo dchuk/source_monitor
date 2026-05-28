@@ -3,6 +3,7 @@
 require "test_helper"
 require "digest"
 require "ostruct"
+require "securerandom"
 
 module SourceMonitor
   module Items
@@ -142,6 +143,136 @@ module SourceMonitor
         assert_equal normalized.content_fingerprint, normalized.item_attributes[:guid]
       end
 
+      test "normalizes URL content and timestamp fallbacks from entry doubles" do
+        alternate_link = OpenStruct.new(rel: "alternate", href: "https://example.com/via-link-node")
+        first_link = OpenStruct.new(rel: "enclosure", href: "https://example.com/first-link")
+
+        assert_equal(
+          "https://example.com/via-link-node",
+          normalize_entry(url: "", link_nodes: [ alternate_link ], entry_id: "link-node-guid")[:url]
+        )
+        assert_equal(
+          "https://example.com/first-link",
+          normalize_entry(url: nil, link_nodes: [ first_link ], entry_id: "first-link-guid")[:url]
+        )
+        assert_equal(
+          "https://example.com/from-links",
+          normalize_entry(url: nil, links: [ "", " ", "https://example.com/from-links" ], entry_id: "links-guid")[:url]
+        )
+        assert_equal(
+          "Summary fallback",
+          normalize_entry(content: nil, content_encoded: "", summary: "Summary fallback")[:content]
+        )
+        assert_equal(
+          "Primary content",
+          normalize_entry(content: "Primary content", content_encoded: "<p>Encoded</p>", summary: "Summary")[:content]
+        )
+        assert_equal(
+          Time.utc(2025, 10, 5),
+          normalize_entry(published: nil, updated: Time.utc(2025, 10, 5))[:published_at]
+        )
+        assert_nil normalize_entry(updated: nil)[:updated_at_source]
+      end
+
+      test "normalizes author media taxonomy and comment edge fields from entry doubles" do
+        author_node = OpenStruct.new(name: nil, email: nil, uri: "https://example.com/author-profile")
+        enclosure_blank = OpenStruct.new(url: "", type: "audio/mpeg", length: "100")
+        enclosure_valid = OpenStruct.new(url: "https://example.com/media.mp3", type: "audio/mpeg", length: "200")
+        thumbnail_node = OpenStruct.new(url: "https://example.com/thumb.jpg")
+        media_blank = OpenStruct.new(url: nil, type: "video/mp4")
+        media_valid = OpenStruct.new(
+          url: "https://example.com/video.mp4",
+          type: "video/mp4",
+          medium: "video",
+          height: "720",
+          width: "1280",
+          file_size: "5000000",
+          duration: "120",
+          expression: "full"
+        )
+
+        attributes = normalize_entry(
+          author: "Same Author",
+          rss_authors: [ "Same Author", "Other Author" ],
+          dc_creators: [ "Creator One" ],
+          author_nodes: [ author_node ],
+          enclosure_nodes: [ enclosure_blank, enclosure_valid ],
+          media_thumbnail_nodes: [ thumbnail_node ],
+          media_content_nodes: [ media_blank, media_valid ],
+          categories: [ "Tech", "Ruby" ],
+          tags: [ "Rails", "Ruby" ],
+          media_keywords_raw: "ruby, rails; testing",
+          itunes_keywords_raw: "podcast; audio, streaming",
+          language: "fr",
+          copyright: "CC BY 4.0",
+          comments: "https://example.com/comments",
+          slash_comments_raw: "42"
+        )
+
+        assert_equal [ "Same Author", "Other Author", "Creator One", "https://example.com/author-profile" ], attributes[:authors]
+        assert_equal [ { "url" => "https://example.com/media.mp3", "type" => "audio/mpeg", "length" => 200, "source" => "rss_enclosure" } ], attributes[:enclosures]
+        assert_equal "https://example.com/thumb.jpg", attributes[:media_thumbnail_url]
+        assert_equal(
+          [
+            {
+              "url" => "https://example.com/video.mp4",
+              "type" => "video/mp4",
+              "medium" => "video",
+              "height" => 720,
+              "width" => 1280,
+              "file_size" => 5_000_000,
+              "duration" => 120,
+              "expression" => "full"
+            }
+          ],
+          attributes[:media_content]
+        )
+        assert_equal [ "Tech", "Ruby", "Rails" ], attributes[:categories]
+        assert_equal [ "Rails", "Ruby" ], attributes[:tags]
+        assert_equal [ "ruby", "rails", "testing", "podcast", "audio", "streaming" ], attributes[:keywords]
+        assert_equal "fr", attributes[:language]
+        assert_equal "CC BY 4.0", attributes[:copyright]
+        assert_equal "https://example.com/comments", attributes[:comments_url]
+        assert_equal 42, attributes[:comments_count]
+      end
+
+      test "normalizes guid fallback semantics without persistence" do
+        same_as_url = NormalizedEntry.new(
+          source: @source,
+          entry: entry_double(url: "https://example.com/same", entry_id: nil, id: "https://example.com/same")
+        )
+        preferred = NormalizedEntry.new(
+          source: @source,
+          entry: entry_double(entry_id: "preferred-guid", id: "fallback-id")
+        )
+        id_fallback = NormalizedEntry.new(
+          source: @source,
+          entry: entry_double(entry_id: nil, id: "fallback-id-value")
+        )
+        blank = NormalizedEntry.new(
+          source: @source,
+          entry: entry_double(entry_id: nil, id: "")
+        )
+
+        assert_nil same_as_url.raw_guid
+        assert_equal same_as_url.content_fingerprint, same_as_url.item_guid
+        assert_equal "preferred-guid", preferred.item_guid
+        assert_equal "fallback-id-value", id_fallback.item_guid
+        assert_nil blank.raw_guid
+        assert_equal blank.content_fingerprint, blank.item_guid
+      end
+
+      test "returns empty metadata when entry does not expose serializable metadata" do
+        entry = Object.new
+        entry.define_singleton_method(:title) { "Minimal Entry" }
+        entry.define_singleton_method(:url) { "https://example.com/minimal" }
+        entry.define_singleton_method(:entry_id) { "minimal-guid" }
+        entry.define_singleton_method(:summary) { "Summary" }
+        entry.define_singleton_method(:published) { Time.utc(2025, 10, 1) }
+
+        assert_equal({}, NormalizedEntry.call(source: @source, entry: entry)[:metadata])
+      end
+
       private
 
       FakeContentExtractor = Struct.new(:processed_content, :metadata, keyword_init: true) do
@@ -152,6 +283,23 @@ module SourceMonitor
 
       def parse_entry(fixture)
         Feedjira.parse(File.read(file_fixture(fixture))).entries.first
+      end
+
+      def normalize_entry(attributes = {})
+        NormalizedEntry.call(source: @source, entry: entry_double(attributes))
+      end
+
+      def entry_double(attributes = {})
+        defaults = {
+          title: "Entry",
+          url: "https://example.com/entry",
+          entry_id: "entry-guid-#{SecureRandom.hex(4)}",
+          summary: "Summary",
+          published: Time.utc(2025, 10, 1),
+          to_h: { title: "Entry" }
+        }
+
+        OpenStruct.new(defaults.merge(attributes))
       end
 
       def expected_fingerprint(title, url, content)
