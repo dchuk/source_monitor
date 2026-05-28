@@ -108,6 +108,7 @@ module SourceMonitor
 
   module Items
     autoload :ItemCreator, "source_monitor/items/item_creator"
+    autoload :NormalizedEntry, "source_monitor/items/normalized_entry"
     autoload :RetentionPruner, "source_monitor/items/retention_pruner"
     autoload :RetentionStrategies, "source_monitor/items/retention_strategies"
   end
