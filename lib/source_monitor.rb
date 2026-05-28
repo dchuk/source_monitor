@@ -89,6 +89,7 @@ module SourceMonitor
 
   module ImportSessions
     autoload :EntryNormalizer, "source_monitor/import_sessions/entry_normalizer"
+    autoload :Wizard, "source_monitor/import_sessions/wizard"
     autoload :HealthCheckBroadcaster, "source_monitor/import_sessions/health_check_broadcaster"
     autoload :HealthCheckUpdater, "source_monitor/import_sessions/health_check_updater"
     autoload :OPMLImporter, "source_monitor/import_sessions/opml_importer"

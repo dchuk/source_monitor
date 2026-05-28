@@ -1,0 +1,133 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+module SourceMonitor
+  module ImportSessions
+    class WizardTest < ActiveSupport::TestCase
+      fixtures :users
+
+      setup do
+        clean_source_monitor_tables!
+        @user = users(:admin)
+      end
+
+      test "upload valid OPML persists metadata parsed sources and advances" do
+        import_session = build_session
+        file = uploaded_file("files/opml_with_valid_and_invalid.xml")
+
+        result = wizard(import_session, params: { opml_file: file, import_session: { next_step: "preview" } }).handle_upload
+
+        assert_equal :success, result.status
+        assert_equal "preview", result.current_step
+
+        import_session.reload
+        assert_equal "preview", import_session.current_step
+        assert_equal "opml_with_valid_and_invalid.xml", import_session.opml_file_metadata["filename"]
+        assert import_session.opml_file_metadata["uploaded_at"].present?
+        assert_equal 3, import_session.parsed_sources.size
+        assert_equal 1, import_session.parsed_sources.count { |entry| entry["status"] == "valid" }
+        assert_equal 2, import_session.parsed_sources.count { |entry| entry["status"] == "malformed" }
+      end
+
+      test "upload invalid content type returns errors without advancing" do
+        import_session = build_session
+        file = Rack::Test::UploadedFile.new(StringIO.new("not xml"), "text/plain", original_filename: "notes.txt")
+
+        result = wizard(import_session, params: { opml_file: file, import_session: { next_step: "preview" } }).handle_upload
+
+        assert_equal :invalid, result.status
+        assert_includes result.errors, "Upload must be an OPML or XML file."
+        assert_equal "upload", import_session.reload.current_step
+        assert_equal [], import_session.parsed_sources
+      end
+
+      test "upload OPML with no valid entries persists parsed errors and stays on upload" do
+        import_session = build_session
+        file = uploaded_file("files/opml_no_valid_entries.xml")
+
+        result = wizard(import_session, params: { opml_file: file, import_session: { next_step: "preview" } }).handle_upload
+
+        assert_equal :invalid, result.status
+        assert_includes result.errors.first, "We couldn't find any valid feeds"
+        import_session.reload
+        assert_equal "upload", import_session.current_step
+        assert_equal 2, import_session.parsed_sources.size
+        assert_equal "opml_no_valid_entries.xml", import_session.opml_file_metadata["filename"]
+      end
+
+      test "preview context annotates duplicates and defaults selectable entries" do
+        existing = create_source!(feed_url: "https://dup.example.com/feed.xml")
+        import_session = build_session(
+          current_step: "preview",
+          parsed_sources: [
+            { "id" => "one", "feed_url" => existing.feed_url, "title" => "Existing", "status" => "valid" },
+            { "id" => "two", "feed_url" => "https://new.example.com/rss", "title" => "New", "status" => "valid" },
+            { "id" => "three", "feed_url" => nil, "status" => "malformed", "error" => "Missing feed URL" }
+          ],
+          selected_source_ids: []
+        )
+
+        context = wizard(import_session, current_step: "preview").preview_context
+
+        import_session.reload
+        assert_equal [ "two" ], import_session.selected_source_ids
+        assert_equal [ true, false, false ], context.preview_entries.map { |entry| entry[:duplicate] }
+        assert_equal [ false, true, false ], context.preview_entries.map { |entry| entry[:selectable] }
+        assert_equal [ false, true, false ], context.preview_entries.map { |entry| entry[:selected] }
+      end
+
+      test "preview select all and select none persist selected IDs" do
+        import_session = build_session(current_step: "preview", parsed_sources: selectable_parsed_sources)
+
+        select_all = wizard(import_session, current_step: "preview", params: { import_session: { select_all: "true", next_step: "preview" } }).handle_preview
+        assert_equal :success, select_all.status
+        assert_equal [ "one", "two" ], import_session.reload.selected_source_ids.sort
+
+        select_none = wizard(import_session, current_step: "preview", params: { import_session: { select_none: "true", next_step: "preview" } }).handle_preview
+        assert_equal :success, select_none.status
+        assert_equal [], import_session.reload.selected_source_ids
+      end
+
+      test "preview blocks advancing with empty selection" do
+        import_session = build_session(current_step: "preview", parsed_sources: selectable_parsed_sources)
+
+        result = wizard(import_session, current_step: "preview", params: { import_session: { selected_source_ids: [], next_step: "health_check" } }).handle_preview
+
+        assert result.blocked?
+        assert_equal "Select at least one new source to continue.", result.selection_error
+        assert_equal "preview", import_session.reload.current_step
+      end
+
+      private
+
+      def build_session(attributes = {})
+        SourceMonitor::ImportSession.create!(
+          {
+            user_id: @user.id,
+            current_step: "upload"
+          }.merge(attributes)
+        )
+      end
+
+      def wizard(import_session, params: {}, current_step: import_session.current_step)
+        SourceMonitor::ImportSessions::Wizard.new(
+          import_session: import_session,
+          params: ActionController::Parameters.new(params),
+          current_step: current_step
+        )
+      end
+
+      def uploaded_file(fixture)
+        Rack::Test::UploadedFile.new(file_fixture(fixture), "text/xml")
+      end
+
+      def selectable_parsed_sources
+        [
+          { "id" => "one", "feed_url" => "https://new.example.com/rss", "status" => "valid" },
+          { "id" => "two", "feed_url" => "https://another.example.com/rss", "status" => "valid" }
+        ]
+      end
+    end
+  end
+end
