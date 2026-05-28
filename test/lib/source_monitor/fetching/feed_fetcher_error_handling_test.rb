@@ -11,6 +11,50 @@ module SourceMonitor
     class FeedFetcherErrorHandlingTest < ActiveSupport::TestCase
       include FeedFetcherTestHelper
 
+      test "failure outcome owns source log instrumentation retry and result values" do
+        travel_to Time.zone.parse("2024-06-01 12:00:00 UTC")
+
+        source = build_source(name: "Failure Outcome", feed_url: "https://example.com/failure-outcome.xml")
+        adaptive_interval = FeedFetcher::AdaptiveInterval.new(source: source, jitter_proc: ->(_) { 0 })
+        source_updater = FeedFetcher::SourceUpdater.new(source: source, adaptive_interval: adaptive_interval)
+        error = TimeoutError.new("execution expired")
+        instrumentation_payload = {}
+
+        result = FeedFetcher::FailureOutcome.new(error: error)
+          .apply(source_updater: source_updater, started_at: Time.current, instrumentation_payload: instrumentation_payload)
+
+        assert_equal :failed, result.status
+        assert_equal error, result.error
+        assert result.retry_decision.retry?
+        assert_equal 1, result.retry_decision.next_attempt
+        assert_equal 0, result.item_processing.created
+        assert_equal 0, result.item_processing.failed
+
+        source.reload
+        assert_equal 1, source.failure_count
+        assert_equal 1, source.consecutive_fetch_failures
+        assert_equal "execution expired", source.last_error
+        assert_equal 1, source.fetch_retry_attempt
+
+        log = source.fetch_logs.order(:created_at).last
+        assert_not log.success
+        assert_equal "SourceMonitor::Fetching::TimeoutError", log.error_class
+        assert_equal "execution expired", log.error_message
+        assert_equal "timeout", log.metadata["error_code"]
+
+        assert_equal false, instrumentation_payload[:success]
+        assert_equal :failed, instrumentation_payload[:status]
+        assert_equal "SourceMonitor::Fetching::TimeoutError", instrumentation_payload[:error_class]
+        assert_equal "execution expired", instrumentation_payload[:error_message]
+        assert_equal "timeout", instrumentation_payload[:error_code]
+        assert_equal 0, instrumentation_payload[:items_created]
+        assert_equal 0, instrumentation_payload[:items_updated]
+        assert_equal 0, instrumentation_payload[:items_failed]
+        assert_equal 1, instrumentation_payload[:retry_attempt]
+      ensure
+        travel_back
+      end
+
       test "records timeout failures and emits failure notifications" do
         url = "https://example.com/rss-timeout.xml"
         source = build_source(name: "Timeout Source", feed_url: url)

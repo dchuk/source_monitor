@@ -1,15 +1,10 @@
 # frozen_string_literal: true
 
-require "nokogiri"
-require "uri"
-require "source_monitor/import_sessions/entry_normalizer"
+require "source_monitor/import_sessions/wizard"
 require "source_monitor/sources/params"
 
 module SourceMonitor
   class ImportSessionsController < ApplicationController
-    include SourceMonitor::ImportSessions::OpmlParser
-    include SourceMonitor::ImportSessions::EntryAnnotation
-    include SourceMonitor::ImportSessions::HealthCheckManagement
     include SourceMonitor::ImportSessions::BulkConfiguration
 
     STEP_HANDLERS = {
@@ -86,92 +81,60 @@ module SourceMonitor
     def persist_step!
       return if @import_session.current_step == @current_step
 
-      deactivate_health_checks! if @current_step != "health_check"
+      import_session_wizard.deactivate_health_checks if @current_step != "health_check"
       @import_session.update_column(:current_step, @current_step)
     end
 
     def handle_health_check_step
-      @selected_source_ids = health_check_selection_from_params
-      @import_session.update!(selected_source_ids: @selected_source_ids)
-      if advancing_from_health_check? && @selected_source_ids.blank?
-        @selection_error = "Select at least one source to continue."
-        prepare_health_check_context
+      result = import_session_wizard.handle_health_check
+      @selected_source_ids = result.selected_source_ids
+
+      if result.blocked?
+        @selection_error = result.selection_error
+        apply_health_check_context(result.health_check_context)
         render :show, status: :unprocessable_entity
         return
       end
 
-      @current_step = target_step
-      deactivate_health_checks! if @current_step != "health_check"
-      @import_session.update_column(:current_step, @current_step) if @import_session.current_step != @current_step
-      prepare_health_check_context if @current_step == "health_check"
+      @current_step = result.current_step
+      apply_health_check_context(result.health_check_context) if @current_step == "health_check"
       redirect_to source_monitor.step_import_session_path(@import_session, step: @current_step), allow_other_host: false
     end
 
     def handle_upload_step
-      @upload_errors = validate_upload!
+      result = import_session_wizard.handle_upload
+      @upload_errors = result.errors
       if @upload_errors.any?
         render :show, status: :unprocessable_entity
         return
       end
 
-      parsed_entries = parse_opml_file(params[:opml_file])
-      valid_entries = parsed_entries.select { |entry| entry[:status] == "valid" }
-      if valid_entries.empty?
-        @upload_errors = [ "We couldn't find any valid feeds in that OPML file. Check the file and try again." ]
-        @import_session.update!(opml_file_metadata: build_file_metadata, parsed_sources: parsed_entries, current_step: "upload")
-        render :show, status: :unprocessable_entity
-        return
-      end
-
-      @import_session.update!(
-        opml_file_metadata: build_file_metadata.merge("uploaded_at" => Time.current),
-        parsed_sources: parsed_entries,
-        current_step: target_step
-      )
-
-      @current_step = target_step
-      prepare_preview_context(skip_default: true) if @current_step == "preview"
+      @current_step = result.current_step
+      apply_preview_context(result.preview_context) if @current_step == "preview"
 
       respond_to do |format|
         format.turbo_stream { render :show }
         format.html { redirect_to source_monitor.step_import_session_path(@import_session, step: @current_step) }
       end
-    rescue UploadError => error
-      @upload_errors = [ error.message ]
-      render :show, status: :unprocessable_entity
     end
 
     def handle_preview_step
-      @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
+      result = import_session_wizard.handle_preview
+      @selected_source_ids = result.selected_source_ids
 
-      if params.dig(:import_session, :select_all).present?
-        @selected_source_ids = selectable_entries.map { |entry| entry[:id] }
-        @import_session.update_column(:selected_source_ids, @selected_source_ids)
-        valid_ids = @selected_source_ids
-      elsif params.dig(:import_session, :select_none).present?
-        @selected_source_ids = []
-        @import_session.update_column(:selected_source_ids, @selected_source_ids)
-        valid_ids = []
-      else
-        @selected_source_ids = build_selection_from_params
-        valid_ids = selectable_entries.index_by { |entry| entry[:id] }.slice(*@selected_source_ids).keys
-        @import_session.update!(selected_source_ids: valid_ids)
-      end
-
-      if advancing_from_preview? && valid_ids.empty?
-        @selection_error = "Select at least one new source to continue."
-        prepare_preview_context(skip_default: true)
+      if result.blocked?
+        @selection_error = result.selection_error
+        apply_preview_context(result.preview_context)
         render :show, status: :unprocessable_entity
         return
       end
 
-      @current_step = target_step
-      @import_session.update_column(:current_step, @current_step) if @import_session.current_step != @current_step
+      @current_step = result.current_step
 
       if @current_step == "health_check"
         prepare_health_check_context
       else
-        prepare_preview_context(skip_default: true)
+        apply_preview_context(result.preview_context)
       end
 
       respond_to do |format|
@@ -200,31 +163,25 @@ module SourceMonitor
     end
 
     def handle_confirm_step
-      @selected_source_ids = Array(@import_session.selected_source_ids).map(&:to_s)
-      @selected_entries = annotated_entries(@selected_source_ids).select { |entry| @selected_source_ids.include?(entry[:id]) }
-      if @selected_entries.empty?
-        @selection_error = "Select at least one source to import."
-        prepare_confirm_context
+      result = import_session_wizard.handle_confirm
+      apply_confirm_context(result)
+
+      if result.blocked?
+        @selection_error = result.selection_error
         render :show, status: :unprocessable_entity
         return
       end
-      history = SourceMonitor::ImportHistory.create!(
-        user_id: @import_session.user_id,
-        bulk_settings: @import_session.bulk_settings
-      )
-      SourceMonitor::ImportOpmlJob.perform_later(@import_session.id, history.id)
-      @import_session.update_column(:current_step, "confirm") if @import_session.current_step != "confirm"
-      message = "Import started for #{@selected_entries.size} sources."
+
       respond_to do |format|
         format.turbo_stream do
           responder = SourceMonitor::TurboStreams::StreamResponder.new
-          responder.toast(message:, level: :success)
+          responder.toast(message: result.message, level: :success)
           responder.redirect(source_monitor.sources_path)
           render turbo_stream: responder.render(view_context)
         end
 
         format.html do
-          redirect_to source_monitor.sources_path, notice: message
+          redirect_to source_monitor.sources_path, notice: result.message
         end
       end
     end
@@ -301,6 +258,95 @@ module SourceMonitor
       end
     end
     # :nocov:
+
+    def import_session_wizard
+      SourceMonitor::ImportSessions::Wizard.new(
+        import_session: @import_session,
+        params: params,
+        current_step: @current_step
+      )
+    end
+
+    def permitted_step(value)
+      step = value.to_s.presence
+      return unless step
+
+      ImportSession::STEP_ORDER.find { |candidate| candidate == step }
+    end
+
+    def target_step
+      permitted_step(import_session_state_params[:next_step]) || @current_step || ImportSession.default_step
+    end
+
+    def session_attributes
+      attrs = import_session_state_params.except(:next_step, :current_step, "next_step", "current_step")
+      attrs[:current_step] = target_step
+      attrs
+    end
+
+    def import_session_state_params
+      @import_session_state_params ||= begin
+        raw = params[:import_session] || params["import_session"] || {}
+        permitted = if raw.respond_to?(:permit)
+          raw.permit(
+            :current_step,
+            :next_step,
+            :select_all,
+            :select_none,
+            parsed_sources: [],
+            selected_source_ids: [],
+            bulk_settings: {},
+            opml_file_metadata: {}
+          )
+        else
+          raw.to_h
+        end
+
+        SourceMonitor::Security::ParameterSanitizer.sanitize(permitted.to_h).with_indifferent_access
+      end
+    end
+
+    def prepare_preview_context(skip_default: false)
+      context = if skip_default
+        import_session_wizard.preview_context
+      else
+        import_session_wizard.preview_context_with_default_selection
+      end
+
+      apply_preview_context(context)
+    end
+
+    def prepare_health_check_context
+      apply_health_check_context(import_session_wizard.health_check_context)
+    end
+
+    def prepare_confirm_context
+      apply_confirm_context(import_session_wizard.confirm_context)
+    end
+
+    def apply_preview_context(context)
+      @filter = context.filter
+      @page = context.page
+      @selected_source_ids = context.selected_source_ids
+      @preview_entries = context.preview_entries
+      @filtered_entries = context.filtered_entries
+      @paginated_entries = context.paginated_entries
+      @has_next_page = context.has_next_page
+      @has_previous_page = context.has_previous_page
+    end
+
+    def apply_health_check_context(context)
+      @selected_source_ids = context.selected_source_ids
+      @health_check_entries = context.health_check_entries
+      @health_check_target_ids = context.health_check_target_ids
+      @health_progress = context.health_progress
+    end
+
+    def apply_confirm_context(context)
+      @selected_source_ids = context.selected_source_ids
+      @selected_entries = context.selected_entries
+      @bulk_settings = context.bulk_settings
+    end
 
     def authorize_import_session!
       return if !SourceMonitor::Security::Authentication.authentication_configured?

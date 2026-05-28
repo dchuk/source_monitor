@@ -89,6 +89,7 @@ module SourceMonitor
 
   module ImportSessions
     autoload :EntryNormalizer, "source_monitor/import_sessions/entry_normalizer"
+    autoload :Wizard, "source_monitor/import_sessions/wizard"
     autoload :HealthCheckBroadcaster, "source_monitor/import_sessions/health_check_broadcaster"
     autoload :HealthCheckUpdater, "source_monitor/import_sessions/health_check_updater"
     autoload :OPMLImporter, "source_monitor/import_sessions/opml_importer"
@@ -108,6 +109,7 @@ module SourceMonitor
 
   module Items
     autoload :ItemCreator, "source_monitor/items/item_creator"
+    autoload :NormalizedEntry, "source_monitor/items/normalized_entry"
     autoload :RetentionPruner, "source_monitor/items/retention_pruner"
     autoload :RetentionStrategies, "source_monitor/items/retention_strategies"
   end

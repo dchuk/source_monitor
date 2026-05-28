@@ -89,6 +89,57 @@ module SourceMonitor
         assert_equal existing_item, index[:by_fingerprint][existing_item.content_fingerprint]
       end
 
+      test "build_index uses normalized entries for guid lookup" do
+        item = SourceMonitor::Item.create!(
+          source: @source,
+          guid: "normalized-guid",
+          url: "https://example.com/normalized",
+          title: "Normalized"
+        )
+        entry = OpenStruct.new(entry_id: "raw-guid")
+        normalized_entry = NormalizedEntryDouble.new(
+          item_guid: "normalized-guid",
+          content_fingerprint: "normalized-fingerprint",
+          raw_guid_present: true
+        )
+        calls = []
+        factory = lambda do |source:, entry:, content_extractor:|
+          calls << { source: source, entry: entry, content_extractor: content_extractor }
+          normalized_entry
+        end
+
+        index = SourceMonitor::Items::NormalizedEntry.stub(:new, factory) do
+          BatchItemCreator.build_index(source: @source, entries: [ entry ])
+        end
+
+        assert_equal item, index[:by_guid]["normalized-guid"]
+        assert_equal [ entry ], calls.map { |call| call[:entry] }
+        assert calls.first[:content_extractor].is_a?(ItemCreator::ContentExtractor)
+      end
+
+      test "build_index uses normalized entries for fingerprint lookup" do
+        item = SourceMonitor::Item.create!(
+          source: @source,
+          guid: "stored-guid",
+          content_fingerprint: "normalized-fingerprint",
+          url: "https://example.com/fingerprint",
+          title: "Fingerprint"
+        )
+        entry = OpenStruct.new(title: "No raw guid")
+        normalized_entry = NormalizedEntryDouble.new(
+          item_guid: "normalized-fingerprint",
+          content_fingerprint: "normalized-fingerprint",
+          raw_guid_present: false
+        )
+
+        index = SourceMonitor::Items::NormalizedEntry.stub(:new, ->(**) { normalized_entry }) do
+          BatchItemCreator.build_index(source: @source, entries: [ entry ])
+        end
+
+        assert_equal item, index[:by_fingerprint]["normalized-fingerprint"]
+        assert_empty index[:by_guid]
+      end
+
       test "build_index normalizes guids to lowercase for lookup" do
         # Create item with lowercase guid
         item = SourceMonitor::Item.create!(
@@ -179,6 +230,12 @@ module SourceMonitor
         assert_equal 3, results.size
         assert results.all?(&:created?)
         assert_equal 3, SourceMonitor::Item.where(source: @source).count
+      end
+
+      NormalizedEntryDouble = Struct.new(:item_guid, :content_fingerprint, :raw_guid_present, keyword_init: true) do
+        def raw_guid_present?
+          raw_guid_present
+        end
       end
     end
   end

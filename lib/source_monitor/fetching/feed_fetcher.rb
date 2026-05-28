@@ -9,11 +9,13 @@ require "source_monitor/items/item_creator"
 require "source_monitor/fetching/feed_fetcher/adaptive_interval"
 require "source_monitor/fetching/feed_fetcher/source_updater"
 require "source_monitor/fetching/feed_fetcher/entry_processor"
+require "source_monitor/fetching/feed_fetcher/success_outcome"
+require "source_monitor/fetching/feed_fetcher/failure_outcome"
 
 module SourceMonitor
   module Fetching
     class FeedFetcher
-      Result = Struct.new(:status, :feed, :response, :body, :error, :item_processing, :retry_decision, keyword_init: true)
+      Result = Struct.new(:status, :feed, :response, :body, :error, :item_processing, :retry_decision, :outcome, keyword_init: true)
       EntryProcessingResult = Struct.new(
         :created,
         :updated,
@@ -24,7 +26,20 @@ module SourceMonitor
         :created_items,
         :updated_items,
         keyword_init: true
-      )
+      ) do
+        def self.empty
+          new(
+            created: 0,
+            updated: 0,
+            unchanged: 0,
+            failed: 0,
+            items: [],
+            errors: [],
+            created_items: [],
+            updated_items: []
+          )
+        end
+      end
       ResponseWrapper = Struct.new(:status, :headers, :body, keyword_init: true)
 
       attr_reader :source, :client, :jitter_proc
@@ -116,7 +131,6 @@ module SourceMonitor
       end
 
       def handle_success(response, started_at, instrumentation_payload)
-        duration_ms = source_updater.elapsed_ms(started_at)
         body = response.body
         feed_body_signature = body_digest(body)
         feed = parse_feed(body, response)
@@ -125,45 +139,19 @@ module SourceMonitor
           processing = entry_processor.process_feed_entries(feed)
           content_changed = entries_digest_changed?(feed)
         else
-          processing = EntryProcessingResult.new(
-            created: 0,
-            updated: 0,
-            unchanged: 0,
-            failed: 0,
-            items: [],
-            errors: [],
-            created_items: [],
-            updated_items: []
-          )
+          processing = EntryProcessingResult.empty
           content_changed = false
         end
 
-        feed_entries_digest = entries_digest(feed)
-        source_updater.update_source_for_success(response, duration_ms, feed, feed_body_signature, content_changed: content_changed, entries_digest: feed_entries_digest)
-        source_updater.create_fetch_log(
+        SuccessOutcome.new(
           response: response,
-          duration_ms: duration_ms,
-          started_at: started_at,
-          feed: feed,
-          success: true,
           body: body,
+          feed: feed,
+          item_processing: processing,
           feed_signature: feed_body_signature,
-          items_created: processing.created,
-          items_updated: processing.updated,
-          items_failed: processing.failed,
-          item_errors: processing.errors
-        )
-
-        instrumentation_payload[:success] = true
-        instrumentation_payload[:status] = :fetched
-        instrumentation_payload[:http_status] = response.status
-        instrumentation_payload[:parser] = feed.class.name if feed
-        instrumentation_payload[:items_created] = processing.created
-        instrumentation_payload[:items_updated] = processing.updated
-        instrumentation_payload[:items_failed] = processing.failed
-        instrumentation_payload[:retry_attempt] = 0
-
-        Result.new(status: :fetched, feed:, response:, body:, item_processing: processing)
+          content_changed: content_changed,
+          entries_digest: entries_digest(feed)
+        ).apply(source_updater: source_updater, started_at: started_at, instrumentation_payload: instrumentation_payload)
       end
 
       def handle_not_modified(response, started_at, instrumentation_payload)
@@ -189,16 +177,7 @@ module SourceMonitor
           status: :not_modified,
           response: response,
           body: nil,
-          item_processing: EntryProcessingResult.new(
-            created: 0,
-            updated: 0,
-            unchanged: 0,
-            failed: 0,
-            items: [],
-            errors: [],
-            created_items: [],
-            updated_items: []
-          )
+          item_processing: EntryProcessingResult.empty
         )
       end
 
@@ -263,48 +242,8 @@ module SourceMonitor
       end
 
       def handle_failure(error, started_at:, instrumentation_payload:)
-        response = error.response
-        body = response&.body
-        duration_ms = source_updater.elapsed_ms(started_at)
-
-        retry_decision = source_updater.update_source_for_failure(error, duration_ms)
-        source_updater.create_fetch_log(
-          response: response,
-          duration_ms: duration_ms,
-          started_at: started_at,
-          success: false,
-          error: error,
-          body: body
-        )
-
-        instrumentation_payload[:success] = false
-        instrumentation_payload[:status] = :failed
-        instrumentation_payload[:error_class] = error.class.name
-        instrumentation_payload[:error_message] = error.message
-        instrumentation_payload[:http_status] = error.http_status if error.http_status
-        instrumentation_payload[:error_code] = error.code if error.respond_to?(:code)
-        instrumentation_payload[:items_created] = 0
-        instrumentation_payload[:items_updated] = 0
-        instrumentation_payload[:items_failed] = 0
-        instrumentation_payload[:retry_attempt] = retry_decision&.next_attempt ? retry_decision.next_attempt : 0
-
-        Result.new(
-          status: :failed,
-          response: response,
-          body: body,
-          error: error,
-          retry_decision: retry_decision,
-          item_processing: EntryProcessingResult.new(
-            created: 0,
-            updated: 0,
-            unchanged: 0,
-            failed: 0,
-            items: [],
-            errors: [],
-            created_items: [],
-            updated_items: []
-          )
-        )
+        FailureOutcome.new(error: error)
+          .apply(source_updater: source_updater, started_at: started_at, instrumentation_payload: instrumentation_payload)
       end
 
       def attempt_aia_recovery(_error, started_at, instrumentation_payload)

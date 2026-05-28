@@ -475,6 +475,21 @@ module SourceMonitor
       assert_select "[data-testid='scrape-recommendation-badge']", count: 0
     end
 
+    test "index does not render scrape recommendation badge for inactive low-word-count sources" do
+      source = create_source!(name: "Inactive Candidate", scraping_enabled: false, active: false)
+      item = source.items.create!(guid: "inactive-rec-1", title: "Item", url: "https://example.com/inactive-rec-1", published_at: Time.current, content: "short")
+      item.reload # callback auto-creates ItemContent
+      item.item_content.update_columns(feed_word_count: 50)
+
+      SourceMonitor.config.scraping.scrape_recommendation_threshold = 200
+
+      get source_monitor.sources_path
+      assert_response :success
+
+      assert_includes response.body, "Inactive Candidate"
+      assert_select "[data-testid='scrape-recommendation-badge']", count: 0
+    end
+
     test "index expands scrape recommendation filter into compound query" do
       source = create_source!(name: "Candidate Source", scraping_enabled: false, active: true)
       # Create an item with low feed_word_count so avg_feed_words < threshold

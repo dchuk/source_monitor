@@ -33,7 +33,7 @@ module SourceMonitor
 
     def resolve_source_ids
       if params.dig(:bulk_scrape_enablement, :select_all_pages) == "true"
-        Source.scrape_candidates.pluck(:id)
+        SourceMonitor::Analytics::ScrapeRecommendations.new.candidate_ids
       else
         raw_ids = Array(params.dig(:bulk_scrape_enablement, :source_ids))
         raw_ids.map(&:to_i).reject(&:zero?)

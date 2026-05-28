@@ -9,6 +9,7 @@ require "source_monitor/instrumentation"
 require "source_monitor/scrapers/readability"
 require "source_monitor/items/item_creator/entry_parser"
 require "source_monitor/items/item_creator/content_extractor"
+require "source_monitor/items/normalized_entry"
 
 module SourceMonitor
   module Items
@@ -49,14 +50,10 @@ module SourceMonitor
       end
 
       def call
-        attributes = build_attributes
-        raw_guid = attributes[:guid]
-        # Normalize GUID to lowercase so the plain btree index on guid is used
-        # for lookups instead of LOWER(guid) which forces sequential scans.
-        normalized_guid = raw_guid.present? ? raw_guid.downcase : nil
-        attributes[:guid] = normalized_guid.presence || attributes[:content_fingerprint]
+        normalized_entry = build_normalized_entry
+        attributes = normalized_entry.item_attributes
 
-        existing_item, matched_by = existing_item_for(attributes, raw_guid_present: normalized_guid.present?)
+        existing_item, matched_by = existing_item_for(attributes, raw_guid_present: normalized_entry.raw_guid_present?)
 
         if existing_item
           apply_attributes(existing_item, attributes)
@@ -70,7 +67,7 @@ module SourceMonitor
           end
         end
 
-        create_new_item(attributes, raw_guid_present: normalized_guid.present?)
+        create_new_item(attributes, raw_guid_present: normalized_entry.raw_guid_present?)
       end
 
       private
@@ -193,12 +190,8 @@ module SourceMonitor
         (record.changed - IGNORED_CHANGE_ATTRIBUTES).any?
       end
 
-      def build_attributes
-        entry_parser.parse
-      end
-
-      def entry_parser
-        @entry_parser ||= EntryParser.new(source: source, entry: entry, content_extractor: content_extractor)
+      def build_normalized_entry
+        @normalized_entry ||= NormalizedEntry.new(source: source, entry: entry, content_extractor: content_extractor)
       end
 
       def content_extractor

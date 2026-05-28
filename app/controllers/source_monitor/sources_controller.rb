@@ -52,8 +52,9 @@ module SourceMonitor
       @avg_feed_word_counts = word_counts[:feed]
       @avg_scraped_word_counts = word_counts[:scraped]
 
-      @scrape_candidate_ids = compute_scrape_candidate_ids
-      @total_scrape_candidate_count = Source.scrape_candidates.count
+      @scrape_recommendations = SourceMonitor::Analytics::ScrapeRecommendations.new
+      @scrape_candidate_ids = Set.new(@scrape_recommendations.candidate_ids_for(source_ids))
+      @total_scrape_candidate_count = @scrape_recommendations.candidates_count
 
       # Row partial preload requirements (V3): item_activity_rates,
       # avg_feed_word_counts, avg_scraped_word_counts are pre-computed above
@@ -188,23 +189,8 @@ module SourceMonitor
     def expand_scrape_recommendation_filter
       return unless @search_params["scraping_enabled_eq"] == "recommend"
 
-      threshold = SourceMonitor.config.scraping.scrape_recommendation_threshold
       @search_params.delete("scraping_enabled_eq")
-      @search_params["scraping_enabled_eq"] = "false"
-      @search_params["active_eq"] = "true"
-      @search_params["avg_feed_words_lt"] = threshold.to_s
-    end
-
-    def compute_scrape_candidate_ids
-      threshold = SourceMonitor.config.scraping.scrape_recommendation_threshold
-      return Set.new if threshold.nil? || threshold <= 0
-
-      candidate_ids = @sources.select do |source|
-        avg = @avg_feed_word_counts[source.id]
-        avg.present? && avg < threshold && !source.scraping_enabled?
-      end.map(&:id)
-
-      Set.new(candidate_ids)
+      @search_params.merge!(SourceMonitor::Analytics::ScrapeRecommendations.new.filter_params)
     end
 
     def enqueue_unscraped_items(source)

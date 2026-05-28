@@ -4,12 +4,77 @@ require "test_helper"
 require "faraday"
 require "uri"
 require "digest"
+require "ostruct"
 require_relative "feed_fetcher_test_helper"
 
 module SourceMonitor
   module Fetching
     class FeedFetcherSuccessTest < ActiveSupport::TestCase
       include FeedFetcherTestHelper
+
+      test "success outcome owns source log instrumentation and result values" do
+        travel_to Time.zone.parse("2024-06-01 12:00:00 UTC")
+
+        source = build_source(name: "Success Outcome", feed_url: "https://example.com/outcome.xml")
+        adaptive_interval = FeedFetcher::AdaptiveInterval.new(source: source, jitter_proc: ->(_) { 0 })
+        source_updater = FeedFetcher::SourceUpdater.new(source: source, adaptive_interval: adaptive_interval)
+        response = FeedFetcher::ResponseWrapper.new(
+          status: 200,
+          headers: { "ETag" => '"success-outcome"' },
+          body: "<rss>body</rss>"
+        )
+        feed = OpenStruct.new(entries: [ OpenStruct.new(entry_id: "entry-1") ])
+        item_processing = FeedFetcher::EntryProcessingResult.new(
+          created: 2,
+          updated: 1,
+          unchanged: 0,
+          failed: 1,
+          items: [],
+          errors: [ { guid: "bad", error_message: "failed" } ],
+          created_items: [],
+          updated_items: []
+        )
+        instrumentation_payload = {}
+
+        result = FeedFetcher::SuccessOutcome.new(
+          response: response,
+          body: response.body,
+          feed: feed,
+          item_processing: item_processing,
+          feed_signature: "feed-signature",
+          content_changed: true,
+          entries_digest: "entries-digest"
+        ).apply(source_updater: source_updater, started_at: Time.current, instrumentation_payload: instrumentation_payload)
+
+        assert_equal :fetched, result.status
+        assert_equal feed, result.feed
+        assert_equal item_processing, result.item_processing
+
+        source.reload
+        assert_equal 200, source.last_http_status
+        assert_equal '"success-outcome"', source.etag
+        assert_equal "feed-signature", source.metadata["last_feed_signature"]
+        assert_equal "entries-digest", source.metadata["last_entries_digest"]
+
+        log = source.fetch_logs.order(:created_at).last
+        assert log.success
+        assert_equal 2, log.items_created
+        assert_equal 1, log.items_updated
+        assert_equal 1, log.items_failed
+        assert_equal "feed-signature", log.metadata["feed_signature"]
+        assert_equal "failed", log.metadata["item_errors"].first["error_message"]
+
+        assert_equal true, instrumentation_payload[:success]
+        assert_equal :fetched, instrumentation_payload[:status]
+        assert_equal 200, instrumentation_payload[:http_status]
+        assert_equal OpenStruct.name, instrumentation_payload[:parser]
+        assert_equal 2, instrumentation_payload[:items_created]
+        assert_equal 1, instrumentation_payload[:items_updated]
+        assert_equal 1, instrumentation_payload[:items_failed]
+        assert_equal 0, instrumentation_payload[:retry_attempt]
+      ensure
+        travel_back
+      end
 
       test "continues processing when an item creation fails" do
         source = build_source(

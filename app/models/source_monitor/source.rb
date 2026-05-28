@@ -66,7 +66,7 @@ module SourceMonitor
       end
 
       def scrape_candidates(threshold: SourceMonitor.config.scraping.scrape_recommendation_threshold)
-        SourceMonitor::Queries::ScrapeCandidatesQuery.new(threshold:).call
+        SourceMonitor::Analytics::ScrapeRecommendations.new(threshold:).relation
       end
 
       # Bulk-enable scraping for sources that don't already have it enabled.

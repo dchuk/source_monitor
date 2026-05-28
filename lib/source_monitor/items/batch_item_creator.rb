@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "source_monitor/items/item_creator"
+require "source_monitor/items/normalized_entry"
 
 module SourceMonitor
   module Items
@@ -32,17 +33,17 @@ module SourceMonitor
 
         # Step 1: Pre-parse entries to extract GUIDs and fingerprints for bulk lookup.
         entry_identifiers = @entries.map do |entry|
-          parser = ItemCreator::EntryParser.new(
+          normalized_entry = NormalizedEntry.new(
             source: @source,
             entry: entry,
             content_extractor: content_extractor
           )
-          attrs = parser.parse
-          raw_guid = attrs[:guid]
-          normalized_guid = raw_guid.present? ? raw_guid.downcase : nil
-          guid = normalized_guid.presence || attrs[:content_fingerprint]
 
-          { guid: guid, fingerprint: attrs[:content_fingerprint], raw_guid_present: normalized_guid.present? }
+          {
+            guid: normalized_entry.item_guid,
+            fingerprint: normalized_entry.content_fingerprint,
+            raw_guid_present: normalized_entry.raw_guid_present?
+          }
         end
 
         # Step 2: Batch-fetch existing items by GUID (single query)

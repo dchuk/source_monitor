@@ -45,6 +45,15 @@ module SourceMonitor
         # low_wc_source should be a candidate, high_wc_source should not
       end
 
+      test "relation returns scrape candidate sources" do
+        recs = ScrapeRecommendations.new(threshold: 200)
+
+        assert_kind_of ActiveRecord::Relation, recs.relation
+        assert_includes recs.relation, @low_wc_source
+        assert_not_includes recs.relation, @high_wc_source
+        assert_not_includes recs.relation, @scraping_enabled_source
+      end
+
       test "candidate_ids returns correct IDs" do
         recs = ScrapeRecommendations.new(threshold: 200)
         ids = recs.candidate_ids
@@ -62,6 +71,27 @@ module SourceMonitor
         recs = ScrapeRecommendations.new(threshold: 200)
         assert_not recs.candidate?(@high_wc_source.id)
         assert_not recs.candidate?(@scraping_enabled_source.id)
+      end
+
+      test "candidate_ids_for filters candidates to provided sources" do
+        recs = ScrapeRecommendations.new(threshold: 200)
+
+        ids = recs.candidate_ids_for([ @low_wc_source, @high_wc_source.id ])
+
+        assert_equal [ @low_wc_source.id ], ids
+      end
+
+      test "filter_params returns recommendation ransack filters" do
+        recs = ScrapeRecommendations.new(threshold: 200)
+
+        assert_equal(
+          {
+            "scraping_enabled_eq" => "false",
+            "active_eq" => "true",
+            "avg_feed_words_lt" => "200"
+          },
+          recs.filter_params
+        )
       end
 
       test "results are memoized" do
