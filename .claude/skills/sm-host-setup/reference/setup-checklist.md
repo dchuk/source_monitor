@@ -57,6 +57,10 @@ bin/rails db:migrate
 
 ## Phase 5: Configure Authentication
 
+**Fail-closed by default.** With no handler configured, every engine route returns
+`403 Forbidden`. Make one of two choices: configure a handler (recommended) OR opt into
+open access for demos only.
+
 Edit `config/initializers/source_monitor.rb`:
 
 ```ruby
@@ -68,10 +72,14 @@ SourceMonitor.configure do |config|
   }
   config.authentication.current_user_method = :current_user
   config.authentication.user_signed_in_method = :user_signed_in?
+
+  # OR, for local demos/sandboxes only (non-production) -- opt out of the
+  # fail-closed guard so routes are public. A configured handler always wins.
+  # config.authentication.open_access = true
 end
 ```
 
-- [ ] Authentication hook configured
+- [ ] Authentication decision made: handler configured (fail-closed default) OR `open_access = true` set for demos only
 - [ ] Authorization hook configured (if needed)
 
 ## Phase 6: Configure Workers
