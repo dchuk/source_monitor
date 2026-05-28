@@ -195,10 +195,8 @@ module SourceMonitor
         assert original_result.created?
         original_item = original_result.item
 
-        # Directly test the handler by calling the private method
         creator = ItemCreator.new(source: @source, entry: entry)
-        attributes = creator.send(:build_attributes)
-        attributes[:guid] = attributes[:guid].presence || attributes[:content_fingerprint]
+        attributes = attributes_for(entry)
 
         result = creator.send(:handle_concurrent_duplicate, attributes, raw_guid_present: true)
         assert result.unchanged?, "expected unchanged for identical duplicate entry"
@@ -213,8 +211,7 @@ module SourceMonitor
         original_item = original_result.item
 
         creator = ItemCreator.new(source: @source, entry: entry)
-        attributes = creator.send(:build_attributes)
-        attributes[:guid] = attributes[:guid].presence || attributes[:content_fingerprint]
+        attributes = attributes_for(entry)
 
         result = creator.send(:handle_concurrent_duplicate, attributes, raw_guid_present: false)
         assert result.unchanged?, "expected unchanged for identical duplicate entry"
@@ -229,8 +226,7 @@ module SourceMonitor
         original_item = original_result.item
 
         creator = ItemCreator.new(source: @source, entry: entry)
-        attributes = creator.send(:build_attributes)
-        attributes[:guid] = attributes[:guid].presence || attributes[:content_fingerprint]
+        attributes = attributes_for(entry)
 
         found = creator.send(:find_conflicting_item, attributes, :guid)
         assert_equal original_item.id, found.id
@@ -243,8 +239,7 @@ module SourceMonitor
         original_item = original_result.item
 
         creator = ItemCreator.new(source: @source, entry: entry)
-        attributes = creator.send(:build_attributes)
-        attributes[:guid] = attributes[:guid].presence || attributes[:content_fingerprint]
+        attributes = attributes_for(entry)
 
         found = creator.send(:find_conflicting_item, attributes, :fingerprint)
         assert_equal original_item.id, found.id
@@ -262,11 +257,10 @@ module SourceMonitor
         entry2 = parse_entry("feeds/rss_sample.xml")
         entry2.summary = "Race condition updated summary"
         creator = ItemCreator.new(source: @source, entry: entry2)
-        attributes = creator.send(:build_attributes)
-        raw_guid = attributes[:guid]
-        attributes[:guid] = raw_guid.presence || attributes[:content_fingerprint]
+        normalized_entry = normalized_entry_for(entry2)
+        attributes = normalized_entry.item_attributes
 
-        result = creator.send(:handle_concurrent_duplicate, attributes, raw_guid_present: raw_guid.present?)
+        result = creator.send(:handle_concurrent_duplicate, attributes, raw_guid_present: normalized_entry.raw_guid_present?)
         assert result.updated?, "expected updated result from handle_concurrent_duplicate"
         assert_equal original_item.id, result.item.id
         assert_equal :guid, result.matched_by
@@ -580,6 +574,14 @@ module SourceMonitor
       def parse_entry(fixture)
         data = File.read(file_fixture(fixture))
         Feedjira.parse(data).entries.first
+      end
+
+      def attributes_for(entry)
+        normalized_entry_for(entry).item_attributes
+      end
+
+      def normalized_entry_for(entry)
+        SourceMonitor::Items::NormalizedEntry.new(source: @source, entry: entry)
       end
     end
   end

@@ -190,10 +190,6 @@ module SourceMonitor
         (record.changed - IGNORED_CHANGE_ATTRIBUTES).any?
       end
 
-      def build_attributes
-        build_normalized_entry.attributes
-      end
-
       def build_normalized_entry
         @normalized_entry ||= NormalizedEntry.new(source: source, entry: entry, content_extractor: content_extractor)
       end
