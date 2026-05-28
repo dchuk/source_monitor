@@ -156,6 +156,23 @@ module SourceMonitor
       assert_not non_candidate.scraping_enabled?, "non-candidate should not be enabled via select_all_pages"
     end
 
+    test "POST create with select_all_pages resolves IDs through scrape recommendations" do
+      source = create_source!(name: "Recommended By Stub", scraping_enabled: false)
+      ignored = create_source!(name: "Ignored By Stub", scraping_enabled: false)
+
+      recommendations = Struct.new(:candidate_ids).new([ source.id ])
+
+      SourceMonitor::Analytics::ScrapeRecommendations.stub(:new, recommendations) do
+        post source_monitor.bulk_scrape_enablements_path,
+          params: { bulk_scrape_enablement: { select_all_pages: "true", source_ids: [ ignored.id ] } },
+          as: :turbo_stream
+      end
+
+      assert_response :success
+      assert source.reload.scraping_enabled?, "expected recommended source to be enabled"
+      assert_not ignored.reload.scraping_enabled?, "explicit IDs should be ignored for select_all_pages"
+    end
+
     test "route POST /bulk_scrape_enablements routes correctly" do
       post source_monitor.bulk_scrape_enablements_path,
         params: { bulk_scrape_enablement: { source_ids: [] } }
