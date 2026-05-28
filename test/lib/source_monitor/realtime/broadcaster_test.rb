@@ -163,6 +163,54 @@ module SourceMonitor
         assert_equal SourceMonitor::Realtime::Broadcaster::NOTIFICATION_STREAM, captured_target
       end
 
+      # Issue #130: background operational toasts intentionally remain on the
+      # global notification stream but carry only source-operational context
+      # (no per-user/request context). Request flashes no longer route here.
+      test "broadcast_toast uses the same stream and target so background toasts stay context-free global" do
+        captured_stream = nil
+        captured_target = nil
+
+        mock_broadcast = lambda { |stream, **kwargs|
+          captured_stream = stream
+          captured_target = kwargs[:target]
+        }
+
+        Turbo::StreamsChannel.stub(:broadcast_append_to, mock_broadcast) do
+          SourceMonitor::ApplicationController.stub(:render, "<div>toast</div>") do
+            SourceMonitor::Realtime::Broadcaster.broadcast_toast(message: "Fetched Example Source")
+          end
+        end
+
+        assert_equal SourceMonitor::Realtime::Broadcaster::NOTIFICATION_STREAM, captured_stream
+        assert_equal SourceMonitor::Realtime::Broadcaster::NOTIFICATION_STREAM, captured_target
+      end
+
+      test "broadcast_toast renders the toast partial with the given level and delay" do
+        captured_partial = nil
+        captured_locals = nil
+
+        render_stub = lambda { |partial:, locals:|
+          captured_partial = partial
+          captured_locals = locals
+          "<div>toast</div>"
+        }
+
+        Turbo::StreamsChannel.stub(:broadcast_append_to, ->(*_a, **_k) { }) do
+          SourceMonitor::ApplicationController.stub(:render, render_stub) do
+            SourceMonitor::Realtime::Broadcaster.broadcast_toast(
+              message: "up to date",
+              level: :info,
+              delay_ms: 6000
+            )
+          end
+        end
+
+        assert_equal "source_monitor/shared/toast", captured_partial
+        assert_equal "up to date", captured_locals[:message]
+        assert_equal :info, captured_locals[:level]
+        assert_equal 6000, captured_locals[:delay_ms]
+      end
+
       test "broadcast_toast does nothing when turbo unavailable" do
         SourceMonitor::Realtime::Broadcaster.stub(:turbo_available?, false) do
           SourceMonitor::Realtime::Broadcaster.broadcast_toast(message: "ignored")

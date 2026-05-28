@@ -73,5 +73,53 @@ module SourceMonitor
       json = JSON.parse(response.body)
       assert_equal "Record not found", json["error"]
     end
+
+    # Issue #130: request flashes must be delivered response-local and must NOT
+    # be broadcast to the global source_monitor_notifications ActionCable stream
+    # (which every connected tab subscribes to).
+    test "html request flash renders the toast inline in its own response without global broadcast" do
+      source = create_source!(scraping_enabled: true)
+      item = SourceMonitor::Item.create!(
+        source: source,
+        guid: SecureRandom.uuid,
+        url: "https://example.com/article-#{SecureRandom.hex(4)}",
+        title: "Test Article"
+      )
+
+      broadcast_calls = []
+      SourceMonitor::Realtime.stub(
+        :broadcast_toast,
+        ->(**kwargs) { broadcast_calls << kwargs }
+      ) do
+        post source_monitor.item_scrape_path(item)
+        assert_redirected_to source_monitor.item_path(item)
+        follow_redirect!
+      end
+
+      assert_response :success
+      # The flash toast is rendered into the page response (response-local).
+      assert_includes response.body, "Scrape has been enqueued and will run shortly."
+      assert_includes response.body, "data-controller=\"notification\""
+      # The request flash was never pushed to the global notification stream.
+      assert_empty broadcast_calls,
+        "request flashes must not be broadcast to the global notification stream"
+    end
+
+    test "turbo_stream request flash is appended response-local without global broadcast" do
+      source = create_source!
+
+      broadcast_calls = []
+      SourceMonitor::Realtime.stub(
+        :broadcast_toast,
+        ->(**kwargs) { broadcast_calls << kwargs }
+      ) do
+        get "/source_monitor/sources/999999999", as: :turbo_stream
+      end
+
+      assert_response :not_found
+      assert_includes response.body, "Record not found"
+      assert_empty broadcast_calls,
+        "request flashes must not be broadcast to the global notification stream"
+    end
   end
 end
