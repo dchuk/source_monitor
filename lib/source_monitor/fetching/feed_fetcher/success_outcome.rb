@@ -24,8 +24,20 @@ module SourceMonitor
           result
         end
 
+        def status
+          :fetched
+        end
+
+        def error
+          nil
+        end
+
+        def retry_decision
+          nil
+        end
+
         def result
-          Result.new(status: :fetched, feed: feed, response: response, body: body, item_processing: item_processing)
+          Result.new(status: status, feed: feed, response: response, body: body, item_processing: item_processing, outcome: self)
         end
 
         private

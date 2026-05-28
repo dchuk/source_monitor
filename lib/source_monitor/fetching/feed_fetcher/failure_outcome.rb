@@ -8,14 +8,18 @@ module SourceMonitor
           @error = error
         end
 
-        attr_reader :error
+        attr_reader :error, :retry_decision
 
         def apply(source_updater:, started_at:, instrumentation_payload:)
           duration_ms = source_updater.elapsed_ms(started_at)
-          retry_decision = update_source(source_updater, duration_ms)
+          @retry_decision = update_source(source_updater, duration_ms)
           create_fetch_log(source_updater, duration_ms, started_at)
-          apply_instrumentation(instrumentation_payload, retry_decision)
-          result(retry_decision)
+          apply_instrumentation(instrumentation_payload)
+          result
+        end
+
+        def status
+          :failed
         end
 
         def response
@@ -24,6 +28,14 @@ module SourceMonitor
 
         def body
           response&.body
+        end
+
+        def feed
+          nil
+        end
+
+        def item_processing
+          @item_processing ||= empty_item_processing
         end
 
         private
@@ -43,9 +55,9 @@ module SourceMonitor
           )
         end
 
-        def apply_instrumentation(instrumentation_payload, retry_decision)
+        def apply_instrumentation(instrumentation_payload)
           instrumentation_payload[:success] = false
-          instrumentation_payload[:status] = :failed
+          instrumentation_payload[:status] = status
           instrumentation_payload[:error_class] = error.class.name
           instrumentation_payload[:error_message] = error.message
           instrumentation_payload[:http_status] = error.http_status if error.http_status
@@ -56,14 +68,15 @@ module SourceMonitor
           instrumentation_payload[:retry_attempt] = retry_decision&.next_attempt ? retry_decision.next_attempt : 0
         end
 
-        def result(retry_decision)
+        def result
           Result.new(
-            status: :failed,
+            status: status,
             response: response,
             body: body,
             error: error,
             retry_decision: retry_decision,
-            item_processing: empty_item_processing
+            item_processing: item_processing,
+            outcome: self
           )
         end
 

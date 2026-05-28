@@ -15,7 +15,7 @@ require "source_monitor/fetching/feed_fetcher/failure_outcome"
 module SourceMonitor
   module Fetching
     class FeedFetcher
-      Result = Struct.new(:status, :feed, :response, :body, :error, :item_processing, :retry_decision, keyword_init: true)
+      Result = Struct.new(:status, :feed, :response, :body, :error, :item_processing, :retry_decision, :outcome, keyword_init: true)
       EntryProcessingResult = Struct.new(
         :created,
         :updated,

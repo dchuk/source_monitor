@@ -211,8 +211,6 @@ module SourceMonitor
         )
         result = SourceMonitor::Fetching::FeedFetcher::Result.new(status: :fetched, item_processing: processing)
 
-        result = SourceMonitor::Fetching::FeedFetcher::Result.new(status: :fetched, item_processing: processing)
-
         stub_fetcher = Class.new do
           define_method(:initialize) { |**_kwargs| }
           define_method(:call) { result }
@@ -240,6 +238,79 @@ module SourceMonitor
 
         assert_equal 1, event_publisher.calls.count
         assert_equal({ source:, result: result }, event_publisher.calls.first)
+      end
+
+      test "delegates completion effects to fetch outcome when result provides one" do
+        source = create_source
+
+        outcome = CompletionOutcome.new(
+          status: :fetched,
+          item_processing: empty_processing_result
+        )
+        result = SourceMonitor::Fetching::FeedFetcher::Result.new(status: :failed, outcome: outcome)
+
+        stub_fetcher = Class.new do
+          define_method(:initialize) { |**_kwargs| }
+          define_method(:call) { result }
+        end
+
+        retention_handler = HandlerSpy.new
+        follow_up_handler = HandlerSpy.new
+        event_publisher = HandlerSpy.new
+
+        SourceMonitor::Realtime.stub :broadcast_source, nil do
+          FetchRunner.new(
+            source:,
+            fetcher_class: stub_fetcher,
+            retention_handler: retention_handler,
+            follow_up_handler: follow_up_handler,
+            event_publisher: event_publisher
+          ).run
+        end
+
+        assert_equal({ source:, result: outcome }, retention_handler.calls.first)
+        assert_equal({ source:, result: outcome }, follow_up_handler.calls.first)
+        assert_equal({ source:, result: outcome }, event_publisher.calls.first)
+        assert_equal "idle", source.reload.fetch_status
+      end
+
+      test "schedules retry from fetch outcome" do
+        source = create_source
+        decision = SourceMonitor::Fetching::RetryPolicy::Decision.new(
+          retry?: true,
+          wait: 2.minutes,
+          next_attempt: 1,
+          open_circuit?: false,
+          circuit_until: nil
+        )
+        outcome = CompletionOutcome.new(
+          status: :failed,
+          retry_decision: decision,
+          item_processing: empty_processing_result
+        )
+        result = SourceMonitor::Fetching::FeedFetcher::Result.new(status: :fetched, outcome: outcome)
+
+        stub_fetcher = Class.new do
+          define_method(:initialize) { |**_kwargs| }
+          define_method(:call) { result }
+        end
+
+        travel_to Time.zone.parse("2025-10-11 09:30:00 UTC") do
+          SourceMonitor::Realtime.stub :broadcast_source, nil do
+            assert_enqueued_jobs 1 do
+              FetchRunner.new(source:, fetcher_class: stub_fetcher).run
+            end
+          end
+
+          enqueued = enqueued_jobs.last
+          assert_in_delta 2.minutes.from_now.to_f, enqueued[:at], 1.0
+          assert_equal SourceMonitor::FetchFeedJob, enqueued[:job]
+          assert_equal source.id, enqueued[:args].first
+          assert_equal false, enqueued[:args].last["force"]
+          assert_equal "queued", source.reload.fetch_status
+        end
+
+        clear_enqueued_jobs
       end
 
       test "schedules retry according to timeout policy" do
@@ -675,6 +746,8 @@ module SourceMonitor
           calls << { source:, result: }
         end
       end
+
+      CompletionOutcome = Struct.new(:status, :retry_decision, :item_processing, keyword_init: true)
     end
   end
 end

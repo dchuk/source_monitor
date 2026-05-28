@@ -78,16 +78,17 @@ module SourceMonitor
         end
 
         # Phase 3: Post-fetch DB writes under the advisory lock (still held).
+        completion_result = completion_result_for(result)
         begin
-          log_handler_result("RetentionHandler", retention_handler.call(source:, result:))
-          log_handler_result("FollowUpHandler", follow_up_handler.call(source:, result:))
-          schedule_retry_if_needed(result)
-          mark_complete!(result)
+          log_handler_result("RetentionHandler", retention_handler.call(source:, result: completion_result))
+          log_handler_result("FollowUpHandler", follow_up_handler.call(source:, result: completion_result))
+          schedule_retry_if_needed(completion_result)
+          mark_complete!(completion_result)
         ensure
           lock.release!
         end
 
-        log_handler_result("EventPublisher", event_publisher.call(source:, result:))
+        log_handler_result("EventPublisher", event_publisher.call(source:, result: completion_result))
         result
       rescue SourceMonitor::Fetching::AdvisoryLock::NotAcquiredError => error
         raise ConcurrencyError, error.message
@@ -154,6 +155,12 @@ module SourceMonitor
       def mark_failed!(_error)
         @retry_scheduled = false
         update_source_state(fetch_status: "failed")
+      end
+
+      def completion_result_for(result)
+        return result unless result.respond_to?(:outcome)
+
+        result.outcome || result
       end
 
       def update_source_state(attrs)
