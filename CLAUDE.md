@@ -104,14 +104,18 @@ Run /vbw:help for all commands.
 Before pushing any branch (especially release branches), run the full CI equivalent locally:
 
 1. `bin/rubocop` -- catches Ruby lint issues
-2. `PARALLEL_WORKERS=1 bin/rails test` -- catches test failures AND diff coverage gaps
-3. `bin/brakeman --no-pager` -- catches security issues
-4. `yarn build` -- rebuilds JS and catches ESLint issues (CI runs ESLint separately)
+2. `bin/test-coverage` -- this is what CI's `test` job actually runs. **Do NOT rely on `bin/rails test` to predict CI:** `bin/rails test` uses a different harness/seed and does NOT run the diff-coverage gate, so it can be green (e.g. 1741/0) while CI fails. `bin/test-coverage` runs the real seed, the second `health_suite` pass, and the host-app-template test that **changes the process CWD mid-suite** (see gemspec note below).
+3. `bundle exec ruby bin/check-diff-coverage` -- run this AFTER `bin/test-coverage` (it reads `coverage/.resultset.json`). It reproduces the CI diff-coverage gate locally (threshold 90% on changed `app/`/`lib/` lines vs `origin/main`). This is the only way to know the gate passes before pushing.
+4. `bin/brakeman --no-pager` -- catches security issues
+5. `yarn build` -- rebuilds JS and catches ESLint issues (CI runs ESLint separately)
 
-**Why:** CI failures cost ~5 min per round-trip. In v0.8.0, skipping ESLint and diff coverage checks locally caused 2 wasted CI cycles. Common blind spots:
-- JS files need `/* global */` declarations for browser APIs (MutationObserver, requestAnimationFrame, etc.)
-- Every `rescue` / fallback / error path in new source code needs test coverage (CI diff coverage gate rejects uncovered lines)
-- `yarn build` must run after JS changes to sync sourcemaps
+**Why:** CI failures cost ~5 min per round-trip. In v0.8.0, skipping ESLint and diff coverage checks locally caused 2 wasted CI cycles. In v0.14.0, two more cycles were lost because (a) a green local `bin/rails test` masked a CI `bin/test-coverage` failure, and (b) the diff-coverage gate was never run locally. Common blind spots:
+- **CI runs `bin/test-coverage`, not `bin/rails test`** -- replicate the gate locally with steps 2 + 3 above before pushing.
+- **Diff coverage covers EVERY changed `app/`/`lib/` line**, including defensive/edge branches with no natural caller. If a branch can't be reached through a normal engine route (e.g. the `#130` turbo_stream flash-append, which only fires when a turbo_stream request carries a Rails flash), add a **test-only probe controller in the dummy app** (pattern: `test/dummy/app/controllers/test_support_controller.rb` + a route in `test/dummy/config/routes.rb`) to exercise it. Subclass `SourceMonitor::ApplicationController` if the branch lives in the engine's filter chain.
+- Every `rescue` / fallback / error path in new source code needs test coverage (CI diff coverage gate rejects uncovered lines).
+- **Gemspec packaging must be CWD-independent.** Do NOT use a bare `Dir[...]` glob in `source_monitor.gemspec` for file selection -- it resolves against the process CWD, and during `bin/test-coverage` a sibling test chdir's into a generated host app, so the glob returns nothing and files silently drop from the package (v0.14.0 `#131`). Drive packaging from `git ls-files` inside the existing `Dir.chdir(File.expand_path(__dir__))` block instead.
+- JS files need `/* global */` declarations for browser APIs (MutationObserver, requestAnimationFrame, etc.).
+- `yarn build` must run after JS changes to sync sourcemaps.
 
 ## QA and UAT Rules
 
