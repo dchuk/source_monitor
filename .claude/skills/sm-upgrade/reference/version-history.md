@@ -2,6 +2,20 @@
 
 Version-specific migration notes for each major/minor version transition. Agents should reference this file when guiding users through multi-version upgrades.
 
+## 0.14.0 to 0.15.0
+
+**Key changes:**
+- **Security:** Rails bumped to 8.1.3 (security release), picking up fixes for five CVEs including XSS in tag/DebugExceptions helpers, an Active Storage path-traversal, and a NumberConverter issue.
+- **ViewComponent 4.x:** the `view_component` dependency widens from `>= 3.0, < 4.0` to `>= 3.0, < 5.0`, allowing host apps to resolve ViewComponent 4.x (engine lockfile resolves to 4.5.0). Engine components use only stable APIs unaffected by v4.
+- **Solid Queue 1.4.0:** bumped from 1.3.1 with race-condition and supervisor stability fixes; dynamic recurring tasks are opt-in.
+- **Documentation:** engine conventions consolidated into `AGENTS.md`; `CLAUDE.md` now points to it.
+
+**Action items:**
+1. `bundle update source_monitor`
+2. `bin/rails source_monitor:upgrade`
+3. No migrations or breaking config/API changes.
+4. If the host app has ViewComponent 3.x customizations (custom components, previews), test after upgrading and consult ViewComponent v4 migration guides if needed.
+
 ## 0.13.1 to 0.14.0
 
 **Key changes:**

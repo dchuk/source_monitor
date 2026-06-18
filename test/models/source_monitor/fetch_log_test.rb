@@ -49,7 +49,9 @@ module SourceMonitor
 
       source_logs = FetchLog.where(source: @source)
       assert_equal [ failed, successful, older ], source_logs.recent.to_a
-      assert_equal [ successful, older ], source_logs.successful.to_a
+      # successful/failed are filter-only scopes (no inherent order); chain :recent
+      # for a deterministic comparison rather than relying on DB row order.
+      assert_equal [ successful, older ], source_logs.successful.recent.to_a
       assert_equal [ failed ], source_logs.failed.to_a
     end
 

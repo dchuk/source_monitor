@@ -7,7 +7,7 @@ This guide consolidates the new guided installer, verification commands, and rol
 | Requirement | Minimum | Notes |
 | --- | --- | --- |
 | Ruby | 4.0.1 | Use rbenv and match the engine's `.ruby-version`. |
-| Rails | 8.1.2 | Run `bin/rails about` inside the host to confirm. |
+| Rails | 8.1.3 | Run `bin/rails about` inside the host to confirm. |
 | PostgreSQL | 14+ | Required for Solid Queue tables and item storage. |
 | Node.js | 18+ | Needed for Tailwind/esbuild assets when the host owns node tooling. |
 | Background jobs | Solid Queue (>= 0.3, < 3.0) | Add `solid_queue` to the host Gemfile if not present. |
@@ -18,8 +18,8 @@ This guide consolidates the new guided installer, verification commands, and rol
 Run these commands inside your host Rails application before invoking the guided workflow:
 
 ```bash
-bundle add source_monitor --version "~> 0.14.0"
-# or add gem "source_monitor", "~> 0.14.0" to Gemfile manually
+bundle add source_monitor --version "~> 0.15.0"
+# or add gem "source_monitor", "~> 0.15.0" to Gemfile manually
 bundle install
 ```
 

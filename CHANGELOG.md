@@ -15,6 +15,20 @@ All notable changes to this project are documented below. The format follows [Ke
 
 - No unreleased changes yet.
 
+## [0.15.0] - 2026-06-18
+
+### Security
+- Bump Rails to 8.1.3 via the 8.1.2.1 security release (#104), picking up fixes for five CVEs including XSS in tag/DebugExceptions helpers, an Active Storage path-traversal, and a NumberConverter issue.
+
+### Changed
+- **Allow ViewComponent 4.x** (#96). The `view_component` dependency constraint widens from `>= 3.0, < 4.0` to `>= 3.0, < 5.0`, so host apps can now resolve ViewComponent 4.x (the engine's lockfile moves to 4.5.0). The engine's components use only stable ViewComponent APIs and are unaffected by the v4 upgrade — but a host app on its own ViewComponent 3.x customizations should review the v4 upgrade notes before running `bundle update`.
+- Bump Solid Queue to 1.4.0 (#102) — race-condition and supervisor stability fixes; the new dynamic recurring-tasks feature is opt-in and off by default.
+- Bump nokolexbor to 0.6.4 (#103) and json to 2.19.2 (#99).
+- Development/CI dependency bumps: test-prof 1.6.0 (#101), webmock 3.26.2 (#100), brakeman 8.0.4 (#88), selenium-webdriver 4.41.0 (#78), stackprof 0.2.28 (#71), and the GitHub Actions artifact actions (#87, #86).
+
+### Documentation
+- Consolidate engine conventions into `AGENTS.md` as the canonical, cross-agent reference; `CLAUDE.md` now points to it instead of duplicating content (#134).
+
 ## [0.14.0] - 2026-05-28
 
 ### Security (BREAKING)
