@@ -46,6 +46,20 @@ If a removed option raises an error (`SourceMonitor::DeprecatedOptionError`), yo
 
 ## Version-Specific Notes
 
+### Upgrading to 0.15.0
+
+**What changed:**
+- **Security:** Rails bumped to 8.1.3 (security release), fixing five CVEs including XSS in tag/DebugExceptions helpers, an Active Storage path-traversal, and a NumberConverter issue.
+- **ViewComponent 4.x compatibility:** The `view_component` dependency constraint widens from `>= 3.0, < 4.0` to `>= 3.0, < 5.0`, so host apps can now resolve ViewComponent 4.x (the engine's lockfile moves to 4.5.0). The engine's components use only stable ViewComponent APIs unaffected by the v4 upgrade, but host apps with their own ViewComponent 3.x customizations should review the [ViewComponent v4 release notes](https://github.com/ViewComponent/view_component/releases) before running `bundle update`.
+- **Solid Queue 1.4.0:** Bumped from 1.3.1 with race-condition and supervisor stability fixes. The new dynamic recurring-tasks feature is opt-in and off by default.
+- **Documentation:** Engine conventions consolidated into `AGENTS.md` as the canonical cross-agent reference; `CLAUDE.md` now points to it.
+
+**Action items:**
+1. `bundle update source_monitor`
+2. `bin/rails source_monitor:upgrade`
+3. No database migrations and no breaking API or configuration changes.
+4. If your host app has its own ViewComponent 3.x customizations, test after upgrading and consult the ViewComponent v4 migration guide if issues arise.
+
 ### Upgrading to 0.14.0
 
 **What changed:**
